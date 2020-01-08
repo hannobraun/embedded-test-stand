@@ -14,4 +14,7 @@ As of this writing, nothing but this README and a few ideas exist. Please check 
 
 Code in this repository, unless specifically noted otherwise, is available under the terms under the [0BSD License]. This essentially means you can do what you want with it, without any restrictions.
 
+See [LICENSE.md] for the full license text.
+
 [0BSD License]: https://opensource.org/licenses/0BSD
+[LICENSE.md]: LICENSE.md
