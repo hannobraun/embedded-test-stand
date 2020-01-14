@@ -18,3 +18,6 @@ See [LICENSE.md] for the full license text.
 
 [0BSD License]: https://opensource.org/licenses/0BSD
 [LICENSE.md]: LICENSE.md
+
+**Created by [Braun Embedded](https://braun-embedded.com/)** <br />
+**Initial development sponsored by [Georg Fischer Signet](http://www.gfsignet.com/)**
