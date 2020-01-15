@@ -7,7 +7,7 @@ use self::lib::{
 
 
 #[test]
-fn it_should_send_messages() -> serialport::Result<()> {
+fn it_should_send_messages() -> lib::Result {
     let mut target = Target::connect()?;
     let mut serial = Serial::open()?;
 
@@ -116,7 +116,7 @@ mod lib {
         /// Returns the receive buffer, once the message was received. Returns
         /// an error, if it times out before that, or an I/O error occurs.
         pub fn wait_for(&mut self, message: &[u8], timeout: Duration)
-            -> Result<Vec<u8>, io::Error>
+            -> Result<Vec<u8>>
         {
             let mut buf   = Vec::new();
             let     start = Instant::now();
@@ -128,7 +128,7 @@ mod lib {
                     return Ok(buf);
                 }
                 if start.elapsed() > timeout {
-                    return Err(io::Error::from(io::ErrorKind::TimedOut));
+                    return Err(io::Error::from(io::ErrorKind::TimedOut).into());
                 }
 
                 // Read one more byte. This might seem tedious, but it's the
@@ -142,6 +142,30 @@ mod lib {
                 let len = buf.len();
                 self.port.read_exact(&mut buf[len - 1..])?;
             }
+        }
+    }
+
+
+    /// Result type specific to this test suite
+    pub type Result<T = ()> = std::result::Result<T, Error>;
+
+
+    /// Error type specific to this test suite
+    #[derive(Debug)]
+    pub enum Error {
+        Io(io::Error),
+        Serial(serialport::Error),
+    }
+
+    impl From<io::Error> for Error {
+        fn from(err: io::Error) -> Self {
+            Self::Io(err)
+        }
+    }
+
+    impl From<serialport::Error> for Error {
+        fn from(err: serialport::Error) -> Self {
+            Self::Serial(err)
         }
     }
 }
