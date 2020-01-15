@@ -1,21 +1,17 @@
 use std::time::Duration;
 
-use self::lib::{
-    Serial,
-    Target,
-};
+use self::lib::TestStand;
 
 
 #[test]
 fn it_should_send_messages() -> lib::Result {
-    let mut target = Target::connect()?;
-    let mut serial = Serial::open()?;
+    let mut test_stand = TestStand::new()?;
 
     let message = b"Hello, world!";
-    target.send_usart(message)?;
+    test_stand.target().send_usart(message)?;
 
     let timeout  = Duration::from_millis(50);
-    let received = serial.wait_for(message, timeout)?;
+    let received = test_stand.serial().wait_for(message, timeout)?;
 
     assert_eq!(received, message);
     Ok(())
@@ -29,18 +25,75 @@ fn it_should_send_messages() -> lib::Result {
 /// a generally usable library that can be shared with other test suites.
 mod lib {
     use std::{
-        io,
+        fs::File,
+        io::{
+            self,
+            prelude::*,
+        },
         time::{
             Duration,
             Instant,
         },
     };
 
+    use serde::Deserialize;
     use serialport::{
         self,
         SerialPort,
         SerialPortSettings,
     };
+
+
+    /// An instance of the test stand
+    ///
+    /// Used to access all resources that a test case requires.
+    pub struct TestStand {
+        target: Target,
+        serial: Serial,
+    }
+
+    impl TestStand {
+        /// Initializes the test stand
+        ///
+        /// Reads the `test-stand.toml` configuration file and initializes test
+        /// stand resources, as configured in there.
+        pub fn new() -> Result<Self> {
+            // Read configuration file
+            let mut config = Vec::new();
+            File::open("test-stand.toml")?
+                .read_to_end(&mut config)?;
+
+            // Parse configuration file
+            let config: Config = toml::from_slice(&config)?;
+
+            let target = Target::new(&config.target)?;
+            let serial = Serial::new(&config.serial)?;
+
+            Ok(
+                TestStand {
+                    target,
+                    serial,
+                }
+            )
+        }
+
+        /// Returns the connection to the test target (device under test)
+        pub fn target(&mut self) -> &mut Target {
+            &mut self.target
+        }
+
+        /// Returns the connection to the Serial-to-USB converter
+        pub fn serial(&mut self) -> &mut Serial {
+            &mut self.serial
+        }
+    }
+
+
+    #[derive(Deserialize)]
+    struct Config {
+        target: String,
+        serial: String,
+    }
 
 
     /// The test suite's connection to the test target (device under test)
@@ -50,19 +103,18 @@ mod lib {
 
     impl Target {
         /// Open a connection to the target
-        pub fn connect() -> serialport::Result<Self> {
-            // The path of the serial port is hardcoded for now, to get this up
-            // and running. It will eventually be loaded from a configuration
-            // file.
+        fn new(path: &str) -> serialport::Result<Self> {
             let port = serialport::open_with_settings(
-                "/dev/ttyACM0",
+                path,
+                // The configuration is hardcoded for now. We might want to load
+                // this from the configuration file later.
                 &SerialPortSettings {
                     baud_rate: 115200,
                     .. SerialPortSettings::default()
                 }
             )?;
 
-            // Use a clone of the serialport, so `Serial` use the same port.
+            // Use a clone of the serialport, so `Serial` can use the same port.
             let port = port.try_clone()?;
 
             Ok(
@@ -89,15 +141,11 @@ mod lib {
 
     impl Serial {
         /// Open a serial connection
-        pub fn open() -> serialport::Result<Self> {
-            // The path of the serial port is hardcoded for now, to get this up
-            // and running. It will eventually be loaded from a configuration
-            // file.
-            //
-            // Also, we're using the same serial port as `Target`. This is fine
-            // for now, as `Target` only writes, while `Serial` only reads.
+        fn new(path: &str) -> serialport::Result<Self> {
             let port = serialport::open_with_settings(
-                "/dev/ttyACM0",
+                path,
+                // The configuration is hardcoded for now. We might want to load
+                // this from the configuration file later.
                 &SerialPortSettings {
                     baud_rate: 115200,
                     .. SerialPortSettings::default()
@@ -153,8 +201,15 @@ mod lib {
     /// Error type specific to this test suite
     #[derive(Debug)]
     pub enum Error {
+        Config(toml::de::Error),
         Io(io::Error),
         Serial(serialport::Error),
+    }
+
+    impl From<toml::de::Error> for Error {
+        fn from(err: toml::de::Error) -> Self {
+            Self::Config(err)
+        }
     }
 
     impl From<io::Error> for Error {
