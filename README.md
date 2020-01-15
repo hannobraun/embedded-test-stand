@@ -6,9 +6,40 @@ A test stand for firmware applications. Allows you to control an application und
 
 The long-term vision is to turn this into a generally applicable product. For now, it only supports NXP LPC845 microcontrollers.
 
+
 ## Status
 
 As of this writing, nothing but this README and a few ideas exist. Please check out the list of merged pull requests to see if any more progress has been made since then.
+
+
+## Running the Test Suite
+
+This repository contains an example test suite that sends commands to the device under test and verifies its response.
+
+Before you can run the test suite, you first need to download the firmware to an [LPC845-BRK]. This requires [arm-none-eabi-gdb] and OpenOCD (the latest official release won't do; use a recent version from Git, or the [xPack binaries]).
+
+If you have those installed, you can download the test firmware like this:
+
+```
+cd test-firmware
+cargo run
+```
+
+Once the firmware is running on the device, you can execute the test suite:
+
+```
+cd test-suite
+cargo test
+```
+
+Depending on which system you're running this on, you might need to adapt the test stand configuration `test-suite/test-stand.toml` to your needs.
+
+You should see a list of successfully execute test cases.
+
+[LPC845-BRK]: https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/general-purpose-mcus/lpc800-cortex-m0-plus-/lpc845-breakout-board-for-lpc84x-family-mcus:LPC845-BRK
+[xPack binaries]: https://github.com/xpack-dev-tools/openocd-xpack/releases/
+[arm-none-eabi-gdb]: https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads
+
 
 ## License
 

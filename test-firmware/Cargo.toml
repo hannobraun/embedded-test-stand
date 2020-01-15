@@ -1,0 +1,25 @@
+[package]
+name    = "lpc845-test-firmware"
+version = "0.1.0"
+authors = ["Hanno Braun <hanno@braun-embedded.com>"]
+edition = "2018"
+
+
+[dependencies]
+cortex-m-semihosting = "0.3.5"
+panic-semihosting    = "0.5.3"
+
+[dependencies.lpc8xx-hal]
+git      = "https://github.com/lpc-rs/lpc8xx-hal.git"
+features = ["845m301jbd48", "845-rt"]
+
+[dependencies.void]
+version          = "1.0.2"
+default-features = false
+
+
+# Without any optimization, the test firmware can't quite keep up with the
+# USART. Let's do some optimization in dev mode, so this works when executed
+# with `cargo run`.
+[profile.dev]
+opt-level = "s"
