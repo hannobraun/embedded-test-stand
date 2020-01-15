@@ -19,4 +19,4 @@ jobs:
     - name: Build test suite
       run: |
         cd test-suite
-        cargo build --verbose
+        cargo build --tests --verbose
