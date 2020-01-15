@@ -32,6 +32,8 @@ cd test-suite
 cargo test
 ```
 
+Depending on which system you're running this on, you might need to adapt the test stand configuration `test-suite/test-stand.toml` to your needs.
+
 You should see a list of successfully execute test cases.
 
 [LPC845-BRK]: https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/general-purpose-mcus/lpc800-cortex-m0-plus-/lpc845-breakout-board-for-lpc84x-family-mcus:LPC845-BRK
