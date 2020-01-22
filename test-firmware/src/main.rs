@@ -17,16 +17,15 @@ use cortex_m_semihosting::hprintln;
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
-    USART,
     cortex_m_rt::entry,
-    nb::block,
     syscon::{
         clocksource::UsartClock,
         frg,
     },
-    usart,
 };
 use void::ResultVoidExt;
+
+use lpc845_test_lib::Request;
 
 
 #[entry]
@@ -76,23 +75,20 @@ fn main() -> ! {
         u0_txd,
     );
 
-    // Eventually, we'll execute commands from the test suite here, so it can
-    // verify we're doing the right thing. For now, let's just echo everything
-    // we receive, so the test suite can implement a basic test for USART.
+    let mut buf = [0; 256];
+
     loop {
-        if let Err(err) = echo(&mut usart) {
-            // Nothing we can do really. Let's just send an error message to the
-            // host via semihosting and carry on.
-            let _ = hprintln!("Error echoing byte via USART: {:?}", err);
+        // Receive a request from the test suite and do whatever it tells us.
+        match Request::receive(&mut usart, &mut buf) {
+            Ok(Request::SendUsart(message)) => {
+                usart.tx().bwrite_all(message)
+                    .void_unwrap();
+            }
+            Err(err) => {
+                // Nothing we can do really. Let's just send an error message to
+                // the host via semihosting and carry on.
+                let _ = hprintln!("Error echoing byte via USART: {:?}", err);
+            }
         }
     }
-}
-
-fn echo<I: usart::Instance>(usart: &mut USART<I>)
-    -> Result<(), usart::Error>
-{
-    let b = block!(usart.rx().read())?;
-    block!(usart.tx().write(b))
-        .void_unwrap();
-    Ok(())
 }

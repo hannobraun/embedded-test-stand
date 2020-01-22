@@ -1,10 +1,7 @@
-use std::{
-    io,
-    sync::{
-        LockResult,
-        Mutex,
-        MutexGuard,
-    },
+use std::sync::{
+    LockResult,
+    Mutex,
+    MutexGuard,
 };
 
 use lazy_static::lazy_static;
@@ -12,6 +9,10 @@ use serialport::{
     self,
     SerialPort,
     SerialPortSettings,
+};
+use lpc845_test_lib::{
+    self as test_lib,
+    Request,
 };
 
 
@@ -70,11 +71,10 @@ impl Target {
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetSendError>
     {
-        // This works fine for now, as the test firmware just echos what it
-        // receives, and all we check is whether it did so. To write any more
-        // test cases, we're going to need a bit more structure here.
-        self.port.write_all(message)
-            .map_err(|err| TargetSendError(err))
+        let mut buf = [0; 256];
+        Request::SendUsart(message).send(&mut self.port, &mut buf)
+            .map_err(|err| TargetSendError(err))?;
+        Ok(())
     }
 }
 
@@ -83,4 +83,4 @@ impl Target {
 pub struct TargetInitError(serialport::Error);
 
 #[derive(Debug)]
-pub struct TargetSendError(io::Error);
+pub struct TargetSendError(test_lib::Error);
