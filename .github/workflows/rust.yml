@@ -12,11 +12,6 @@ jobs:
     - name: Install Cortex-M0+ target
       run: |
         rustup target install thumbv6m-none-eabi
-    - name: Build firmware
+    - name: Build
       run: |
-        cd test-firmware
-        cargo build --verbose
-    - name: Build test suite
-      run: |
-        cd test-suite
-        cargo build --tests --verbose
+        ./scripts/build.sh
