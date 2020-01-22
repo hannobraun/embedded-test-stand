@@ -6,9 +6,12 @@ edition = "2018"
 
 
 [dev-dependencies]
-serialport = "3.3.0"
 toml       = "0.5.5"
 
 [dev-dependencies.serde]
 version  = "1.0.104"
 features = ["derive"]
+
+[dev-dependencies.serialport]
+version          = "3.3.0"
+default-features = false # depends on libudev by default
