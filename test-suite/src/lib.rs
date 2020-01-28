@@ -14,8 +14,8 @@ pub mod test_stand;
 
 pub use self::{
     result::{
-        Result,
         Error,
+        Result,
     },
     test_stand::TestStand,
 };

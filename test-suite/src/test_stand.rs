@@ -1,8 +1,16 @@
 use super::{
-    Result,
-    config::Config,
-    serial::Serial,
-    target::Target,
+    config::{
+        Config,
+        ConfigReadError,
+    },
+    serial::{
+        Serial,
+        SerialInitError,
+    },
+    target::{
+        Target,
+        TargetInitError,
+    },
 };
 
 
@@ -19,11 +27,14 @@ impl TestStand {
     ///
     /// Reads the `test-stand.toml` configuration file and initializes test
     /// stand resources, as configured in there.
-    pub fn new() -> Result<Self> {
-        let config = Config::read()?;
+    pub fn new() -> Result<Self, TestStandInitError> {
+        let config = Config::read()
+            .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
-        let target = Target::new(&config.target)?;
-        let serial = Serial::new(&config.serial)?;
+        let target = Target::new(&config.target)
+            .map_err(|err| TestStandInitError::TargetInit(err))?;
+        let serial = Serial::new(&config.serial)
+            .map_err(|err| TestStandInitError::SerialInit(err))?;
 
         Ok(
             TestStand {
@@ -42,4 +53,12 @@ impl TestStand {
     pub fn serial(&mut self) -> &mut Serial {
         &mut self.serial
     }
+}
+
+
+#[derive(Debug)]
+pub enum TestStandInitError {
+    ConfigRead(ConfigReadError),
+    SerialInit(SerialInitError),
+    TargetInit(TargetInitError),
 }
