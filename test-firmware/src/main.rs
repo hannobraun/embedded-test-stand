@@ -21,7 +21,7 @@ use lpc8xx_hal::{
     cortex_m_rt::entry,
     nb::block,
     syscon::{
-        clocksource::PeripheralClockConfig,
+        clocksource::UsartClock,
         frg,
     },
     usart,
@@ -51,7 +51,7 @@ fn main() -> ! {
         syscon.frg0.select_clock(frg::Clock::FRO);
         syscon.frg0.set_mult(22);
         syscon.frg0.set_div(0xFF);
-        PeripheralClockConfig::new(&syscon.frg0, 5)
+        UsartClock::new(&syscon.frg0, 5, 16)
     };
 
     // The pins used for USART RX/TX. On the LPC845-BRK, those are the pins
@@ -88,7 +88,7 @@ fn main() -> ! {
     }
 }
 
-fn echo<I: usart::Peripheral>(usart: &mut USART<I>)
+fn echo<I: usart::Instance>(usart: &mut USART<I>)
     -> Result<(), usart::Error>
 {
     let b = block!(usart.rx().read())?;
