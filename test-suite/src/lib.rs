@@ -5,6 +5,15 @@
 //! a generally usable library that can be shared with other test suites.
 
 
+pub mod result;
+
+
+pub use self::result::{
+    Result,
+    Error,
+};
+
+
 use std::{
     fs::File,
     io::{
@@ -171,36 +180,5 @@ impl Serial {
             let len = buf.len();
             self.port.read_exact(&mut buf[len - 1..])?;
         }
-    }
-}
-
-
-/// Result type specific to this test suite
-pub type Result<T = ()> = std::result::Result<T, Error>;
-
-
-/// Error type specific to this test suite
-#[derive(Debug)]
-pub enum Error {
-    Config(toml::de::Error),
-    Io(io::Error),
-    Serial(serialport::Error),
-}
-
-impl From<toml::de::Error> for Error {
-    fn from(err: toml::de::Error) -> Self {
-        Self::Config(err)
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Self::Io(err)
-    }
-}
-
-impl From<serialport::Error> for Error {
-    fn from(err: serialport::Error) -> Self {
-        Self::Serial(err)
     }
 }
