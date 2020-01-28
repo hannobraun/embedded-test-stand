@@ -5,13 +5,13 @@ authors = ["Hanno Braun <hanno@braun-embedded.com>"]
 edition = "2018"
 
 
-[dev-dependencies]
-toml       = "0.5.5"
+[dependencies]
+toml = "0.5.5"
 
-[dev-dependencies.serde]
+[dependencies.serde]
 version  = "1.0.104"
 features = ["derive"]
 
-[dev-dependencies.serialport]
+[dependencies.serialport]
 version          = "3.3.0"
 default-features = false # depends on libudev by default
