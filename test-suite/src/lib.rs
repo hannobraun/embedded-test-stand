@@ -5,6 +5,7 @@
 //! a generally usable library that can be shared with other test suites.
 
 
+pub mod config;
 pub mod result;
 pub mod serial;
 pub mod target;
@@ -17,17 +18,10 @@ pub use self::result::{
 
 
 use self::{
+    config::Config,
     serial::Serial,
     target::Target,
 };
-
-
-use std::{
-    fs::File,
-    io::prelude::*,
-};
-
-use serde::Deserialize;
 
 
 /// An instance of the test stand
@@ -65,26 +59,5 @@ impl TestStand {
     /// Returns the connection to the Serial-to-USB converter
     pub fn serial(&mut self) -> &mut Serial {
         &mut self.serial
-    }
-}
-
-
-#[derive(Deserialize)]
-struct Config {
-    target: String,
-    serial: String,
-}
-
-impl Config {
-    pub fn read() -> Result<Self> {
-        // Read configuration file
-        let mut config = Vec::new();
-        File::open("test-stand.toml")?
-            .read_to_end(&mut config)?;
-
-        // Parse configuration file
-        let config = toml::from_slice(&config)?;
-
-        Ok(config)
     }
 }
