@@ -44,13 +44,7 @@ impl TestStand {
     /// Reads the `test-stand.toml` configuration file and initializes test
     /// stand resources, as configured in there.
     pub fn new() -> Result<Self> {
-        // Read configuration file
-        let mut config = Vec::new();
-        File::open("test-stand.toml")?
-            .read_to_end(&mut config)?;
-
-        // Parse configuration file
-        let config: Config = toml::from_slice(&config)?;
+        let config = Config::read()?;
 
         let target = Target::new(&config.target)?;
         let serial = Serial::new(&config.serial)?;
@@ -79,4 +73,18 @@ impl TestStand {
 struct Config {
     target: String,
     serial: String,
+}
+
+impl Config {
+    pub fn read() -> Result<Self> {
+        // Read configuration file
+        let mut config = Vec::new();
+        File::open("test-stand.toml")?
+            .read_to_end(&mut config)?;
+
+        // Parse configuration file
+        let config = toml::from_slice(&config)?;
+
+        Ok(config)
+    }
 }
