@@ -7,6 +7,7 @@
 
 pub mod result;
 pub mod serial;
+pub mod target;
 
 
 pub use self::result::{
@@ -15,23 +16,18 @@ pub use self::result::{
 };
 
 
-use self::serial::Serial;
+use self::{
+    serial::Serial,
+    target::Target,
+};
 
 
 use std::{
     fs::File,
-    io::{
-        self,
-        prelude::*,
-    },
+    io::prelude::*,
 };
 
 use serde::Deserialize;
-use serialport::{
-    self,
-    SerialPort,
-    SerialPortSettings,
-};
 
 
 /// An instance of the test stand
@@ -83,42 +79,4 @@ impl TestStand {
 struct Config {
     target: String,
     serial: String,
-}
-
-
-/// The test suite's connection to the test target (device under test)
-pub struct Target {
-    port: Box<dyn SerialPort>,
-}
-
-impl Target {
-    /// Open a connection to the target
-    fn new(path: &str) -> serialport::Result<Self> {
-        let port = serialport::open_with_settings(
-            path,
-            // The configuration is hardcoded for now. We might want to load
-            // this from the configuration file later.
-            &SerialPortSettings {
-                baud_rate: 115200,
-                .. SerialPortSettings::default()
-            }
-        )?;
-
-        // Use a clone of the serialport, so `Serial` can use the same port.
-        let port = port.try_clone()?;
-
-        Ok(
-            Self {
-                port,
-            }
-        )
-    }
-
-    /// Instruct the target to send this message via USART
-    pub fn send_usart(&mut self, message: &[u8]) -> io::Result<()> {
-        // This works fine for now, as the test firmware just echos what it
-        // receives, and all we check is whether it did so. To write any more
-        // test cases, we're going to need a bit more structure here.
-        self.port.write_all(message)
-    }
 }
