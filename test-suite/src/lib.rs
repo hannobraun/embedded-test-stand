@@ -6,6 +6,7 @@
 
 
 pub mod result;
+pub mod serial;
 
 
 pub use self::result::{
@@ -14,15 +15,14 @@ pub use self::result::{
 };
 
 
+use self::serial::Serial;
+
+
 use std::{
     fs::File,
     io::{
         self,
         prelude::*,
-    },
-    time::{
-        Duration,
-        Instant,
     },
 };
 
@@ -120,65 +120,5 @@ impl Target {
         // receives, and all we check is whether it did so. To write any more
         // test cases, we're going to need a bit more structure here.
         self.port.write_all(message)
-    }
-}
-
-
-/// A Serial-to-USB converter that is connected to the device under test
-pub struct Serial {
-    port: Box<dyn SerialPort>,
-}
-
-impl Serial {
-    /// Open a serial connection
-    fn new(path: &str) -> serialport::Result<Self> {
-        let port = serialport::open_with_settings(
-            path,
-            // The configuration is hardcoded for now. We might want to load
-            // this from the configuration file later.
-            &SerialPortSettings {
-                baud_rate: 115200,
-                .. SerialPortSettings::default()
-            }
-        )?;
-
-        Ok(
-            Self {
-                port,
-            }
-        )
-    }
-
-    /// Wait to receive the provided message
-    ///
-    /// Returns the receive buffer, once the message was received. Returns an
-    /// error, if it times out before that, or an I/O error occurs.
-    pub fn wait_for(&mut self, message: &[u8], timeout: Duration)
-        -> Result<Vec<u8>>
-    {
-        let mut buf   = Vec::new();
-        let     start = Instant::now();
-
-        self.port.set_timeout(timeout)?;
-
-        loop {
-            if buf.ends_with(message) {
-                return Ok(buf);
-            }
-            if start.elapsed() > timeout {
-                return Err(io::Error::from(io::ErrorKind::TimedOut).into());
-            }
-
-            // Read one more byte. This might seem tedious, but it's the only
-            // way I could think of that doesn't require allocating a finite
-            // buffer (forcing a decision of how big that buffer is going to
-            // be), or complicating the interface by forcing the user to pass a
-            // buffer.
-            //
-            // It's probably not very efficient, but seems good enough.
-            buf.push(0);
-            let len = buf.len();
-            self.port.read_exact(&mut buf[len - 1..])?;
-        }
     }
 }
