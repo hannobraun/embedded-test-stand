@@ -53,19 +53,20 @@ fn main() -> ! {
         UsartClock::new(&syscon.frg0, 5, 16)
     };
 
-    // The pins used for USART RX/TX. On the LPC845-BRK, those are the pins
-    // connected to the programmer, and bridged to the host via USB.
+    // Assign pins to USART0 for RX/TX functions. On the LPC845-BRK, those are
+    // the pins connected to the programmer, and bridged to the host via USB.
     //
     // Careful, the LCP845-BRK documentation uses the opposite designations
-    // (i.e. from the perspective of the programmer, not the microcontroller).
-    let rx_pin = swm.pins.pio0_24.into_swm_pin();
-    let tx_pin = swm.pins.pio0_25.into_swm_pin();
-
-    // Assign the USART functions to the pins.
-    let (u0_rxd, _) = swm.movable_functions.u0_rxd
-        .assign(rx_pin, &mut swm_handle);
-    let (u0_txd, _) = swm.movable_functions.u0_txd
-        .assign(tx_pin, &mut swm_handle);
+    // (i.e. from the perspective of the on-boardprogrammer, not the
+    // microcontroller).
+    let (u0_rxd, _) = swm.movable_functions.u0_rxd.assign(
+        swm.pins.pio0_24.into_swm_pin(),
+        &mut swm_handle,
+    );
+    let (u0_txd, _) = swm.movable_functions.u0_txd.assign(
+        swm.pins.pio0_25.into_swm_pin(),
+        &mut swm_handle,
+    );
 
     // Enable USART0
     let mut usart = p.USART0.enable(
