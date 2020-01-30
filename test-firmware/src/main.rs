@@ -39,8 +39,8 @@ fn main() -> ! {
 
     let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
-    // Configure the clock for the USART, using the Fractional Rate Generator
-    // (FRG) and the USART's own baud rate divider value (BRG). See user manual,
+    // Configure the clock for USART0, using the Fractional Rate Generator (FRG)
+    // and the USART's own baud rate divider value (BRG). See user manual,
     // section 17.7.1.
     //
     // This assumes a system clock of 12 MHz (which is the default and, as of
@@ -68,19 +68,47 @@ fn main() -> ! {
         &mut swm_handle,
     );
 
-    // Enable USART0
-    let mut usart = p.USART0.enable(
+    // Use USART0 to communicate with the test suite
+    let mut host = p.USART0.enable(
         &clock_config,
         &mut syscon.handle,
         u0_rxd,
         u0_txd,
     );
 
+    // USART0 is already set up for 115200 baud, which is also fine for USART1.
+    // Let's reuse the FRG0 configuration.
+    //
+    // Please note that as of this writing, a bug in LPC8xx HAL would allow us
+    // to overwrite the FRG0 configuration here, which would totally mess up
+    // USART0's baud rate. If you want to change the baud rate for USART1,
+    // please use a different clock (like FRG1), or use the same clock and pass
+    // different divider values to `UsartClock::new`.
+    let clock_config = UsartClock::new(&syscon.frg0, 5, 16);
+
+    // Assign pins to USART1.
+    let (u1_rxd, _) = swm.movable_functions.u1_rxd.assign(
+        swm.pins.pio0_26.into_swm_pin(),
+        &mut swm_handle,
+    );
+    let (u1_txd, _) = swm.movable_functions.u1_txd.assign(
+        swm.pins.pio0_27.into_swm_pin(),
+        &mut swm_handle,
+    );
+
+    // Use USART1 as the test subject.
+    let usart = p.USART1.enable(
+        &clock_config,
+        &mut syscon.handle,
+        u1_rxd,
+        u1_txd,
+    );
+
     let mut buf = [0; 256];
 
     loop {
         // Receive a request from the test suite and do whatever it tells us.
-        match Request::receive(&mut usart, &mut buf) {
+        match Request::receive(&mut host, &mut buf) {
             Ok(Request::SendUsart(message)) => {
                 usart.tx().bwrite_all(message)
                     .void_unwrap();

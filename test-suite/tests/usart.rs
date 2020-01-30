@@ -8,6 +8,10 @@
 //! The configuration file (`test-stand.toml`) is used to determine which serial
 //! ports to connect to for each purpose. You probably need to update it, to
 //! reflect the realities on your system.
+//!
+//! As of this writing, the USART being used for this test expects to receive
+//! on PIO0_26 (pin 12 on the LPC845-BRK) and send on PIO0_27 (pin 13). Please
+//! connect your USB/Serial converter accordingly.
 
 
 use std::time::Duration;
