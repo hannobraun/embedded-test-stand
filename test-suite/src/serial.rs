@@ -42,6 +42,12 @@ impl Serial {
         )
     }
 
+    /// Send data
+    pub fn send(&mut self, data: &[u8]) -> Result<(), SerialSendError> {
+        self.port.write_all(data)
+            .map_err(|err| SerialSendError(err))
+    }
+
     /// Wait to receive the provided message
     ///
     /// Returns the receive buffer, once the message was received. Returns an
@@ -86,6 +92,9 @@ impl Serial {
 
 #[derive(Debug)]
 pub struct SerialInitError(serialport::Error);
+
+#[derive(Debug)]
+pub struct SerialSendError(io::Error);
 
 #[derive(Debug)]
 pub struct SerialWaitError(LowLevelError);

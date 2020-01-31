@@ -1,7 +1,14 @@
-use std::sync::{
-    LockResult,
-    Mutex,
-    MutexGuard,
+use std::{
+    io,
+    sync::{
+        LockResult,
+        Mutex,
+        MutexGuard,
+    },
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use lazy_static::lazy_static;
@@ -12,8 +19,11 @@ use serialport::{
 };
 use lpc845_test_lib::{
     self as test_lib,
+    Event,
     Request,
 };
+
+use crate::result::LowLevelError;
 
 
 /// The test suite's connection to the test target (device under test)
@@ -76,6 +86,42 @@ impl Target {
             .map_err(|err| TargetSendError(err))?;
         Ok(())
     }
+
+    /// Wait to receive the provided data via USART
+    ///
+    /// Returns the receive buffer, once the data was received. Returns an
+    /// error, if it times out before that, or an I/O error occurs.
+    pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout)
+            .map_err(|err| TargetUsartWaitError(err))
+    }
+
+    fn wait_for_usart_rx_inner(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, LowLevelError>
+    {
+        let mut buf   = Vec::new();
+        let     start = Instant::now();
+
+        self.port.set_timeout(timeout)?;
+
+        loop {
+            if buf.windows(data.len()).any(|window| window == data) {
+                return Ok(buf);
+            }
+            if start.elapsed() > timeout {
+                return Err(io::Error::from(io::ErrorKind::TimedOut).into());
+            }
+
+            let mut tmp   = Vec::new();
+            let     event = Event::receive(&mut self.port, &mut tmp)?;
+
+            match event {
+                Event::UsartReceive(data) => buf.extend(data),
+            }
+        }
+    }
 }
 
 
@@ -84,3 +130,6 @@ pub struct TargetInitError(serialport::Error);
 
 #[derive(Debug)]
 pub struct TargetSendError(test_lib::Error);
+
+#[derive(Debug)]
+pub struct TargetUsartWaitError(LowLevelError);
