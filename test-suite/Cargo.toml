@@ -6,7 +6,8 @@ edition = "2018"
 
 
 [dependencies]
-toml = "0.5.5"
+lazy_static = "1.4.0"
+toml        = "0.5.5"
 
 [dependencies.serde]
 version  = "1.0.104"
