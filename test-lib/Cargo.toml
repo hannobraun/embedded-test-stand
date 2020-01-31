@@ -17,7 +17,12 @@ optional = true
 version          = "1.0.104"
 default-features = false
 
+[dependencies.void]
+version          = "1.0.2"
+optional         = true
+default-features = false
+
 
 [features]
-firmware = ["lpc8xx-hal"]
+firmware = ["lpc8xx-hal", "void"]
 host     = []
