@@ -2,11 +2,18 @@
 
 
 #[cfg(feature = "host")]
-use std::io;
+use std::{
+    io,
+    slice,
+};
 
 #[cfg(feature = "firmware")]
-use lpc8xx_hal::usart;
-
+use lpc8xx_hal::{
+    prelude::*,
+    usart,
+};
+#[cfg(feature = "firmware")]
+use void::ResultVoidExt;
 use serde::{
     Deserialize,
     Serialize,
@@ -42,6 +49,60 @@ impl<'r> Request<'r> {
     pub fn deserialize(buf: &'r mut [u8]) -> Result<Self> {
         let request = postcard::from_bytes_cobs(buf)?;
         Ok(request)
+    }
+}
+
+
+/// An event that occured on the target
+#[derive(Deserialize, Serialize)]
+pub enum Event<'r> {
+    UsartReceive(&'r [u8]),
+}
+
+impl<'r> Event<'r> {
+    /// Send an event to the host, via the provided USART
+    ///
+    /// - `usart` is a USART instance that will be used to send this event.
+    /// - `buf` is a buffer used for serialization. It needs to be large enough
+    ///   to hold the serialized form of this event.
+    ///
+    /// This method is only available, if the `lpc8xx-hal` feature is enabled.
+    #[cfg(feature = "firmware")]
+    pub fn send<I>(&self, usart: &mut usart::Tx<I>, buf: &mut [u8]) -> Result
+        where I: usart::Instance
+    {
+        let serialized = postcard::to_slice_cobs(self, buf)?;
+        usart.bwrite_all(serialized)
+            .void_unwrap();
+        Ok(())
+    }
+
+    /// Receive a request from the target, via the provided reader
+    ///
+    /// - `reader` will be used to receive the request.
+    /// - `buf` is a buffer that the request is read into, before it is
+    ///   deserialized.
+    ///
+    /// This method is only available, if the `lpc8xx-hal` feature is enabled.
+    #[cfg(feature = "host")]
+    pub fn receive<R: io::Read>(mut reader: R, buf: &'r mut Vec<u8>)
+        -> Result<Self>
+    {
+        loop {
+            let mut b = 0; // initialized to `0`, but could be any value
+            reader.read_exact(slice::from_mut(&mut b))?;
+
+            buf.push(b);
+
+            if b == 0 {
+                // We're using COBS encoding, so `0` signifies the end of the
+                // message.
+                break;
+            }
+        }
+
+        let event = postcard::from_bytes_cobs(buf)?;
+        Ok(event)
     }
 }
 
