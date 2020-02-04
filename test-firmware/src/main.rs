@@ -116,7 +116,7 @@ fn main() -> ! {
             Err(err) => {
                 // Nothing we can do really. Let's just send an error message to
                 // the host via semihosting and carry on.
-                let _ = hprintln!("Error echoing byte via USART: {:?}", err);
+                let _ = hprintln!("Error receiving host request: {:?}", err);
             }
         }
     }
