@@ -6,4 +6,4 @@
 target = "/dev/ttyACM0"
 
 # Serial connection to the Serial-to-USB converter connected to the target
-serial = "/dev/ttyACM0"
+serial = "/dev/ttyUSB0"

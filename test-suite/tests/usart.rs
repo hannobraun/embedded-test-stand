@@ -1,3 +1,19 @@
+//! Test Suite for the USART API in LPC8xx HAL
+//!
+//! This test suite requires two serial connections:
+//! - To the test target, to control the device's behavior.
+//! - To the target's USART instance used for the test, via a USB/Serial
+//!   converter.
+//!
+//! The configuration file (`test-stand.toml`) is used to determine which serial
+//! ports to connect to for each purpose. You probably need to update it, to
+//! reflect the realities on your system.
+//!
+//! As of this writing, the USART being used for this test expects to receive
+//! on PIO0_26 (pin 12 on the LPC845-BRK) and send on PIO0_27 (pin 13). Please
+//! connect your USB/Serial converter accordingly.
+
+
 use std::time::Duration;
 
 use lpc845_test_suite::{

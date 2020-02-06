@@ -44,6 +44,7 @@ pub enum LowLevelError {
     Config(toml::de::Error),
     Io(io::Error),
     Serial(serialport::Error),
+    TestLib(lpc845_test_lib::Error),
 }
 
 impl From<toml::de::Error> for LowLevelError {
@@ -61,5 +62,11 @@ impl From<io::Error> for LowLevelError {
 impl From<serialport::Error> for LowLevelError {
     fn from(err: serialport::Error) -> Self {
         Self::Serial(err)
+    }
+}
+
+impl From<lpc845_test_lib::Error> for LowLevelError {
+    fn from(err: lpc845_test_lib::Error) -> Self {
+        Self::TestLib(err)
     }
 }
