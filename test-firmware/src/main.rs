@@ -17,6 +17,11 @@ use cortex_m_semihosting::hprintln;
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
+    USART,
+    pac::{
+        USART0,
+        USART1,
+    },
     syscon::{
         clocksource::UsartClock,
         frg,
@@ -29,8 +34,13 @@ use lpc845_test_lib::Request;
 
 #[rtfm::app(device = lpc8xx_hal::pac)]
 const APP: () = {
+    struct Resources {
+        host:  USART<USART0>,
+        usart: USART<USART1>,
+    }
+
     #[init]
-    fn init(_: init::Context) {
+    fn init(_: init::Context) -> init::LateResources {
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
         let p = Peripherals::take().unwrap_or_else(|| unreachable!());
@@ -72,7 +82,7 @@ const APP: () = {
         );
 
         // Use USART0 to communicate with the test suite
-        let mut host = p.USART0.enable(
+        let host = p.USART0.enable(
             &clock_config,
             &mut syscon.handle,
             u0_rxd,
@@ -106,6 +116,17 @@ const APP: () = {
             u1_rxd,
             u1_txd,
         );
+
+        init::LateResources {
+            host,
+            usart,
+        }
+    }
+
+    #[idle(resources = [host, usart])]
+    fn idle(cx: idle::Context) -> ! {
+        let mut host  = cx.resources.host;
+        let     usart = cx.resources.usart;
 
         let mut buf = [0; 256];
 
