@@ -6,7 +6,6 @@ edition = "2018"
 
 
 [dependencies]
-nb       = "0.1.2"
 postcard = "0.4.3"
 
 [dependencies.lpc8xx-hal]
