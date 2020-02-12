@@ -14,6 +14,10 @@ extern crate panic_semihosting;
 
 
 use cortex_m_semihosting::hprintln;
+use heapless::{
+    consts::U256,
+    spsc,
+};
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
@@ -37,10 +41,21 @@ const APP: () = {
     struct Resources {
         host:  USART<USART0>,
         usart: USART<USART1>,
+
+        request_tx: spsc::Producer<'static, u8, U256>,
+        request_rx: spsc::Consumer<'static, u8, U256>,
     }
 
     #[init]
     fn init(_: init::Context) -> init::LateResources {
+        // Normally, access to a `static mut` would be unsafe, but we know that
+        // this method is only called once, which means we have exclusive access
+        // here. RTFM knows this too, and by putting this static right here, at
+        // the beginning of the method, we're opting into some RTFM magic that
+        // gives us safe access to the static.
+        static mut HOST_QUEUE: spsc::Queue<u8, U256> =
+            spsc::Queue(heapless::i::Queue::new());
+
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
         let p = Peripherals::take().unwrap_or_else(|| unreachable!());
@@ -82,12 +97,13 @@ const APP: () = {
         );
 
         // Use USART0 to communicate with the test suite
-        let host = p.USART0.enable(
+        let mut host = p.USART0.enable(
             &clock_config,
             &mut syscon.handle,
             u0_rxd,
             u0_txd,
         );
+        host.enable_rxrdy();
 
         // USART0 is already set up for 115200 baud, which is also fine for
         // USART1. Let's reuse the FRG0 configuration.
@@ -117,23 +133,46 @@ const APP: () = {
             u1_txd,
         );
 
+        let (request_tx, request_rx) = HOST_QUEUE.split();
+
         init::LateResources {
             host,
             usart,
+            request_tx,
+            request_rx,
         }
     }
 
-    #[idle(resources = [host, usart])]
+    #[idle(resources = [usart, request_rx])]
     fn idle(cx: idle::Context) -> ! {
-        let mut host  = cx.resources.host;
-        let     usart = cx.resources.usart;
+        let usart = cx.resources.usart;
+        let queue = cx.resources.request_rx;
 
         let mut buf = [0; 256];
+        let mut i   = 0;
 
         loop {
+            let mut request_received = false;
+
+            while let Some(b) = queue.dequeue() {
+                buf[i] = b;
+                i += 1;
+
+                // Requests are COBS-encoded, so we know that `0` means we
+                // received a full frame.
+                if b == 0 {
+                    request_received = true;
+                    break;
+                }
+            }
+
+            if !request_received {
+                continue;
+            }
+
             // Receive a request from the test suite and do whatever it tells
             // us.
-            match Request::receive(&mut host, &mut buf) {
+            match Request::deserialize(&mut buf) {
                 Ok(Request::SendUsart(message)) => {
                     usart.tx().bwrite_all(message)
                         .void_unwrap();
@@ -147,6 +186,21 @@ const APP: () = {
                     );
                 }
             }
+
+            // Reset the buffer.
+            i = 0;
+        }
+    }
+
+    #[task(binds = USART0, resources = [host, request_tx])]
+    fn receive_from_host(cx: receive_from_host::Context) {
+        let host  = cx.resources.host;
+        let queue = cx.resources.request_tx;
+
+        // We're ignoring all errors here, as there's nothing we can do about
+        // them anyway. They will show up on the host as test failures.
+        while let Ok(b) = host.rx().read() {
+            let _ = queue.enqueue(b);
         }
     }
 };
