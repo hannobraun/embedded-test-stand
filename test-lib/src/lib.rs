@@ -5,14 +5,7 @@
 use std::io;
 
 #[cfg(feature = "firmware")]
-use lpc8xx_hal::{
-    prelude::*,
-    USART,
-    usart,
-};
-
-#[cfg(feature = "firmware")]
-use nb::block;
+use lpc8xx_hal::usart;
 
 use serde::{
     Deserialize,
@@ -40,38 +33,6 @@ impl<'r> Request<'r> {
         let serialized = postcard::to_slice_cobs(self, buf)?;
         writer.write_all(serialized)?;
         Ok(())
-    }
-
-    /// Receive a request from the target, via the provided USART
-    ///
-    /// - `usart` is a USART instance that will be used to receive the request.
-    /// - `buf` is a buffer that the request is read into, before it is
-    ///   deserialized. It needs to be big enough to hold the request.
-    ///
-    /// This method is only available, if the `firmware` feature is enabled.
-    #[cfg(feature = "firmware")]
-    pub fn receive<I>(usart: &mut USART<I>, buf: &'r mut [u8]) -> Result<Self>
-        where I: usart::Instance
-    {
-        let mut i = 0;
-
-        // These messages are using COBS encoding, so we know a full message has
-        // been read once we receive a `0`.
-        loop {
-            if i >= buf.len() {
-                return Err(Error::BufferTooSmall.into());
-            }
-
-            buf[i] = block!(usart.rx().read())?;
-
-            if buf[i] == 0 {
-                break;
-            }
-
-            i += 1;
-        }
-
-        Self::deserialize(buf)
     }
 
     /// Deserializes a request from the given buffer
