@@ -22,6 +22,10 @@ use lpc8xx_hal::{
     prelude::*,
     Peripherals,
     USART,
+    cortex_m::{
+        asm,
+        interrupt,
+    },
     pac::{
         USART0,
         USART1,
@@ -167,6 +171,24 @@ const APP: () = {
             }
 
             if !request_received {
+                // We need this critical section to protect against a race
+                // condition with the interrupt handler. Otherwise, the
+                // following sequence of events could happen:
+                // 1. We check the queue here, it's empty.
+                // 2. A new request is received, the interrupt handler adds it
+                //    to the queue.
+                // 3. The interrupt handler is done, we're back here and going
+                //    to sleep.
+                //
+                // This might not be observable, if something else happens to
+                // wake us up before the test suite times out, but it could lead
+                // to spurious test failures.
+                interrupt::free(|_| {
+                    if !queue.ready() {
+                        asm::wfi();
+                    }
+                });
+
                 continue;
             }
 
