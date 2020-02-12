@@ -71,6 +71,14 @@ impl<'r> Request<'r> {
             i += 1;
         }
 
+        Self::deserialize(buf)
+    }
+
+    /// Deserializes a request from the given buffer
+    ///
+    /// Some of the decoding is done in-place, so you can't rely on the buffer
+    /// contents in any way, after this method has been called.
+    pub fn deserialize(buf: &'r mut [u8]) -> Result<Self> {
         let request = postcard::from_bytes_cobs(buf)?;
         Ok(request)
     }
