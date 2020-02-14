@@ -196,7 +196,7 @@ const APP: () = {
             // us.
             match Request::deserialize(&mut buf) {
                 Ok(Request::SendUsart(message)) => {
-                    usart.tx().bwrite_all(message)
+                    usart.bwrite_all(message)
                         .void_unwrap();
                 }
                 Err(err) => {
@@ -221,7 +221,7 @@ const APP: () = {
 
         // We're ignoring all errors here, as there's nothing we can do about
         // them anyway. They will show up on the host as test failures.
-        while let Ok(b) = host.rx().read() {
+        while let Ok(b) = host.read() {
             let _ = queue.enqueue(b);
         }
     }
