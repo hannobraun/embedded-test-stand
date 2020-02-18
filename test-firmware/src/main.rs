@@ -38,7 +38,10 @@ use lpc8xx_hal::{
 };
 use void::ResultVoidExt;
 
-use lpc845_test_lib::Request;
+use lpc845_test_lib::{
+    Error,
+    Request,
+};
 
 
 #[rtfm::app(device = lpc8xx_hal::pac)]
@@ -150,68 +153,51 @@ const APP: () = {
 
     #[idle(resources = [usart_tx, request_cons])]
     fn idle(cx: idle::Context) -> ! {
-        let usart         = cx.resources.usart_tx;
-        let request_queue = cx.resources.request_cons;
+        let usart = cx.resources.usart_tx;
 
-        let mut buf = [0; 256];
-        let mut i   = 0;
+        let mut request_receiver = RequestReceiver::new(
+            cx.resources.request_cons,
+        );
 
         loop {
-            let mut request_received = false;
-
-            while let Some(b) = request_queue.dequeue() {
-                buf[i] = b;
-                i += 1;
-
-                // Requests are COBS-encoded, so we know that `0` means we
-                // received a full frame.
-                if b == 0 {
-                    request_received = true;
-                    break;
-                }
-            }
-
-            if !request_received {
-                // We need this critical section to protect against a race
-                // condition with the interrupt handler. Otherwise, the
-                // following sequence of events could happen:
-                // 1. We check the queue here, it's empty.
-                // 2. A new request is received, the interrupt handler adds it
-                //    to the queue.
-                // 3. The interrupt handler is done, we're back here and going
-                //    to sleep.
-                //
-                // This might not be observable, if something else happens to
-                // wake us up before the test suite times out, but it could lead
-                // to spurious test failures.
-                interrupt::free(|_| {
-                    if !request_queue.ready() {
-                        asm::wfi();
+            if let Some(request) = request_receiver.receive() {
+                // Receive a request from the test suite and do whatever it
+                // tells us.
+                match request {
+                    Ok(Request::SendUsart(message)) => {
+                        usart.bwrite_all(message)
+                            .void_unwrap();
                     }
-                });
+                    Err(err) => {
+                        // Nothing we can do really. Let's just send an error
+                        // message to the host via semihosting and carry on.
+                        let _ = hprintln!(
+                            "Error receiving host request: {:?}",
+                            err,
+                        );
+                    }
+                }
 
-                continue;
+                request_receiver.reset();
             }
 
-            // Receive a request from the test suite and do whatever it tells
-            // us.
-            match Request::deserialize(&mut buf) {
-                Ok(Request::SendUsart(message)) => {
-                    usart.bwrite_all(message)
-                        .void_unwrap();
+            // We need this critical section to protect against a race condition
+            // with the interrupt handler. Otherwise, the following sequence of
+            // events could occur:
+            // 1. We check the queue here, it's empty.
+            // 2. A new request is received, the interrupt handler adds it to
+            //    the queue.
+            // 3. The interrupt handler is done, we're back here and going to
+            //    sleep.
+            //
+            // This might not be observable, if something else happens to
+            // wake us up before the test suite times out. But it could lead
+            // to spurious test failures.
+            interrupt::free(|_| {
+                if !request_receiver.can_receive() {
+                    asm::wfi();
                 }
-                Err(err) => {
-                    // Nothing we can do really. Let's just send an error
-                    // message to the host via semihosting and carry on.
-                    let _ = hprintln!(
-                        "Error receiving host request: {:?}",
-                        err,
-                    );
-                }
-            }
-
-            // Reset the buffer.
-            i = 0;
+            });
         }
     }
 
@@ -220,6 +206,64 @@ const APP: () = {
         receive(cx.resources.host_rx, cx.resources.request_prod);
     }
 };
+
+
+/// Receives and decodes host requests
+struct RequestReceiver<'a, Capacity: ArrayLength<u8>> {
+    queue: &'a mut spsc::Consumer<'static, u8, Capacity>,
+    buf:   [u8; 256],
+    i:     usize,
+}
+
+impl<'a, Capacity> RequestReceiver<'a, Capacity>
+    where Capacity: ArrayLength<u8>
+{
+    /// Create a new instance of `RequestReceiver`
+    ///
+    /// The `queue` argument is the queue consumer that receives bytes from the
+    /// request.
+    fn new(queue: &'a mut spsc::Consumer<'static, u8, Capacity>) -> Self {
+        Self {
+            queue,
+            buf: [0; 256],
+            i:   0,
+        }
+    }
+
+    /// Indicates whether data can be received from the internal queue
+    fn can_receive(&self) -> bool {
+        self.queue.ready()
+    }
+
+    /// Receive bytes from the internal queue, return request if received
+    ///
+    /// This non-blocking method will receive bytes from the internal queue
+    /// while they are available. If this leads to a full request being
+    /// received, it will decode and return it.
+    ///
+    /// Returns `None`, if no full request has been received.
+    fn receive(&mut self) -> Option<Result<Request, Error>> {
+        while let Some(b) = self.queue.dequeue() {
+            self.buf[self.i] = b;
+            self.i += 1;
+
+            // Requests are COBS-encoded, so we know that `0` means we
+            // received a full frame.
+            if b == 0 {
+                return Some(Request::deserialize(&mut self.buf));
+            }
+        }
+
+        None
+    }
+
+    /// Reset the internal buffer
+    ///
+    /// This must be called each time a call to `receive` has returned `Some`.
+    fn reset(&mut self) {
+        self.i = 0;
+    }
+}
 
 
 fn receive<USART, Capacity>(
