@@ -15,6 +15,7 @@ extern crate panic_semihosting;
 
 use cortex_m_semihosting::hprintln;
 use heapless::{
+    ArrayLength,
     consts::U256,
     spsc,
 };
@@ -216,13 +217,22 @@ const APP: () = {
 
     #[task(binds = USART0, resources = [host_rx, request_prod])]
     fn receive_from_host(cx: receive_from_host::Context) {
-        let host  = cx.resources.host_rx;
-        let queue = cx.resources.request_prod;
-
-        // We're ignoring all errors here, as there's nothing we can do about
-        // them anyway. They will show up on the host as test failures.
-        while let Ok(b) = host.read() {
-            let _ = queue.enqueue(b);
-        }
+        receive(cx.resources.host_rx, cx.resources.request_prod);
     }
 };
+
+
+fn receive<USART, Capacity>(
+    usart: &mut usart::Rx<USART>,
+    queue: &mut spsc::Producer<u8, Capacity>,
+)
+    where
+        USART:    usart::Instance,
+        Capacity: ArrayLength<u8>,
+{
+    // We're ignoring all errors here, as there's nothing we can do about them
+    // anyway. They will show up on the host as test failures.
+    while let Ok(b) = usart.read() {
+        let _ = queue.enqueue(b);
+    }
+}
