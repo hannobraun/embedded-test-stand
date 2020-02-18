@@ -21,7 +21,6 @@ use heapless::{
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
-    USART,
     cortex_m::{
         asm,
         interrupt,
@@ -34,6 +33,7 @@ use lpc8xx_hal::{
         clocksource::UsartClock,
         frg,
     },
+    usart,
 };
 use void::ResultVoidExt;
 
@@ -43,11 +43,11 @@ use lpc845_test_lib::Request;
 #[rtfm::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
-        host:  USART<USART0>,
-        usart: USART<USART1>,
+        host_rx:  usart::Rx<USART0>,
+        usart_tx: usart::Tx<USART1>,
 
-        request_tx: spsc::Producer<'static, u8, U256>,
-        request_rx: spsc::Consumer<'static, u8, U256>,
+        request_prod: spsc::Producer<'static, u8, U256>,
+        request_cons: spsc::Consumer<'static, u8, U256>,
     }
 
     #[init]
@@ -137,20 +137,20 @@ const APP: () = {
             u1_txd,
         );
 
-        let (request_tx, request_rx) = HOST_QUEUE.split();
+        let (request_prod, request_cons) = HOST_QUEUE.split();
 
         init::LateResources {
-            host,
-            usart,
-            request_tx,
-            request_rx,
+            host_rx: host.rx,
+            usart_tx: usart.tx,
+            request_prod,
+            request_cons,
         }
     }
 
-    #[idle(resources = [usart, request_rx])]
+    #[idle(resources = [usart_tx, request_cons])]
     fn idle(cx: idle::Context) -> ! {
-        let usart = cx.resources.usart;
-        let queue = cx.resources.request_rx;
+        let usart = cx.resources.usart_tx;
+        let queue = cx.resources.request_cons;
 
         let mut buf = [0; 256];
         let mut i   = 0;
@@ -214,10 +214,10 @@ const APP: () = {
         }
     }
 
-    #[task(binds = USART0, resources = [host, request_tx])]
+    #[task(binds = USART0, resources = [host_rx, request_prod])]
     fn receive_from_host(cx: receive_from_host::Context) {
-        let host  = cx.resources.host;
-        let queue = cx.resources.request_tx;
+        let host  = cx.resources.host_rx;
+        let queue = cx.resources.request_prod;
 
         // We're ignoring all errors here, as there's nothing we can do about
         // them anyway. They will show up on the host as test failures.
