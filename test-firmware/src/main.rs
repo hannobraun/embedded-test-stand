@@ -150,8 +150,8 @@ const APP: () = {
 
     #[idle(resources = [usart_tx, request_cons])]
     fn idle(cx: idle::Context) -> ! {
-        let usart = cx.resources.usart_tx;
-        let queue = cx.resources.request_cons;
+        let usart         = cx.resources.usart_tx;
+        let request_queue = cx.resources.request_cons;
 
         let mut buf = [0; 256];
         let mut i   = 0;
@@ -159,7 +159,7 @@ const APP: () = {
         loop {
             let mut request_received = false;
 
-            while let Some(b) = queue.dequeue() {
+            while let Some(b) = request_queue.dequeue() {
                 buf[i] = b;
                 i += 1;
 
@@ -185,7 +185,7 @@ const APP: () = {
                 // wake us up before the test suite times out, but it could lead
                 // to spurious test failures.
                 interrupt::free(|_| {
-                    if !queue.ready() {
+                    if !request_queue.ready() {
                         asm::wfi();
                     }
                 });
