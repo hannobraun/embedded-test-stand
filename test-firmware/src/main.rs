@@ -40,6 +40,7 @@ use void::ResultVoidExt;
 
 use lpc845_test_lib::{
     Error,
+    Event,
     Request,
 };
 
@@ -47,21 +48,29 @@ use lpc845_test_lib::{
 #[rtfm::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
-        host_rx:  usart::Rx<USART0>,
+        host_rx: usart::Rx<USART0>,
+        host_tx: usart::Tx<USART0>,
+
+        usart_rx: usart::Rx<USART1>,
         usart_tx: usart::Tx<USART1>,
 
         request_prod: spsc::Producer<'static, u8, U256>,
         request_cons: spsc::Consumer<'static, u8, U256>,
+
+        usart_prod: spsc::Producer<'static, u8, U256>,
+        usart_cons: spsc::Consumer<'static, u8, U256>,
     }
 
     #[init]
     fn init(_: init::Context) -> init::LateResources {
         // Normally, access to a `static mut` would be unsafe, but we know that
         // this method is only called once, which means we have exclusive access
-        // here. RTFM knows this too, and by putting this static right here, at
-        // the beginning of the method, we're opting into some RTFM magic that
-        // gives us safe access to the static.
+        // here. RTFM knows this too, and by putting these statics right here,
+        // at the beginning of the method, we're opting into some RTFM magic
+        // that gives us safe access to them.
         static mut HOST_QUEUE: spsc::Queue<u8, U256> =
+            spsc::Queue(heapless::i::Queue::new());
+        static mut USART_QUEUE: spsc::Queue<u8, U256> =
             spsc::Queue(heapless::i::Queue::new());
 
         // Get access to the device's peripherals. This can't panic, since this
@@ -134,32 +143,57 @@ const APP: () = {
         );
 
         // Use USART1 as the test subject.
-        let usart = p.USART1.enable(
+        let mut usart = p.USART1.enable(
             &clock_config,
             &mut syscon.handle,
             u1_rxd,
             u1_txd,
         );
+        usart.enable_rxrdy();
 
         let (request_prod, request_cons) = HOST_QUEUE.split();
+        let (usart_prod,   usart_cons)   = USART_QUEUE.split();
 
         init::LateResources {
-            host_rx: host.rx,
+            host_rx:  host.rx,
+            host_tx:  host.tx,
+            usart_rx: usart.rx,
             usart_tx: usart.tx,
             request_prod,
             request_cons,
+            usart_prod,
+            usart_cons,
         }
     }
 
-    #[idle(resources = [usart_tx, request_cons])]
+    #[idle(resources = [host_tx, usart_tx, request_cons, usart_cons])]
     fn idle(cx: idle::Context) -> ! {
-        let usart = cx.resources.usart_tx;
+        let host        = cx.resources.host_tx;
+        let usart       = cx.resources.usart_tx;
+        let usart_queue = cx.resources.usart_cons;
 
         let mut request_receiver = RequestReceiver::new(
             cx.resources.request_cons,
         );
 
+        let mut usart_buf = [0; 256];
+        let mut i         = 0;
+
+        let mut serialize_buf = [0; 256];
+
         loop {
+            while let Some(b) = usart_queue.dequeue() {
+                usart_buf[i] = b;
+                i += 1;
+            }
+
+            if i > 0 {
+                Event::UsartReceive(&usart_buf[0..i])
+                    .send(host, &mut serialize_buf)
+                    .expect("Failed to send `UsartReceive` event");
+                i = 0;
+            }
+
             if let Some(request) = request_receiver.receive() {
                 // Receive a request from the test suite and do whatever it
                 // tells us.
@@ -181,18 +215,17 @@ const APP: () = {
                 request_receiver.reset();
             }
 
-            // We need this critical section to protect against a race condition
-            // with the interrupt handler. Otherwise, the following sequence of
-            // events could occur:
-            // 1. We check the queue here, it's empty.
-            // 2. A new request is received, the interrupt handler adds it to
-            //    the queue.
+            // We need this critical section to protect against a race
+            // conditions with the interrupt handlers. Otherwise, the following
+            // sequence of events could occur:
+            // 1. We check the queues here, they're empty.
+            // 2. New data is received, an interrupt handler adds it to a queue.
             // 3. The interrupt handler is done, we're back here and going to
             //    sleep.
             //
-            // This might not be observable, if something else happens to
-            // wake us up before the test suite times out. But it could lead
-            // to spurious test failures.
+            // This might not be observable, if something else happens to wake
+            // us up before the test suite times out. But it could also lead to
+            // spurious test failures.
             interrupt::free(|_| {
                 if !request_receiver.can_receive() {
                     asm::wfi();
@@ -204,6 +237,11 @@ const APP: () = {
     #[task(binds = USART0, resources = [host_rx, request_prod])]
     fn receive_from_host(cx: receive_from_host::Context) {
         receive(cx.resources.host_rx, cx.resources.request_prod);
+    }
+
+    #[task(binds = USART1, resources = [usart_rx, usart_prod])]
+    fn receive_from_usart(cx: receive_from_usart::Context) {
+        receive(cx.resources.usart_rx, cx.resources.usart_prod);
     }
 };
 
