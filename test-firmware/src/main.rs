@@ -15,6 +15,7 @@ extern crate panic_semihosting;
 
 use cortex_m_semihosting::hprintln;
 use heapless::{
+    ArrayLength,
     consts::U256,
     spsc,
 };
@@ -37,27 +38,39 @@ use lpc8xx_hal::{
 };
 use void::ResultVoidExt;
 
-use lpc845_test_lib::Request;
+use lpc845_test_lib::{
+    Error,
+    Event,
+    Request,
+};
 
 
 #[rtfm::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
-        host_rx:  usart::Rx<USART0>,
+        host_rx: usart::Rx<USART0>,
+        host_tx: usart::Tx<USART0>,
+
+        usart_rx: usart::Rx<USART1>,
         usart_tx: usart::Tx<USART1>,
 
         request_prod: spsc::Producer<'static, u8, U256>,
         request_cons: spsc::Consumer<'static, u8, U256>,
+
+        usart_prod: spsc::Producer<'static, u8, U256>,
+        usart_cons: spsc::Consumer<'static, u8, U256>,
     }
 
     #[init]
     fn init(_: init::Context) -> init::LateResources {
         // Normally, access to a `static mut` would be unsafe, but we know that
         // this method is only called once, which means we have exclusive access
-        // here. RTFM knows this too, and by putting this static right here, at
-        // the beginning of the method, we're opting into some RTFM magic that
-        // gives us safe access to the static.
+        // here. RTFM knows this too, and by putting these statics right here,
+        // at the beginning of the method, we're opting into some RTFM magic
+        // that gives us safe access to them.
         static mut HOST_QUEUE: spsc::Queue<u8, U256> =
+            spsc::Queue(heapless::i::Queue::new());
+        static mut USART_QUEUE: spsc::Queue<u8, U256> =
             spsc::Queue(heapless::i::Queue::new());
 
         // Get access to the device's peripherals. This can't panic, since this
@@ -130,99 +143,178 @@ const APP: () = {
         );
 
         // Use USART1 as the test subject.
-        let usart = p.USART1.enable(
+        let mut usart = p.USART1.enable(
             &clock_config,
             &mut syscon.handle,
             u1_rxd,
             u1_txd,
         );
+        usart.enable_rxrdy();
 
         let (request_prod, request_cons) = HOST_QUEUE.split();
+        let (usart_prod,   usart_cons)   = USART_QUEUE.split();
 
         init::LateResources {
-            host_rx: host.rx,
+            host_rx:  host.rx,
+            host_tx:  host.tx,
+            usart_rx: usart.rx,
             usart_tx: usart.tx,
             request_prod,
             request_cons,
+            usart_prod,
+            usart_cons,
         }
     }
 
-    #[idle(resources = [usart_tx, request_cons])]
+    #[idle(resources = [host_tx, usart_tx, request_cons, usart_cons])]
     fn idle(cx: idle::Context) -> ! {
-        let usart = cx.resources.usart_tx;
-        let queue = cx.resources.request_cons;
+        let host        = cx.resources.host_tx;
+        let usart       = cx.resources.usart_tx;
+        let usart_queue = cx.resources.usart_cons;
 
-        let mut buf = [0; 256];
-        let mut i   = 0;
+        let mut request_receiver = RequestReceiver::new(
+            cx.resources.request_cons,
+        );
+
+        let mut usart_buf = [0; 256];
+        let mut i         = 0;
+
+        let mut serialize_buf = [0; 256];
 
         loop {
-            let mut request_received = false;
-
-            while let Some(b) = queue.dequeue() {
-                buf[i] = b;
+            while let Some(b) = usart_queue.dequeue() {
+                usart_buf[i] = b;
                 i += 1;
-
-                // Requests are COBS-encoded, so we know that `0` means we
-                // received a full frame.
-                if b == 0 {
-                    request_received = true;
-                    break;
-                }
             }
 
-            if !request_received {
-                // We need this critical section to protect against a race
-                // condition with the interrupt handler. Otherwise, the
-                // following sequence of events could happen:
-                // 1. We check the queue here, it's empty.
-                // 2. A new request is received, the interrupt handler adds it
-                //    to the queue.
-                // 3. The interrupt handler is done, we're back here and going
-                //    to sleep.
-                //
-                // This might not be observable, if something else happens to
-                // wake us up before the test suite times out, but it could lead
-                // to spurious test failures.
-                interrupt::free(|_| {
-                    if !queue.ready() {
-                        asm::wfi();
+            if i > 0 {
+                Event::UsartReceive(&usart_buf[0..i])
+                    .send(host, &mut serialize_buf)
+                    .expect("Failed to send `UsartReceive` event");
+                i = 0;
+            }
+
+            if let Some(request) = request_receiver.receive() {
+                // Receive a request from the test suite and do whatever it
+                // tells us.
+                match request {
+                    Ok(Request::SendUsart(message)) => {
+                        usart.bwrite_all(message)
+                            .void_unwrap();
                     }
-                });
+                    Err(err) => {
+                        // Nothing we can do really. Let's just send an error
+                        // message to the host via semihosting and carry on.
+                        let _ = hprintln!(
+                            "Error receiving host request: {:?}",
+                            err,
+                        );
+                    }
+                }
 
-                continue;
+                request_receiver.reset();
             }
 
-            // Receive a request from the test suite and do whatever it tells
-            // us.
-            match Request::deserialize(&mut buf) {
-                Ok(Request::SendUsart(message)) => {
-                    usart.bwrite_all(message)
-                        .void_unwrap();
+            // We need this critical section to protect against a race
+            // conditions with the interrupt handlers. Otherwise, the following
+            // sequence of events could occur:
+            // 1. We check the queues here, they're empty.
+            // 2. New data is received, an interrupt handler adds it to a queue.
+            // 3. The interrupt handler is done, we're back here and going to
+            //    sleep.
+            //
+            // This might not be observable, if something else happens to wake
+            // us up before the test suite times out. But it could also lead to
+            // spurious test failures.
+            interrupt::free(|_| {
+                if !request_receiver.can_receive() {
+                    asm::wfi();
                 }
-                Err(err) => {
-                    // Nothing we can do really. Let's just send an error
-                    // message to the host via semihosting and carry on.
-                    let _ = hprintln!(
-                        "Error receiving host request: {:?}",
-                        err,
-                    );
-                }
-            }
-
-            // Reset the buffer.
-            i = 0;
+            });
         }
     }
 
     #[task(binds = USART0, resources = [host_rx, request_prod])]
     fn receive_from_host(cx: receive_from_host::Context) {
-        let host  = cx.resources.host_rx;
-        let queue = cx.resources.request_prod;
+        receive(cx.resources.host_rx, cx.resources.request_prod);
+    }
 
-        // We're ignoring all errors here, as there's nothing we can do about
-        // them anyway. They will show up on the host as test failures.
-        while let Ok(b) = host.read() {
-            let _ = queue.enqueue(b);
-        }
+    #[task(binds = USART1, resources = [usart_rx, usart_prod])]
+    fn receive_from_usart(cx: receive_from_usart::Context) {
+        receive(cx.resources.usart_rx, cx.resources.usart_prod);
     }
 };
+
+
+/// Receives and decodes host requests
+struct RequestReceiver<'a, Capacity: ArrayLength<u8>> {
+    queue: &'a mut spsc::Consumer<'static, u8, Capacity>,
+    buf:   [u8; 256],
+    i:     usize,
+}
+
+impl<'a, Capacity> RequestReceiver<'a, Capacity>
+    where Capacity: ArrayLength<u8>
+{
+    /// Create a new instance of `RequestReceiver`
+    ///
+    /// The `queue` argument is the queue consumer that receives bytes from the
+    /// request.
+    fn new(queue: &'a mut spsc::Consumer<'static, u8, Capacity>) -> Self {
+        Self {
+            queue,
+            buf: [0; 256],
+            i:   0,
+        }
+    }
+
+    /// Indicates whether data can be received from the internal queue
+    fn can_receive(&self) -> bool {
+        self.queue.ready()
+    }
+
+    /// Receive bytes from the internal queue, return request if received
+    ///
+    /// This non-blocking method will receive bytes from the internal queue
+    /// while they are available. If this leads to a full request being
+    /// received, it will decode and return it.
+    ///
+    /// Returns `None`, if no full request has been received.
+    fn receive(&mut self) -> Option<Result<Request, Error>> {
+        while let Some(b) = self.queue.dequeue() {
+            self.buf[self.i] = b;
+            self.i += 1;
+
+            // Requests are COBS-encoded, so we know that `0` means we
+            // received a full frame.
+            if b == 0 {
+                return Some(Request::deserialize(&mut self.buf));
+            }
+        }
+
+        None
+    }
+
+    /// Reset the internal buffer
+    ///
+    /// This must be called each time a call to `receive` has returned `Some`.
+    fn reset(&mut self) {
+        self.i = 0;
+    }
+}
+
+
+fn receive<USART, Capacity>(
+    usart: &mut usart::Rx<USART>,
+    queue: &mut spsc::Producer<u8, Capacity>,
+)
+    where
+        USART:    usart::Instance,
+        Capacity: ArrayLength<u8>,
+{
+    // We're ignoring all errors here, as there's nothing we can do about them
+    // anyway. They will show up on the host as test failures.
+    while let Ok(b) = usart.read() {
+        let _ = queue.enqueue(b);
+    }
+}
