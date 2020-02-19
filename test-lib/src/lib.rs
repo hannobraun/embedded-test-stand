@@ -1,6 +1,13 @@
 #![cfg_attr(not(feature = "host"), no_std)]
 
 
+#[cfg(feature = "firmware")]
+mod firmware;
+
+#[cfg(feature = "firmware")]
+pub use firmware::*;
+
+
 #[cfg(feature = "host")]
 use std::{
     io,
