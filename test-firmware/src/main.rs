@@ -16,6 +16,7 @@ extern crate panic_semihosting;
 use cortex_m_semihosting::hprintln;
 use heapless::{
     ArrayLength,
+    Vec,
     consts::U256,
     spsc,
 };
@@ -172,7 +173,10 @@ const APP: () = {
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
-        let mut request_buf = [0; 256];
+        let mut request_buf   = [0; 256];
+        let mut serialize_buf = [0; 256];
+
+        let mut usart_buf = Vec::<_, U256>::new();
 
         let mut request_receiver = Receiver::new(
             cx.resources.request_cons,
@@ -185,22 +189,17 @@ const APP: () = {
             &mut request_buf[..],
         );
 
-        let mut usart_buf = [0; 256];
-        let mut i         = 0;
-
-        let mut serialize_buf = [0; 256];
-
         loop {
             while let Some(b) = usart_queue.dequeue() {
-                usart_buf[i] = b;
-                i += 1;
+                usart_buf.push(b)
+                    .expect("USART buffer full");
             }
 
-            if i > 0 {
-                Event::UsartReceive(&usart_buf[0..i])
+            if usart_buf.len() > 0 {
+                Event::UsartReceive(&usart_buf)
                     .send(host, &mut serialize_buf)
                     .expect("Failed to send `UsartReceive` event");
-                i = 0;
+                usart_buf.clear();
             }
 
             if let Some(request) = request_receiver.receive() {
