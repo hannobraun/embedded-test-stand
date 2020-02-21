@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::Error;
 
 
-/// Receives and decodes host requests
+/// Receives and decodes messages from the host
 pub struct Receiver<'a, QueueCap: ArrayLength<u8>, Buf: AsMut<[u8]>> {
     queue: &'a mut spsc::Consumer<'static, u8, QueueCap>,
     buf:   Buf,
