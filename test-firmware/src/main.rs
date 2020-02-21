@@ -173,7 +173,10 @@ const APP: () = {
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
-        let mut request_buf = [0; 256];
+        let mut request_buf   = [0; 256];
+        let mut serialize_buf = [0; 256];
+
+        let mut usart_buf = Vec::<_, U256>::new();
 
         let mut request_receiver = Receiver::new(
             cx.resources.request_cons,
@@ -185,10 +188,6 @@ const APP: () = {
             // difference (besides being a bit more verbose).
             &mut request_buf[..],
         );
-
-        let mut usart_buf = Vec::<_, U256>::new();
-
-        let mut serialize_buf = [0; 256];
 
         loop {
             while let Some(b) = usart_queue.dequeue() {
