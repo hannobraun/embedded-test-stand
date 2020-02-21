@@ -8,20 +8,20 @@ use super::Error;
 
 
 /// Receives and decodes host requests
-pub struct Receiver<'a, Capacity: ArrayLength<u8>> {
-    queue: &'a mut spsc::Consumer<'static, u8, Capacity>,
+pub struct Receiver<'a, QueueCap: ArrayLength<u8>> {
+    queue: &'a mut spsc::Consumer<'static, u8, QueueCap>,
     buf:   [u8; 256],
     i:     usize,
 }
 
-impl<'a, Capacity> Receiver<'a, Capacity>
-    where Capacity: ArrayLength<u8>
+impl<'a, QueueCap> Receiver<'a, QueueCap>
+    where QueueCap: ArrayLength<u8>
 {
     /// Create a new instance of `Receiver`
     ///
     /// The `queue` argument is the queue consumer that receives bytes from the
     /// request.
-    pub fn new(queue: &'a mut spsc::Consumer<'static, u8, Capacity>) -> Self {
+    pub fn new(queue: &'a mut spsc::Consumer<'static, u8, QueueCap>) -> Self {
         Self {
             queue,
             buf: [0; 256],
