@@ -172,8 +172,17 @@ const APP: () = {
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
+        let mut request_buf = [0; 256];
+
         let mut request_receiver = Receiver::new(
             cx.resources.request_cons,
+            // At some point, we'll be able to just pass an array here directly.
+            // For the time being though, traits are only implemented for arrays
+            // with lengths of up to 32, so instead we need to create the array
+            // in a variable, and pass a slice referencing it. Since we don't
+            // intend to move the receiver anywhere else, it doesn't make a
+            // difference (besides being a bit more verbose).
+            &mut request_buf[..],
         );
 
         let mut usart_buf = [0; 256];
