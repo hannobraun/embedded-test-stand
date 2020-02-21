@@ -66,7 +66,7 @@ impl<'r> Event<'r> {
     /// - `buf` is a buffer used for serialization. It needs to be large enough
     ///   to hold the serialized form of this event.
     ///
-    /// This method is only available, if the `lpc8xx-hal` feature is enabled.
+    /// This method is only available, if the `firmware` feature is enabled.
     #[cfg(feature = "firmware")]
     pub fn send<I>(&self, usart: &mut usart::Tx<I>, buf: &mut [u8]) -> Result
         where I: usart::Instance
@@ -83,7 +83,7 @@ impl<'r> Event<'r> {
     /// - `buf` is a buffer that the request is read into, before it is
     ///   deserialized.
     ///
-    /// This method is only available, if the `lpc8xx-hal` feature is enabled.
+    /// This method is only available, if the `host` feature is enabled.
     #[cfg(feature = "host")]
     pub fn receive<R: io::Read>(mut reader: R, buf: &'r mut Vec<u8>)
         -> Result<Self>
