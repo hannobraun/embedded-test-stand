@@ -29,7 +29,7 @@ impl<'a, QueueCap, Buf> Receiver<'a, QueueCap, Buf>
         Self {
             queue,
             buf,
-            i:   0,
+            i: 0,
         }
     }
 
