@@ -28,6 +28,8 @@ use serde::{
 
 
 /// A request sent from the test suite to the firmware on the target
+///
+/// You can use [`Receiver`], to receive a request on the test target.
 #[derive(Deserialize, Serialize)]
 pub enum Request<'r> {
     /// Instruct the device to send a message via USART
