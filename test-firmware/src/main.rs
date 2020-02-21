@@ -173,8 +173,8 @@ const APP: () = {
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
-        let mut request_buf   = [0; 256];
-        let mut serialize_buf = [0; 256];
+        let mut receiver_buf = [0; 256];
+        let mut sender_buf   = [0; 256];
 
         let mut usart_buf = Vec::<_, U256>::new();
 
@@ -186,13 +186,13 @@ const APP: () = {
             // in a variable, and pass a slice referencing it. Since we don't
             // intend to move the receiver anywhere else, it doesn't make a
             // difference (besides being a bit more verbose).
-            &mut request_buf[..],
+            &mut receiver_buf[..],
         );
         let mut sender = Sender::new(
             cx.resources.host_tx,
             // See comment on `Receiver::new` argument above. The same applies
             // here.
-            &mut serialize_buf[..],
+            &mut sender_buf[..],
         );
 
         loop {
