@@ -2,11 +2,9 @@ use heapless::{
     ArrayLength,
     spsc,
 };
+use serde::Deserialize;
 
-use super::{
-    Error,
-    Request,
-};
+use super::Error;
 
 
 /// Receives and decodes host requests
@@ -43,7 +41,9 @@ impl<'a, Capacity> Receiver<'a, Capacity>
     /// received, it will decode and return it.
     ///
     /// Returns `None`, if no full request has been received.
-    pub fn receive(&mut self) -> Option<Result<Request, Error>> {
+    pub fn receive<'de, T>(&'de mut self) -> Option<Result<T, Error>>
+        where T: Deserialize<'de>
+    {
         while let Some(b) = self.queue.dequeue() {
             self.buf[self.i] = b;
             self.i += 1;
@@ -51,7 +51,9 @@ impl<'a, Capacity> Receiver<'a, Capacity>
             // Requests are COBS-encoded, so we know that `0` means we
             // received a full frame.
             if b == 0 {
-                return Some(Request::deserialize(&mut self.buf));
+                let data = postcard::from_bytes_cobs(&mut self.buf)
+                    .map_err(|err| Error::Postcard(err));
+                return Some(data);
             }
         }
 
