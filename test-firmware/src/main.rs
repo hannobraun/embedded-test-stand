@@ -43,6 +43,7 @@ use lpc845_test_lib::{
     Event,
     Receiver,
     Request,
+    Sender,
 };
 
 
@@ -169,16 +170,15 @@ const APP: () = {
 
     #[idle(resources = [host_tx, usart_tx, request_cons, usart_cons])]
     fn idle(cx: idle::Context) -> ! {
-        let host        = cx.resources.host_tx;
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
-        let mut request_buf   = [0; 256];
-        let mut serialize_buf = [0; 256];
+        let mut receiver_buf = [0; 256];
+        let mut sender_buf   = [0; 256];
 
         let mut usart_buf = Vec::<_, U256>::new();
 
-        let mut request_receiver = Receiver::new(
+        let mut receiver = Receiver::new(
             cx.resources.request_cons,
             // At some point, we'll be able to just pass an array here directly.
             // For the time being though, traits are only implemented for arrays
@@ -186,7 +186,13 @@ const APP: () = {
             // in a variable, and pass a slice referencing it. Since we don't
             // intend to move the receiver anywhere else, it doesn't make a
             // difference (besides being a bit more verbose).
-            &mut request_buf[..],
+            &mut receiver_buf[..],
+        );
+        let mut sender = Sender::new(
+            cx.resources.host_tx,
+            // See comment on `Receiver::new` argument above. The same applies
+            // here.
+            &mut sender_buf[..],
         );
 
         loop {
@@ -196,13 +202,12 @@ const APP: () = {
             }
 
             if usart_buf.len() > 0 {
-                Event::UsartReceive(&usart_buf)
-                    .send(host, &mut serialize_buf)
+                sender.send(&Event::UsartReceive(&usart_buf))
                     .expect("Failed to send `UsartReceive` event");
                 usart_buf.clear();
             }
 
-            if let Some(request) = request_receiver.receive() {
+            if let Some(request) = receiver.receive() {
                 // Receive a request from the test suite and do whatever it
                 // tells us.
                 match request {
@@ -220,7 +225,7 @@ const APP: () = {
                     }
                 }
 
-                request_receiver.reset();
+                receiver.reset();
             }
 
             // We need this critical section to protect against a race
@@ -235,7 +240,7 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                if !request_receiver.can_receive() {
+                if !receiver.can_receive() {
                     asm::wfi();
                 }
             });

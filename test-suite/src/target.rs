@@ -21,6 +21,8 @@ use lpc845_test_lib::{
     self as test_lib,
     Event,
     Request,
+    receive,
+    send,
 };
 
 use crate::result::LowLevelError;
@@ -82,7 +84,7 @@ impl Target {
         -> Result<(), TargetSendError>
     {
         let mut buf = [0; 256];
-        Request::SendUsart(message).send(&mut self.port, &mut buf)
+        send(&Request::SendUsart(message), &mut self.port, &mut buf)
             .map_err(|err| TargetSendError(err))?;
         Ok(())
     }
@@ -115,7 +117,7 @@ impl Target {
             }
 
             let mut tmp   = Vec::new();
-            let     event = Event::receive(&mut self.port, &mut tmp)?;
+            let     event = receive::<Event, _>(&mut self.port, &mut tmp)?;
 
             match event {
                 Event::UsartReceive(data) => buf.extend(data),
