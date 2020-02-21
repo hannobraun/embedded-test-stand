@@ -178,7 +178,7 @@ const APP: () = {
 
         let mut usart_buf = Vec::<_, U256>::new();
 
-        let mut request_receiver = Receiver::new(
+        let mut receiver = Receiver::new(
             cx.resources.request_cons,
             // At some point, we'll be able to just pass an array here directly.
             // For the time being though, traits are only implemented for arrays
@@ -207,7 +207,7 @@ const APP: () = {
                 usart_buf.clear();
             }
 
-            if let Some(request) = request_receiver.receive() {
+            if let Some(request) = receiver.receive() {
                 // Receive a request from the test suite and do whatever it
                 // tells us.
                 match request {
@@ -225,7 +225,7 @@ const APP: () = {
                     }
                 }
 
-                request_receiver.reset();
+                receiver.reset();
             }
 
             // We need this critical section to protect against a race
@@ -240,7 +240,7 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                if !request_receiver.can_receive() {
+                if !receiver.can_receive() {
                     asm::wfi();
                 }
             });
