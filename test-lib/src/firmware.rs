@@ -10,16 +10,16 @@ use super::{
 
 
 /// Receives and decodes host requests
-pub struct RequestReceiver<'a, Capacity: ArrayLength<u8>> {
+pub struct Receiver<'a, Capacity: ArrayLength<u8>> {
     queue: &'a mut spsc::Consumer<'static, u8, Capacity>,
     buf:   [u8; 256],
     i:     usize,
 }
 
-impl<'a, Capacity> RequestReceiver<'a, Capacity>
+impl<'a, Capacity> Receiver<'a, Capacity>
     where Capacity: ArrayLength<u8>
 {
-    /// Create a new instance of `RequestReceiver`
+    /// Create a new instance of `Receiver`
     ///
     /// The `queue` argument is the queue consumer that receives bytes from the
     /// request.

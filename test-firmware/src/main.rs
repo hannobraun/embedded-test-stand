@@ -40,8 +40,8 @@ use void::ResultVoidExt;
 
 use lpc845_test_lib::{
     Event,
+    Receiver,
     Request,
-    RequestReceiver,
 };
 
 
@@ -172,7 +172,7 @@ const APP: () = {
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
-        let mut request_receiver = RequestReceiver::new(
+        let mut request_receiver = Receiver::new(
             cx.resources.request_cons,
         );
 
