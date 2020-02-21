@@ -39,8 +39,8 @@ use lpc8xx_hal::{
 use void::ResultVoidExt;
 
 use lpc845_test_lib::{
-    Error,
     Event,
+    Receiver,
     Request,
 };
 
@@ -172,8 +172,17 @@ const APP: () = {
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
-        let mut request_receiver = RequestReceiver::new(
+        let mut request_buf = [0; 256];
+
+        let mut request_receiver = Receiver::new(
             cx.resources.request_cons,
+            // At some point, we'll be able to just pass an array here directly.
+            // For the time being though, traits are only implemented for arrays
+            // with lengths of up to 32, so instead we need to create the array
+            // in a variable, and pass a slice referencing it. Since we don't
+            // intend to move the receiver anywhere else, it doesn't make a
+            // difference (besides being a bit more verbose).
+            &mut request_buf[..],
         );
 
         let mut usart_buf = [0; 256];
@@ -244,64 +253,6 @@ const APP: () = {
         receive(cx.resources.usart_rx, cx.resources.usart_prod);
     }
 };
-
-
-/// Receives and decodes host requests
-struct RequestReceiver<'a, Capacity: ArrayLength<u8>> {
-    queue: &'a mut spsc::Consumer<'static, u8, Capacity>,
-    buf:   [u8; 256],
-    i:     usize,
-}
-
-impl<'a, Capacity> RequestReceiver<'a, Capacity>
-    where Capacity: ArrayLength<u8>
-{
-    /// Create a new instance of `RequestReceiver`
-    ///
-    /// The `queue` argument is the queue consumer that receives bytes from the
-    /// request.
-    fn new(queue: &'a mut spsc::Consumer<'static, u8, Capacity>) -> Self {
-        Self {
-            queue,
-            buf: [0; 256],
-            i:   0,
-        }
-    }
-
-    /// Indicates whether data can be received from the internal queue
-    fn can_receive(&self) -> bool {
-        self.queue.ready()
-    }
-
-    /// Receive bytes from the internal queue, return request if received
-    ///
-    /// This non-blocking method will receive bytes from the internal queue
-    /// while they are available. If this leads to a full request being
-    /// received, it will decode and return it.
-    ///
-    /// Returns `None`, if no full request has been received.
-    fn receive(&mut self) -> Option<Result<Request, Error>> {
-        while let Some(b) = self.queue.dequeue() {
-            self.buf[self.i] = b;
-            self.i += 1;
-
-            // Requests are COBS-encoded, so we know that `0` means we
-            // received a full frame.
-            if b == 0 {
-                return Some(Request::deserialize(&mut self.buf));
-            }
-        }
-
-        None
-    }
-
-    /// Reset the internal buffer
-    ///
-    /// This must be called each time a call to `receive` has returned `Some`.
-    fn reset(&mut self) {
-        self.i = 0;
-    }
-}
 
 
 fn receive<USART, Capacity>(

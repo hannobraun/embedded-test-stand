@@ -6,6 +6,7 @@ edition = "2018"
 
 
 [dependencies]
+heapless = "0.5.3"
 postcard = "0.4.3"
 
 [dependencies.lpc8xx-hal]

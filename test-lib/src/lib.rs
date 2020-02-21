@@ -1,6 +1,13 @@
 #![cfg_attr(not(feature = "host"), no_std)]
 
 
+#[cfg(feature = "firmware")]
+mod firmware;
+
+#[cfg(feature = "firmware")]
+pub use firmware::*;
+
+
 #[cfg(feature = "host")]
 use std::{
     io,
@@ -21,6 +28,8 @@ use serde::{
 
 
 /// A request sent from the test suite to the firmware on the target
+///
+/// You can use [`Receiver`], to receive a request on the test target.
 #[derive(Deserialize, Serialize)]
 pub enum Request<'r> {
     /// Instruct the device to send a message via USART
@@ -40,15 +49,6 @@ impl<'r> Request<'r> {
         let serialized = postcard::to_slice_cobs(self, buf)?;
         writer.write_all(serialized)?;
         Ok(())
-    }
-
-    /// Deserializes a request from the given buffer
-    ///
-    /// Some of the decoding is done in-place, so you can't rely on the buffer
-    /// contents in any way, after this method has been called.
-    pub fn deserialize(buf: &'r mut [u8]) -> Result<Self> {
-        let request = postcard::from_bytes_cobs(buf)?;
-        Ok(request)
     }
 }
 
