@@ -3,9 +3,13 @@
 
 #[cfg(feature = "firmware")]
 mod firmware;
+#[cfg(feature = "host")]
+mod host;
 
 #[cfg(feature = "firmware")]
 pub use firmware::*;
+#[cfg(feature = "host")]
+pub use host::*;
 
 
 #[cfg(feature = "host")]
@@ -29,22 +33,6 @@ use serde::{
 pub enum Request<'r> {
     /// Instruct the device to send a message via USART
     SendUsart(&'r [u8]),
-}
-
-impl<'r> Request<'r> {
-    /// Send a request to the target, via the provided writer
-    ///
-    /// - `writer` is where the serialized request is written to.
-    /// - `buf` is a buffer used for serialization. It needs to be big enough to
-    ///   hold the serialized form of the request.
-    ///
-    /// This method is only available, if the `host` feature is enabled.
-    #[cfg(feature = "host")]
-    pub fn send<W: io::Write>(&self, mut writer: W, buf: &mut [u8]) -> Result {
-        let serialized = postcard::to_slice_cobs(self, buf)?;
-        writer.write_all(serialized)?;
-        Ok(())
-    }
 }
 
 
