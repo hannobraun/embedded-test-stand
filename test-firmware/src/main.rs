@@ -39,10 +39,12 @@ use lpc8xx_hal::{
 };
 use void::ResultVoidExt;
 
-use lpc845_test_lib::{
+use lpc845_messages::{
     Event,
-    Receiver,
     Request,
+};
+use lpc845_firmware_lib::{
+    Receiver,
     Sender,
 };
 

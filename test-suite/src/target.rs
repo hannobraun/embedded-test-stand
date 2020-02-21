@@ -17,10 +17,12 @@ use serialport::{
     SerialPort,
     SerialPortSettings,
 };
-use lpc845_test_lib::{
-    self as test_lib,
+use lpc845_messages::{
     Event,
     Request,
+};
+use lpc845_host_lib::{
+    self as host_lib,
     receive,
     send,
 };
@@ -131,7 +133,7 @@ impl Target {
 pub struct TargetInitError(serialport::Error);
 
 #[derive(Debug)]
-pub struct TargetSendError(test_lib::Error);
+pub struct TargetSendError(host_lib::Error);
 
 #[derive(Debug)]
 pub struct TargetUsartWaitError(LowLevelError);
