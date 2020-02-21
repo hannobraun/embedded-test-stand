@@ -43,6 +43,7 @@ use lpc845_test_lib::{
     Event,
     Receiver,
     Request,
+    Sender,
 };
 
 
@@ -169,7 +170,6 @@ const APP: () = {
 
     #[idle(resources = [host_tx, usart_tx, request_cons, usart_cons])]
     fn idle(cx: idle::Context) -> ! {
-        let host        = cx.resources.host_tx;
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
 
@@ -188,6 +188,12 @@ const APP: () = {
             // difference (besides being a bit more verbose).
             &mut request_buf[..],
         );
+        let mut sender = Sender::new(
+            cx.resources.host_tx,
+            // See comment on `Receiver::new` argument above. The same applies
+            // here.
+            &mut serialize_buf[..],
+        );
 
         loop {
             while let Some(b) = usart_queue.dequeue() {
@@ -196,8 +202,7 @@ const APP: () = {
             }
 
             if usart_buf.len() > 0 {
-                Event::UsartReceive(&usart_buf)
-                    .send(host, &mut serialize_buf)
+                sender.send(&Event::UsartReceive(&usart_buf))
                     .expect("Failed to send `UsartReceive` event");
                 usart_buf.clear();
             }

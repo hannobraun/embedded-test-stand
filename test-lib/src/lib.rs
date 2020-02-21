@@ -15,12 +15,7 @@ use std::{
 };
 
 #[cfg(feature = "firmware")]
-use lpc8xx_hal::{
-    prelude::*,
-    usart,
-};
-#[cfg(feature = "firmware")]
-use void::ResultVoidExt;
+use lpc8xx_hal::usart;
 use serde::{
     Deserialize,
     Serialize,
@@ -60,23 +55,6 @@ pub enum Event<'r> {
 }
 
 impl<'r> Event<'r> {
-    /// Send an event to the host, via the provided USART
-    ///
-    /// - `usart` is a USART instance that will be used to send this event.
-    /// - `buf` is a buffer used for serialization. It needs to be large enough
-    ///   to hold the serialized form of this event.
-    ///
-    /// This method is only available, if the `firmware` feature is enabled.
-    #[cfg(feature = "firmware")]
-    pub fn send<I>(&self, usart: &mut usart::Tx<I>, buf: &mut [u8]) -> Result
-        where I: usart::Instance
-    {
-        let serialized = postcard::to_slice_cobs(self, buf)?;
-        usart.bwrite_all(serialized)
-            .void_unwrap();
-        Ok(())
-    }
-
     /// Receive a request from the target, via the provided reader
     ///
     /// - `reader` will be used to receive the request.
