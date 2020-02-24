@@ -1,4 +1,4 @@
-use super::{
+use host_lib::{
     config::{
         Config,
         ConfigReadError,
@@ -7,11 +7,10 @@ use super::{
         Serial,
         SerialInitError,
     },
-    target::{
-        Target,
-        TargetInitError,
-    },
+    target::TargetInitError,
 };
+
+use super::target::Target;
 
 
 /// An instance of the test stand
