@@ -7,12 +7,10 @@ use host_lib::{
         Serial,
         SerialInitError,
     },
+    target::TargetInitError,
 };
 
-use super::target::{
-    Target,
-    TargetInitError,
-};
+use super::target::Target;
 
 
 /// An instance of the test stand

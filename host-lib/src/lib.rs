@@ -6,6 +6,7 @@ pub mod error;
 pub mod receive;
 pub mod serial;
 pub mod send;
+pub mod target;
 
 
 pub use self::{
@@ -15,4 +16,5 @@ pub use self::{
     },
     receive::receive,
     send::send,
+    target::Target,
 };
