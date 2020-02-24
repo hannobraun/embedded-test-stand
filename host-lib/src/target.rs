@@ -1,4 +1,5 @@
 use std::{
+    slice,
     sync::{
         LockResult,
         Mutex,
@@ -17,10 +18,8 @@ use serialport::{
     SerialPort,
     SerialPortSettings,
 };
-use crate::{
-    Error,
-    receive,
-};
+
+use crate::Error;
 
 
 /// The test suite's connection to the test target (device under test)
@@ -82,7 +81,7 @@ impl Target {
             .map_err(|err| TargetSendError(err))
     }
 
-    pub fn send_inner<T>(&mut self, message: &T) -> Result<(), LowLevelError>
+    pub fn send_inner<T>(&mut self, message: &T) -> Result<(), Error>
         where T: Serialize
     {
         let mut buf = [0; 256];
@@ -98,10 +97,34 @@ impl Target {
         -> Result<T, TargetReceiveError>
         where T: Deserialize<'de>
     {
-        self.port.set_timeout(timeout)
-            .map_err(|err| TargetReceiveError(Error::from(err)))?;
-        receive::<T, _>(&mut self.port, buf)
+        self.receive_inner(timeout, buf)
             .map_err(|err| TargetReceiveError(err))
+    }
+
+    fn receive_inner<'de, T>(&mut self,
+        timeout: Duration,
+        buf:     &'de mut Vec<u8>,
+    )
+        -> Result<T, Error>
+        where T: Deserialize<'de>
+    {
+        self.port.set_timeout(timeout)?;
+
+        loop {
+            let mut b = 0; // initialized to `0`, but could be any value
+            self.port.read_exact(slice::from_mut(&mut b))?;
+
+            buf.push(b);
+
+            if b == 0 {
+                // We're using COBS encoding, so `0` signifies the end of the
+                // message.
+                break;
+            }
+        }
+
+        let message = postcard::from_bytes_cobs(buf)?;
+        Ok(message)
     }
 }
 
