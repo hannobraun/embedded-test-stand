@@ -1,3 +1,6 @@
+//! Library to support the test suite running on the host computer
+
+
 pub mod error;
 pub mod receive;
 pub mod send;
