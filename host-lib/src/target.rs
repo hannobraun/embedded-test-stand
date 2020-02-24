@@ -20,7 +20,6 @@ use serialport::{
 use crate::{
     Error,
     receive,
-    send,
 };
 
 
@@ -79,9 +78,18 @@ impl Target {
     pub fn send<T>(&mut self, message: &T) -> Result<(), TargetSendError>
         where T: Serialize
     {
+        self.send_inner(message)
+            .map_err(|err| TargetSendError(err))
+    }
+
+    pub fn send_inner<T>(&mut self, message: &T) -> Result<(), LowLevelError>
+        where T: Serialize
+    {
         let mut buf = [0; 256];
-        send(message, &mut self.port, &mut buf)
-            .map_err(|err| TargetSendError(err))?;
+
+        let serialized = postcard::to_slice_cobs(message, &mut buf)?;
+        self.port.write_all(serialized)?;
+
         Ok(())
     }
 
