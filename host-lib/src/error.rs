@@ -7,6 +7,7 @@ pub type Result<T = ()> = core::result::Result<T, Error>;
 /// Various low-level errors that can occur in the test suite support code
 #[derive(Debug)]
 pub enum Error {
+    /// Error occured while deserializing the configuration file
     Config(toml::de::Error),
 
     /// An I/O error occured
@@ -17,6 +18,7 @@ pub enum Error {
     /// The `postcard` crate is used for (de-)serialization.
     Postcard(postcard::Error),
 
+    /// Error occured while accessing the serial port
     Serial(serialport::Error),
 }
 
