@@ -5,10 +5,6 @@ authors = ["Hanno Braun <hanno@braun-embedded.com>"]
 edition = "2018"
 
 
-[dependencies]
-lazy_static = "1.4.0"
-toml        = "0.5.6"
-
 [dependencies.lpc845-messages]
 version  = "0.1.0"
 path     = "../messages"
@@ -16,11 +12,3 @@ path     = "../messages"
 [dependencies.host-lib]
 version  = "0.1.0"
 path     = "../host-lib"
-
-[dependencies.serde]
-version  = "1.0.104"
-features = ["derive"]
-
-[dependencies.serialport]
-version          = "3.3.0"
-default-features = false # depends on libudev by default
