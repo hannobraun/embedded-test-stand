@@ -12,8 +12,6 @@ use serialport::{
     SerialPortSettings,
 };
 
-use host_lib::error::LowLevelError;
-
 
 /// A Serial-to-USB converter that is connected to the device under test
 pub struct Serial {
@@ -60,7 +58,7 @@ impl Serial {
     }
 
     fn wait_for_inner(&mut self, message: &[u8], timeout: Duration)
-        -> Result<Vec<u8>, LowLevelError>
+        -> Result<Vec<u8>, host_lib::Error>
     {
         let mut buf   = Vec::new();
         let     start = Instant::now();
@@ -97,4 +95,4 @@ pub struct SerialInitError(serialport::Error);
 pub struct SerialSendError(io::Error);
 
 #[derive(Debug)]
-pub struct SerialWaitError(LowLevelError);
+pub struct SerialWaitError(host_lib::Error);

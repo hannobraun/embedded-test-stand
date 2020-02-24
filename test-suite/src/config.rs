@@ -5,8 +5,6 @@ use std::{
 
 use serde::Deserialize;
 
-use host_lib::error::LowLevelError;
-
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -20,7 +18,7 @@ impl Config {
             .map_err(|err| ConfigReadError(err))
     }
 
-    fn read_inner() -> Result<Self, LowLevelError> {
+    fn read_inner() -> Result<Self, host_lib::Error> {
         // Read configuration file
         let mut config = Vec::new();
         File::open("test-stand.toml")?
@@ -35,4 +33,4 @@ impl Config {
 
 
 #[derive(Debug)]
-pub struct ConfigReadError(LowLevelError);
+pub struct ConfigReadError(host_lib::Error);

@@ -26,8 +26,6 @@ use host_lib::{
     send,
 };
 
-use host_lib::error::LowLevelError;
-
 
 /// The test suite's connection to the test target (device under test)
 pub struct Target {
@@ -102,7 +100,7 @@ impl Target {
     }
 
     fn wait_for_usart_rx_inner(&mut self, data: &[u8], timeout: Duration)
-        -> Result<Vec<u8>, LowLevelError>
+        -> Result<Vec<u8>, host_lib::Error>
     {
         let mut buf   = Vec::new();
         let     start = Instant::now();
@@ -135,4 +133,4 @@ pub struct TargetInitError(serialport::Error);
 pub struct TargetSendError(host_lib::Error);
 
 #[derive(Debug)]
-pub struct TargetUsartWaitError(LowLevelError);
+pub struct TargetUsartWaitError(host_lib::Error);
