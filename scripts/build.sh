@@ -5,11 +5,14 @@ set -e
 export RUSTFLAGS="-D warnings"
 
 (
-    cd test-lib
-    cargo test --verbose --features=firmware)
+    cd messages
+    cargo test --verbose)
 (
-    cd test-lib
-    cargo test --verbose --features=host)
+    cd firmware-lib
+    cargo test --verbose)
+(
+    cd host-lib
+    cargo test --verbose)
 (
     cd test-firmware
     cargo build --verbose)
