@@ -21,8 +21,7 @@ use lpc845_messages::{
     Event,
     Request,
 };
-use lpc845_host_lib::{
-    self as host_lib,
+use host_lib::{
     receive,
     send,
 };
