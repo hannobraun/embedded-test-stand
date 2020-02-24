@@ -1,8 +1,9 @@
+use host_lib::serial::{
+    SerialSendError,
+    SerialWaitError,
+};
+
 use super::{
-    serial::{
-        SerialSendError,
-        SerialWaitError,
-    },
     target::{
         TargetSendError,
         TargetUsartWaitError,

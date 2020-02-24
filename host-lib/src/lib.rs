@@ -4,6 +4,7 @@
 pub mod config;
 pub mod error;
 pub mod receive;
+pub mod serial;
 pub mod send;
 
 

@@ -6,7 +6,6 @@
 
 
 pub mod result;
-pub mod serial;
 pub mod target;
 pub mod test_stand;
 

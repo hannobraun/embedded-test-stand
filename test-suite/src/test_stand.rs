@@ -1,17 +1,17 @@
-use host_lib::config::{
-    Config,
-    ConfigReadError,
-};
-
-use super::{
+use host_lib::{
+    config::{
+        Config,
+        ConfigReadError,
+    },
     serial::{
         Serial,
         SerialInitError,
     },
-    target::{
-        Target,
-        TargetInitError,
-    },
+};
+
+use super::target::{
+    Target,
+    TargetInitError,
 };
 
 
