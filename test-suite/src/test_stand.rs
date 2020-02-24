@@ -1,8 +1,9 @@
+use host_lib::config::{
+    Config,
+    ConfigReadError,
+};
+
 use super::{
-    config::{
-        Config,
-        ConfigReadError,
-    },
     serial::{
         Serial,
         SerialInitError,

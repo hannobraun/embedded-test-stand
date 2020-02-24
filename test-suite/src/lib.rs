@@ -5,7 +5,6 @@
 //! a generally usable library that can be shared with other test suites.
 
 
-pub mod config;
 pub mod result;
 pub mod serial;
 pub mod target;
