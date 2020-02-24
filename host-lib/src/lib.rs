@@ -12,5 +12,6 @@ pub use self::{
         Error,
         Result,
     },
+    serial::Serial,
     target::Target,
 };
