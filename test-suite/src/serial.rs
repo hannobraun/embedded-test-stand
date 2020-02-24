@@ -12,7 +12,7 @@ use serialport::{
     SerialPortSettings,
 };
 
-use super::result::LowLevelError;
+use host_lib::error::LowLevelError;
 
 
 /// A Serial-to-USB converter that is connected to the device under test

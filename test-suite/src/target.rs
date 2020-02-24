@@ -26,7 +26,7 @@ use host_lib::{
     send,
 };
 
-use crate::result::LowLevelError;
+use host_lib::error::LowLevelError;
 
 
 /// The test suite's connection to the test target (device under test)

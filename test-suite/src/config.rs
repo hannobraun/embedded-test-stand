@@ -5,7 +5,7 @@ use std::{
 
 use serde::Deserialize;
 
-use super::result::LowLevelError;
+use host_lib::error::LowLevelError;
 
 
 #[derive(Deserialize)]

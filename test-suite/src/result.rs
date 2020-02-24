@@ -1,5 +1,3 @@
-use std::io;
-
 use super::{
     serial::{
         SerialSendError,
@@ -54,39 +52,5 @@ impl From<TargetUsartWaitError> for Error {
 impl From<TestStandInitError> for Error {
     fn from(err: TestStandInitError) -> Self {
         Self::TestStandInit(err)
-    }
-}
-
-
-/// Various low-level errors that can occur in the test suite support code
-#[derive(Debug)]
-pub enum LowLevelError {
-    Config(toml::de::Error),
-    Io(io::Error),
-    Serial(serialport::Error),
-    TestLib(host_lib::Error),
-}
-
-impl From<toml::de::Error> for LowLevelError {
-    fn from(err: toml::de::Error) -> Self {
-        Self::Config(err)
-    }
-}
-
-impl From<io::Error> for LowLevelError {
-    fn from(err: io::Error) -> Self {
-        Self::Io(err)
-    }
-}
-
-impl From<serialport::Error> for LowLevelError {
-    fn from(err: serialport::Error) -> Self {
-        Self::Serial(err)
-    }
-}
-
-impl From<host_lib::Error> for LowLevelError {
-    fn from(err: host_lib::Error) -> Self {
-        Self::TestLib(err)
     }
 }
