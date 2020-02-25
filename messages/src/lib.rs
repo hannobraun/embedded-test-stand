@@ -7,18 +7,18 @@ use serde::{
 };
 
 
-/// A request sent from the test suite to the firmware on the target
+/// A message from the test suite on the host to the target
 ///
-/// You can use [`Receiver`], to receive a request on the test target.
+/// You can use [`Receiver`], to receive a message on the test target.
 #[derive(Deserialize, Serialize)]
-pub enum Request<'r> {
+pub enum HostToTarget<'r> {
     /// Instruct the device to send a message via USART
     SendUsart(&'r [u8]),
 }
 
 
-/// An event that occured on the target
+/// An message from the target to the test suite on the host
 #[derive(Deserialize, Serialize)]
-pub enum Event<'r> {
+pub enum TargetToHost<'r> {
     UsartReceive(&'r [u8]),
 }

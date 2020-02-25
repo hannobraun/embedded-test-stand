@@ -1,13 +1,13 @@
-use host_lib::{
-    serial::{
-        SerialSendError,
-        SerialWaitError,
-    },
-    target::TargetSendError,
+use host_lib::serial::{
+    SerialSendError,
+    SerialWaitError,
 };
 
 use super::{
-    target::TargetUsartWaitError,
+    target::{
+        TargetUsartSendError,
+        TargetUsartWaitError,
+    },
     test_stand::TestStandInitError,
 };
 
@@ -21,7 +21,7 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 pub enum Error {
     SerialSend(SerialSendError),
     SerialWait(SerialWaitError),
-    TargetSend(TargetSendError),
+    TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
 }
@@ -38,9 +38,9 @@ impl From<SerialWaitError> for Error {
     }
 }
 
-impl From<TargetSendError> for Error {
-    fn from(err: TargetSendError) -> Self {
-        Self::TargetSend(err)
+impl From<TargetUsartSendError> for Error {
+    fn from(err: TargetUsartSendError) -> Self {
+        Self::TargetUsartSend(err)
     }
 }
 

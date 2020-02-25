@@ -14,7 +14,7 @@ export RUSTFLAGS="-D warnings"
     cd host-lib
     cargo test --verbose)
 (
-    cd test-firmware
+    cd test-target
     cargo build --verbose)
 (
     cd test-suite

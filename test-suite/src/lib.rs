@@ -5,13 +5,13 @@
 //! a generally usable library that can be shared with other test suites.
 
 
-pub mod result;
+pub mod error;
 pub mod target;
 pub mod test_stand;
 
 
 pub use self::{
-    result::{
+    error::{
         Error,
         Result,
     },

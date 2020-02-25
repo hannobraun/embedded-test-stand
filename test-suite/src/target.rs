@@ -4,8 +4,8 @@ use std::time::{
 };
 
 use lpc845_messages::{
-    Event,
-    Request,
+    HostToTarget,
+    TargetToHost,
 };
 
 use host_lib::target::{
@@ -27,9 +27,10 @@ impl Target {
 
     /// Instruct the target to send this message via USART
     pub fn send_usart(&mut self, message: &[u8])
-        -> Result<(), TargetSendError>
+        -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&Request::SendUsart(message))
+        self.0.send(&HostToTarget::SendUsart(message))
+            .map_err(|err| TargetUsartSendError(err))
     }
 
     /// Wait to receive the provided data via USART
@@ -51,16 +52,19 @@ impl Target {
             }
 
             let mut tmp   = Vec::new();
-            let event = self.0.receive::<Event>(timeout, &mut tmp)
+            let event = self.0.receive::<TargetToHost>(timeout, &mut tmp)
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match event {
-                Event::UsartReceive(data) => buf.extend(data),
+                TargetToHost::UsartReceive(data) => buf.extend(data),
             }
         }
     }
 }
 
+
+#[derive(Debug)]
+pub struct TargetUsartSendError(TargetSendError);
 
 #[derive(Debug)]
 pub enum TargetUsartWaitError {
