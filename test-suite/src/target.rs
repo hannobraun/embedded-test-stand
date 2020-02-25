@@ -5,7 +5,7 @@ use std::time::{
 
 use lpc845_messages::{
     Event,
-    Request,
+    HostToTarget,
 };
 
 use host_lib::target::{
@@ -29,7 +29,7 @@ impl Target {
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&Request::SendUsart(message))
+        self.0.send(&HostToTarget::SendUsart(message))
             .map_err(|err| TargetUsartSendError(err))
     }
 

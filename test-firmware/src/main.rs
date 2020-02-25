@@ -45,7 +45,7 @@ use firmware_lib::{
 };
 use lpc845_messages::{
     Event,
-    Request,
+    HostToTarget,
 };
 
 
@@ -213,7 +213,7 @@ const APP: () = {
                 // Receive a request from the test suite and do whatever it
                 // tells us.
                 match request {
-                    Ok(Request::SendUsart(message)) => {
+                    Ok(HostToTarget::SendUsart(message)) => {
                         usart.bwrite_all(message)
                             .void_unwrap();
                     }
