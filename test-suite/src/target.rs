@@ -4,8 +4,8 @@ use std::time::{
 };
 
 use lpc845_messages::{
-    Event,
     HostToTarget,
+    TargetToHost,
 };
 
 use host_lib::target::{
@@ -52,11 +52,11 @@ impl Target {
             }
 
             let mut tmp   = Vec::new();
-            let event = self.0.receive::<Event>(timeout, &mut tmp)
+            let event = self.0.receive::<TargetToHost>(timeout, &mut tmp)
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match event {
-                Event::UsartReceive(data) => buf.extend(data),
+                TargetToHost::UsartReceive(data) => buf.extend(data),
             }
         }
     }

@@ -17,8 +17,8 @@ pub enum HostToTarget<'r> {
 }
 
 
-/// An event that occured on the target
+/// An message from the target to the test suite on the host
 #[derive(Deserialize, Serialize)]
-pub enum Event<'r> {
+pub enum TargetToHost<'r> {
     UsartReceive(&'r [u8]),
 }

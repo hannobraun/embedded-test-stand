@@ -44,8 +44,8 @@ use firmware_lib::{
     Sender,
 };
 use lpc845_messages::{
-    Event,
     HostToTarget,
+    TargetToHost,
 };
 
 
@@ -204,7 +204,7 @@ const APP: () = {
             }
 
             if usart_buf.len() > 0 {
-                sender.send(&Event::UsartReceive(&usart_buf))
+                sender.send(&TargetToHost::UsartReceive(&usart_buf))
                     .expect("Failed to send `UsartReceive` event");
                 usart_buf.clear();
             }
