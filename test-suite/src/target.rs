@@ -27,9 +27,10 @@ impl Target {
 
     /// Instruct the target to send this message via USART
     pub fn send_usart(&mut self, message: &[u8])
-        -> Result<(), TargetSendError>
+        -> Result<(), TargetUsartSendError>
     {
         self.0.send(&Request::SendUsart(message))
+            .map_err(|err| TargetUsartSendError(err))
     }
 
     /// Wait to receive the provided data via USART
@@ -61,6 +62,9 @@ impl Target {
     }
 }
 
+
+#[derive(Debug)]
+pub struct TargetUsartSendError(TargetSendError);
 
 #[derive(Debug)]
 pub enum TargetUsartWaitError {
