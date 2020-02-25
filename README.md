@@ -33,7 +33,7 @@ These are the crates that are independent of the LPC845 test suite. If you want 
 These crates belong to the LPC845 test suite. They are not directly applicable to other uses, except to serve as an example:
 
 - `messages`: The messages used to communicate between test suite and target firmware.
-- `test-firmware`: The firmware running on the hardware under test.
+- `test-target`: The firmware running on the hardware under test.
 - `test-suite`: The test suite itself, plus some suite-specific convenience wrappers around APIs in `host-lib`.
 
 
