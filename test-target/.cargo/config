@@ -1,5 +1,6 @@
 [build]
 target = "thumbv6m-none-eabi"
+target-dir = "../target"
 
 [target.thumbv6m-none-eabi]
 runner = "arm-none-eabi-gdb -tui -q -x openocd.gdb"
