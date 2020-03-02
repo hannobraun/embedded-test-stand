@@ -109,11 +109,11 @@ const APP: () = {
         // (i.e. from the perspective of the on-boardprogrammer, not the
         // microcontroller).
         let (u0_rxd, _) = swm.movable_functions.u0_rxd.assign(
-            swm.pins.pio0_24.into_swm_pin(),
+            p.pins.pio0_24.into_swm_pin(),
             &mut swm_handle,
         );
         let (u0_txd, _) = swm.movable_functions.u0_txd.assign(
-            swm.pins.pio0_25.into_swm_pin(),
+            p.pins.pio0_25.into_swm_pin(),
             &mut swm_handle,
         );
 
@@ -138,11 +138,11 @@ const APP: () = {
 
         // Assign pins to USART1.
         let (u1_rxd, _) = swm.movable_functions.u1_rxd.assign(
-            swm.pins.pio0_26.into_swm_pin(),
+            p.pins.pio0_26.into_swm_pin(),
             &mut swm_handle,
         );
         let (u1_txd, _) = swm.movable_functions.u1_txd.assign(
-            swm.pins.pio0_27.into_swm_pin(),
+            p.pins.pio0_27.into_swm_pin(),
             &mut swm_handle,
         );
 
