@@ -14,5 +14,8 @@ set -e
     cd test-target
     cargo update)
 (
+    cd test-assistant
+    cargo update)
+(
     cd test-suite
     cargo update)
