@@ -28,8 +28,9 @@ use crate::{
 pub struct TestStand {
     _guard: LockResult<MutexGuard<'static, ()>>,
 
-    pub target: Option<Conn>,
-    pub serial: Option<Serial>,
+    pub target:    Option<Conn>,
+    pub assistant: Option<Conn>,
+    pub serial:    Option<Serial>,
 }
 
 impl TestStand {
@@ -56,11 +57,18 @@ impl TestStand {
         let config = Config::read()
             .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
-        let mut target = None;
-        let mut serial = None;
+        let mut target    = None;
+        let mut assistant = None;
+        let mut serial    = None;
 
         if let Some(path) = config.target {
             target = Some(
+                Conn::new(&path)
+                    .map_err(|err| TestStandInitError::ConnInit(err))?
+            );
+        }
+        if let Some(path) = config.assistant {
+            assistant = Some(
                 Conn::new(&path)
                     .map_err(|err| TestStandInitError::ConnInit(err))?
             );
@@ -77,6 +85,7 @@ impl TestStand {
                 _guard: guard,
 
                 target,
+                assistant,
                 serial,
             },
         )

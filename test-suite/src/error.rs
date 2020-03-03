@@ -7,6 +7,10 @@ use host_lib::{
 };
 
 use super::{
+    assistant::{
+        AssistantUsartSendError,
+        AssistantUsartWaitError,
+    },
     target::{
         TargetUsartSendError,
         TargetUsartWaitError,
@@ -22,12 +26,26 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 /// Error type specific to this test suite
 #[derive(Debug)]
 pub enum Error {
+    AssistantUsartSend(AssistantUsartSendError),
+    AssistantUsartWait(AssistantUsartWaitError),
     NotConfigured(NotConfiguredError),
     SerialSend(SerialSendError),
     SerialWait(SerialWaitError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
+}
+
+impl From<AssistantUsartSendError> for Error {
+    fn from(err: AssistantUsartSendError) -> Self {
+        Self::AssistantUsartSend(err)
+    }
+}
+
+impl From<AssistantUsartWaitError> for Error {
+    fn from(err: AssistantUsartWaitError) -> Self {
+        Self::AssistantUsartWait(err)
+    }
 }
 
 impl From<NotConfiguredError> for Error {

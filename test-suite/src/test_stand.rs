@@ -3,7 +3,10 @@ use host_lib::{
     test_stand::TestStandInitError,
 };
 
-use super::target::Target;
+use super::{
+    assistant::Assistant,
+    target::Target,
+};
 
 
 /// An instance of the test stand
@@ -26,6 +29,14 @@ impl TestStand {
         match &mut self.0.target {
             Some(target) => Ok(Target(target)),
             None         => Err(NotConfiguredError("target")),
+        }
+    }
+
+    /// Returns the connection to the test assistant
+    pub fn assistant(&mut self) -> Result<Assistant, NotConfiguredError> {
+        match &mut self.0.assistant {
+            Some(assistant) => Ok(Assistant(assistant)),
+            None            => Err(NotConfiguredError("assistant")),
         }
     }
 
