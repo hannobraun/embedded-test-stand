@@ -101,8 +101,7 @@ const APP: () = {
         };
 
         // Assign pins to USART0 for RX/TX functions. On the LPC845-BRK, those
-        // are
-        // the pins connected to the programmer, and bridged to the host via
+        // are the pins connected to the programmer, and bridged to the host via
         // USB.
         //
         // Careful, the LCP845-BRK documentation uses the opposite designations
