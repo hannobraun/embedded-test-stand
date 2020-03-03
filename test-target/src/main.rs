@@ -14,15 +14,22 @@ extern crate panic_semihosting;
 
 
 use lpc8xx_hal::{
+    prelude::*,
     Peripherals,
     cortex_m::{
         asm,
         interrupt,
     },
+    gpio::{
+        GpioPin,
+        Level,
+        direction::Output,
+    },
     pac::{
         USART0,
         USART1,
     },
+    pins::PIO1_0,
     syscon::frg,
     usart,
 };
@@ -49,6 +56,8 @@ const APP: () = {
         usart_rx_int:  RxInt<'static, USART1>,
         usart_rx_idle: RxIdle<'static>,
         usart_tx:      Tx<USART1>,
+
+        led: GpioPin<PIO1_0, Output>,
     }
 
     #[init]
@@ -67,8 +76,13 @@ const APP: () = {
 
         let mut syscon = p.SYSCON.split();
         let     swm    = p.SWM.split();
+        let     gpio   = p.GPIO.enable(&mut syscon.handle);
 
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
+
+        // Configure green LED for output.
+        let led = p.pins.pio1_0
+            .into_output_pin(gpio.tokens.pio1_0, Level::High);
 
         // Configure the clock for USART0, using the Fractional Rate Generator
         // (FRG) and the USART's own baud rate divider value (BRG). See user
@@ -139,15 +153,18 @@ const APP: () = {
             usart_rx_int,
             usart_rx_idle,
             usart_tx,
+
+            led,
         }
     }
 
-    #[idle(resources = [host_rx_idle, host_tx, usart_rx_idle, usart_tx])]
+    #[idle(resources = [host_rx_idle, host_tx, usart_rx_idle, usart_tx, led])]
     fn idle(cx: idle::Context) -> ! {
         let usart_rx = cx.resources.usart_rx_idle;
         let usart_tx = cx.resources.usart_tx;
         let host_rx  = cx.resources.host_rx_idle;
         let host_tx  = cx.resources.host_tx;
+        let led      = cx.resources.led;
 
         let mut buf = [0; 256];
 
@@ -166,6 +183,12 @@ const APP: () = {
                     match message {
                         HostToTarget::SendUsart(data) => {
                             usart_tx.send_raw(data)
+                        }
+                        HostToTarget::SetPinHigh => {
+                            led.set_high()
+                        }
+                        HostToTarget::SetPinLow => {
+                            led.set_low()
                         }
                     }
                 })
