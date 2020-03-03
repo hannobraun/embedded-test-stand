@@ -19,6 +19,18 @@ use host_lib::conn::{
 pub struct Target<'r>(pub(crate) &'r mut Conn);
 
 impl<'r> Target<'r> {
+    /// Instruct the target to set a GPIO pin high
+    pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
+        self.0.send(&HostToTarget::SetPinHigh)
+            .map_err(|err| TargetSetPinHighError(err))
+    }
+
+    /// Instruct the target to set a GPIO pin high
+    pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
+        self.0.send(&HostToTarget::SetPinLow)
+            .map_err(|err| TargetSetPinLowError(err))
+    }
+
     /// Instruct the target to send this message via USART
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
@@ -56,6 +68,12 @@ impl<'r> Target<'r> {
     }
 }
 
+
+#[derive(Debug)]
+pub struct TargetSetPinHighError(ConnSendError);
+
+#[derive(Debug)]
+pub struct TargetSetPinLowError(ConnSendError);
 
 #[derive(Debug)]
 pub struct TargetUsartSendError(ConnSendError);
