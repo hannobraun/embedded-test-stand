@@ -58,8 +58,8 @@ const APP: () = {
         usart_rx: usart::Rx<USART1>,
         usart_tx: usart::Tx<USART1>,
 
-        request_prod: spsc::Producer<'static, u8, U256>,
-        request_cons: spsc::Consumer<'static, u8, U256>,
+        host_prod: spsc::Producer<'static, u8, U256>,
+        host_cons: spsc::Consumer<'static, u8, U256>,
 
         usart_prod: spsc::Producer<'static, u8, U256>,
         usart_cons: spsc::Consumer<'static, u8, U256>,
@@ -154,22 +154,22 @@ const APP: () = {
         );
         usart.enable_rxrdy();
 
-        let (request_prod, request_cons) = HOST_QUEUE.split();
-        let (usart_prod,   usart_cons)   = USART_QUEUE.split();
+        let (host_prod,  host_cons)  = HOST_QUEUE.split();
+        let (usart_prod, usart_cons) = USART_QUEUE.split();
 
         init::LateResources {
             host_rx:  host.rx,
             host_tx:  host.tx,
             usart_rx: usart.rx,
             usart_tx: usart.tx,
-            request_prod,
-            request_cons,
+            host_prod,
+            host_cons,
             usart_prod,
             usart_cons,
         }
     }
 
-    #[idle(resources = [host_tx, usart_tx, request_cons, usart_cons])]
+    #[idle(resources = [host_tx, usart_tx, host_cons, usart_cons])]
     fn idle(cx: idle::Context) -> ! {
         let usart       = cx.resources.usart_tx;
         let usart_queue = cx.resources.usart_cons;
@@ -180,7 +180,7 @@ const APP: () = {
         let mut usart_buf = Vec::<_, U256>::new();
 
         let mut receiver = Receiver::new(
-            cx.resources.request_cons,
+            cx.resources.host_cons,
             // At some point, we'll be able to just pass an array here directly.
             // For the time being though, traits are only implemented for arrays
             // with lengths of up to 32, so instead we need to create the array
@@ -248,9 +248,9 @@ const APP: () = {
         }
     }
 
-    #[task(binds = USART0, resources = [host_rx, request_prod])]
+    #[task(binds = USART0, resources = [host_rx, host_prod])]
     fn receive_from_host(cx: receive_from_host::Context) {
-        receive(cx.resources.host_rx, cx.resources.request_prod);
+        receive(cx.resources.host_rx, cx.resources.host_prod);
     }
 
     #[task(binds = USART1, resources = [usart_rx, usart_prod])]
