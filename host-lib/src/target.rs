@@ -55,7 +55,7 @@ impl Target {
             .map_err(|err| TargetSendError(err))
     }
 
-    pub fn send_inner<T>(&mut self, message: &T) -> Result<(), Error>
+    fn send_inner<T>(&mut self, message: &T) -> Result<(), Error>
         where T: Serialize
     {
         let mut buf = [0; 256];
