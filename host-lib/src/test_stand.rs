@@ -6,17 +6,35 @@ use std::sync::{
 
 use lazy_static::lazy_static;
 
+use crate::{
+    config::{
+        Config,
+        ConfigReadError,
+    },
+    serial::{
+        Serial,
+        SerialInitError,
+    },
+    target::{
+        Target,
+        TargetInitError,
+    },
+};
+
 
 /// An instance of the test stand
 ///
 /// Holds all the resources that a test case might require.
 pub struct TestStand {
     _guard: LockResult<MutexGuard<'static, ()>>,
+
+    pub target: Target,
+    pub serial: Serial,
 }
 
 impl TestStand {
     /// Create a new instance of `TestStand`
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, TestStandInitError> {
         // By default, Rust runs tests in parallel on multiple threads. This can
         // be controlled through a command-line argument and an environment
         // variable, but there doesn't seem to be a way to configure this in
@@ -35,8 +53,29 @@ impl TestStand {
         lazy_static! { static ref MUTEX: Mutex<()> = Mutex::new(()); }
         let guard = MUTEX.lock();
 
-        Self {
-            _guard: guard,
-        }
+        let config = Config::read()
+            .map_err(|err| TestStandInitError::ConfigRead(err))?;
+
+        let target = Target::new(&config.target)
+            .map_err(|err| TestStandInitError::TargetInit(err))?;
+        let serial = Serial::new(&config.serial)
+            .map_err(|err| TestStandInitError::SerialInit(err))?;
+
+        Ok(
+            Self {
+                _guard: guard,
+
+                target,
+                serial,
+            },
+        )
     }
+}
+
+
+#[derive(Debug)]
+pub enum TestStandInitError {
+    ConfigRead(ConfigReadError),
+    SerialInit(SerialInitError),
+    TargetInit(TargetInitError),
 }

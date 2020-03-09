@@ -9,6 +9,7 @@ pub mod test_stand;
 
 
 pub use self::{
+    config::Config,
     error::{
         Error,
         Result,
