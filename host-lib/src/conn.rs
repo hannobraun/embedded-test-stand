@@ -23,7 +23,7 @@ pub struct Conn {
 
 impl Conn {
     /// Open the connection
-    pub fn new(path: &str) -> Result<Self, TargetInitError> {
+    pub fn new(path: &str) -> Result<Self, ConnInitError> {
         let port =
             serialport::open_with_settings(
                 path,
@@ -34,11 +34,11 @@ impl Conn {
                     .. SerialPortSettings::default()
                 }
             )
-            .map_err(|err| TargetInitError(err))?;
+            .map_err(|err| ConnInitError(err))?;
 
         // Use a clone of the serialport, so `Serial` can use the same port.
         let port = port.try_clone()
-            .map_err(|err| TargetInitError(err))?;
+            .map_err(|err| ConnInitError(err))?;
 
         Ok(
             Self {
@@ -48,11 +48,11 @@ impl Conn {
     }
 
     /// Send a message
-    pub fn send<T>(&mut self, message: &T) -> Result<(), TargetSendError>
+    pub fn send<T>(&mut self, message: &T) -> Result<(), ConnSendError>
         where T: Serialize
     {
         self.send_inner(message)
-            .map_err(|err| TargetSendError(err))
+            .map_err(|err| ConnSendError(err))
     }
 
     fn send_inner<T>(&mut self, message: &T) -> Result<(), Error>
@@ -68,11 +68,11 @@ impl Conn {
 
     /// Receive a message
     pub fn receive<'de, T>(&mut self, timeout: Duration, buf: &'de mut Vec<u8>)
-        -> Result<T, TargetReceiveError>
+        -> Result<T, ConnReceiveError>
         where T: Deserialize<'de>
     {
         self.receive_inner(timeout, buf)
-            .map_err(|err| TargetReceiveError(err))
+            .map_err(|err| ConnReceiveError(err))
     }
 
     fn receive_inner<'de, T>(&mut self,
@@ -104,10 +104,10 @@ impl Conn {
 
 
 #[derive(Debug)]
-pub struct TargetInitError(serialport::Error);
+pub struct ConnInitError(serialport::Error);
 
 #[derive(Debug)]
-pub struct TargetSendError(Error);
+pub struct ConnSendError(Error);
 
 #[derive(Debug)]
-pub struct TargetReceiveError(Error);
+pub struct ConnReceiveError(Error);

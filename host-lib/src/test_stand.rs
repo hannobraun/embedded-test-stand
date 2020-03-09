@@ -13,7 +13,7 @@ use crate::{
     },
     conn::{
         Conn,
-        TargetInitError,
+        ConnInitError,
     },
     serial::{
         Serial,
@@ -57,7 +57,7 @@ impl TestStand {
             .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
         let target = Conn::new(&config.target)
-            .map_err(|err| TestStandInitError::TargetInit(err))?;
+            .map_err(|err| TestStandInitError::ConnInit(err))?;
         let serial = Serial::new(&config.serial)
             .map_err(|err| TestStandInitError::SerialInit(err))?;
 
@@ -76,6 +76,6 @@ impl TestStand {
 #[derive(Debug)]
 pub enum TestStandInitError {
     ConfigRead(ConfigReadError),
+    ConnInit(ConnInitError),
     SerialInit(SerialInitError),
-    TargetInit(TargetInitError),
 }

@@ -10,8 +10,8 @@ use lpc845_messages::{
 
 use host_lib::conn::{
     Conn,
-    TargetReceiveError,
-    TargetSendError,
+    ConnReceiveError,
+    ConnSendError,
 };
 
 
@@ -62,10 +62,10 @@ impl<'r> Target<'r> {
 
 
 #[derive(Debug)]
-pub struct TargetUsartSendError(TargetSendError);
+pub struct TargetUsartSendError(ConnSendError);
 
 #[derive(Debug)]
 pub enum TargetUsartWaitError {
-    Receive(TargetReceiveError),
+    Receive(ConnReceiveError),
     Timeout,
 }
