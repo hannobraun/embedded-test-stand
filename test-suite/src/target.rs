@@ -9,20 +9,17 @@ use lpc845_messages::{
 };
 
 use host_lib::target::{
-    TargetInitError,
     TargetReceiveError,
     TargetSendError,
 };
 
 
 /// Test-suite-specific wrapper around `host_lib::Target`
-pub struct Target(host_lib::Target);
+pub struct Target<'r>(&'r mut host_lib::Target);
 
-impl Target {
-    /// Open a connection to the target
-    pub fn new(path: &str) -> Result<Self, TargetInitError> {
-        let target = host_lib::Target::new(path)?;
-        Ok(Self(target))
+impl<'r> Target<'r> {
+    pub(crate) fn new(target: &'r mut host_lib::Target) -> Self {
+        Self(target)
     }
 
     /// Instruct the target to send this message via USART

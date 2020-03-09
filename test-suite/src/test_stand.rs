@@ -1,13 +1,6 @@
 use host_lib::{
-    config::{
-        Config,
-        ConfigReadError,
-    },
-    serial::{
-        Serial,
-        SerialInitError,
-    },
-    target::TargetInitError,
+    serial::Serial,
+    test_stand::TestStandInitError,
 };
 
 use super::target::Target;
@@ -16,10 +9,7 @@ use super::target::Target;
 /// An instance of the test stand
 ///
 /// Used to access all resources that a test case requires.
-pub struct TestStand {
-    target: Target,
-    serial: Serial,
-}
+pub struct TestStand(host_lib::TestStand);
 
 impl TestStand {
     /// Initializes the test stand
@@ -27,37 +17,17 @@ impl TestStand {
     /// Reads the `test-stand.toml` configuration file and initializes test
     /// stand resources, as configured in there.
     pub fn new() -> Result<Self, TestStandInitError> {
-        let config = Config::read()
-            .map_err(|err| TestStandInitError::ConfigRead(err))?;
-
-        let target = Target::new(&config.target)
-            .map_err(|err| TestStandInitError::TargetInit(err))?;
-        let serial = Serial::new(&config.serial)
-            .map_err(|err| TestStandInitError::SerialInit(err))?;
-
-        Ok(
-            TestStand {
-                target,
-                serial,
-            }
-        )
+        let test_stand = host_lib::TestStand::new()?;
+        Ok(TestStand(test_stand))
     }
 
     /// Returns the connection to the test target (device under test)
-    pub fn target(&mut self) -> &mut Target {
-        &mut self.target
+    pub fn target(&mut self) -> Target {
+        Target::new(&mut self.0.target)
     }
 
     /// Returns the connection to the Serial-to-USB converter
     pub fn serial(&mut self) -> &mut Serial {
-        &mut self.serial
+        &mut self.0.serial
     }
-}
-
-
-#[derive(Debug)]
-pub enum TestStandInitError {
-    ConfigRead(ConfigReadError),
-    SerialInit(SerialInitError),
-    TargetInit(TargetInitError),
 }
