@@ -8,11 +8,9 @@ use serde::{
 
 
 /// A message from the test suite on the host to the target
-///
-/// You can use [`Receiver`], to receive a message on the test target.
 #[derive(Deserialize, Serialize)]
 pub enum HostToTarget<'r> {
-    /// Instruct the device to send a message via USART
+    /// Instruct the target to send a message via USART
     SendUsart(&'r [u8]),
 }
 
@@ -20,5 +18,6 @@ pub enum HostToTarget<'r> {
 /// An message from the target to the test suite on the host
 #[derive(Deserialize, Serialize)]
 pub enum TargetToHost<'r> {
+    /// Notify the host that data has been received via USART
     UsartReceive(&'r [u8]),
 }
