@@ -16,13 +16,13 @@ use serialport::{
 use crate::Error;
 
 
-/// The test suite's connection to the test target (device under test)
-pub struct Target {
+/// A connection to a firmware application
+pub struct Conn {
     port: Box<dyn SerialPort>,
 }
 
-impl Target {
-    /// Open a connection to the target
+impl Conn {
+    /// Open the connection
     pub fn new(path: &str) -> Result<Self, TargetInitError> {
         let port =
             serialport::open_with_settings(
@@ -47,7 +47,7 @@ impl Target {
         )
     }
 
-    /// Send a message to the test target
+    /// Send a message
     pub fn send<T>(&mut self, message: &T) -> Result<(), TargetSendError>
         where T: Serialize
     {
@@ -66,7 +66,7 @@ impl Target {
         Ok(())
     }
 
-    /// Receive a message from the test target
+    /// Receive a message
     pub fn receive<'de, T>(&mut self, timeout: Duration, buf: &'de mut Vec<u8>)
         -> Result<T, TargetReceiveError>
         where T: Deserialize<'de>

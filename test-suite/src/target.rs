@@ -9,16 +9,17 @@ use lpc845_messages::{
 };
 
 use host_lib::target::{
+    Conn,
     TargetReceiveError,
     TargetSendError,
 };
 
 
 /// Test-suite-specific wrapper around `host_lib::Target`
-pub struct Target<'r>(&'r mut host_lib::Target);
+pub struct Target<'r>(&'r mut Conn);
 
 impl<'r> Target<'r> {
-    pub(crate) fn new(target: &'r mut host_lib::Target) -> Self {
+    pub(crate) fn new(target: &'r mut Conn) -> Self {
         Self(target)
     }
 

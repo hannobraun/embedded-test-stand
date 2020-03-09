@@ -15,6 +15,6 @@ pub use self::{
         Result,
     },
     serial::Serial,
-    target::Target,
+    target::Conn,
     test_stand::TestStand,
 };
