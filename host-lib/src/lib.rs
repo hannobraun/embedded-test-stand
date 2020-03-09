@@ -2,19 +2,19 @@
 
 
 pub mod config;
+pub mod conn;
 pub mod error;
 pub mod serial;
-pub mod target;
 pub mod test_stand;
 
 
 pub use self::{
     config::Config,
+    conn::Conn,
     error::{
         Error,
         Result,
     },
     serial::Serial,
-    target::Conn,
     test_stand::TestStand,
 };

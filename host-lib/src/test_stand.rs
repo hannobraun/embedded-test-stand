@@ -11,13 +11,13 @@ use crate::{
         Config,
         ConfigReadError,
     },
+    conn::{
+        Conn,
+        TargetInitError,
+    },
     serial::{
         Serial,
         SerialInitError,
-    },
-    target::{
-        Conn,
-        TargetInitError,
     },
 };
 

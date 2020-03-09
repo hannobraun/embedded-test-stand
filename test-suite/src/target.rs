@@ -8,7 +8,7 @@ use lpc845_messages::{
     TargetToHost,
 };
 
-use host_lib::target::{
+use host_lib::conn::{
     Conn,
     TargetReceiveError,
     TargetSendError,
