@@ -19,7 +19,7 @@ use super::target::Target;
 pub struct TestStand {
     _test_stand: host_lib::TestStand,
 
-    target: Target,
+    target: host_lib::Target,
     serial: Serial,
 }
 
@@ -34,7 +34,7 @@ impl TestStand {
         let config = Config::read()
             .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
-        let target = Target::new(&config.target)
+        let target = host_lib::Target::new(&config.target)
             .map_err(|err| TestStandInitError::TargetInit(err))?;
         let serial = Serial::new(&config.serial)
             .map_err(|err| TestStandInitError::SerialInit(err))?;
@@ -50,8 +50,8 @@ impl TestStand {
     }
 
     /// Returns the connection to the test target (device under test)
-    pub fn target(&mut self) -> &mut Target {
-        &mut self.target
+    pub fn target(&mut self) -> Target {
+        Target::new(&mut self.target)
     }
 
     /// Returns the connection to the Serial-to-USB converter
