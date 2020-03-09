@@ -9,9 +9,7 @@ use super::target::Target;
 /// An instance of the test stand
 ///
 /// Used to access all resources that a test case requires.
-pub struct TestStand {
-    test_stand: host_lib::TestStand,
-}
+pub struct TestStand(host_lib::TestStand);
 
 impl TestStand {
     /// Initializes the test stand
@@ -20,21 +18,16 @@ impl TestStand {
     /// stand resources, as configured in there.
     pub fn new() -> Result<Self, TestStandInitError> {
         let test_stand = host_lib::TestStand::new()?;
-
-        Ok(
-            TestStand {
-                test_stand,
-            }
-        )
+        Ok(TestStand(test_stand))
     }
 
     /// Returns the connection to the test target (device under test)
     pub fn target(&mut self) -> Target {
-        Target::new(&mut self.test_stand.target)
+        Target::new(&mut self.0.target)
     }
 
     /// Returns the connection to the Serial-to-USB converter
     pub fn serial(&mut self) -> &mut Serial {
-        &mut self.test_stand.serial
+        &mut self.0.serial
     }
 }
