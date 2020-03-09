@@ -5,6 +5,7 @@ pub mod config;
 pub mod error;
 pub mod serial;
 pub mod target;
+pub mod test_stand;
 
 
 pub use self::{
@@ -14,4 +15,5 @@ pub use self::{
     },
     serial::Serial,
     target::Target,
+    test_stand::TestStand,
 };

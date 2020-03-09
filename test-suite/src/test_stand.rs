@@ -17,6 +17,8 @@ use super::target::Target;
 ///
 /// Used to access all resources that a test case requires.
 pub struct TestStand {
+    _test_stand: host_lib::TestStand,
+
     target: Target,
     serial: Serial,
 }
@@ -27,6 +29,8 @@ impl TestStand {
     /// Reads the `test-stand.toml` configuration file and initializes test
     /// stand resources, as configured in there.
     pub fn new() -> Result<Self, TestStandInitError> {
+        let test_stand = host_lib::TestStand::new();
+
         let config = Config::read()
             .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
@@ -37,6 +41,8 @@ impl TestStand {
 
         Ok(
             TestStand {
+                _test_stand: test_stand,
+
                 target,
                 serial,
             }
