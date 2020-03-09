@@ -249,12 +249,12 @@ const APP: () = {
     }
 
     #[task(binds = USART0, resources = [host_rx, host_prod])]
-    fn receive_from_host(cx: receive_from_host::Context) {
+    fn usart0(cx: usart0::Context) {
         receive(cx.resources.host_rx, cx.resources.host_prod);
     }
 
     #[task(binds = USART1, resources = [usart_rx, usart_prod])]
-    fn receive_from_usart(cx: receive_from_usart::Context) {
+    fn usart1(cx: usart1::Context) {
         receive(cx.resources.usart_rx, cx.resources.usart_prod);
     }
 };
