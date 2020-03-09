@@ -8,17 +8,18 @@ use lpc845_messages::{
     TargetToHost,
 };
 
-use host_lib::target::{
-    TargetReceiveError,
-    TargetSendError,
+use host_lib::conn::{
+    Conn,
+    ConnReceiveError,
+    ConnSendError,
 };
 
 
 /// Test-suite-specific wrapper around `host_lib::Target`
-pub struct Target<'r>(&'r mut host_lib::Target);
+pub struct Target<'r>(&'r mut Conn);
 
 impl<'r> Target<'r> {
-    pub(crate) fn new(target: &'r mut host_lib::Target) -> Self {
+    pub(crate) fn new(target: &'r mut Conn) -> Self {
         Self(target)
     }
 
@@ -61,10 +62,10 @@ impl<'r> Target<'r> {
 
 
 #[derive(Debug)]
-pub struct TargetUsartSendError(TargetSendError);
+pub struct TargetUsartSendError(ConnSendError);
 
 #[derive(Debug)]
 pub enum TargetUsartWaitError {
-    Receive(TargetReceiveError),
+    Receive(ConnReceiveError),
     Timeout,
 }

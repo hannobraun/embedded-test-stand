@@ -11,13 +11,13 @@ use crate::{
         Config,
         ConfigReadError,
     },
+    conn::{
+        Conn,
+        ConnInitError,
+    },
     serial::{
         Serial,
         SerialInitError,
-    },
-    target::{
-        Target,
-        TargetInitError,
     },
 };
 
@@ -28,7 +28,7 @@ use crate::{
 pub struct TestStand {
     _guard: LockResult<MutexGuard<'static, ()>>,
 
-    pub target: Target,
+    pub target: Conn,
     pub serial: Serial,
 }
 
@@ -56,8 +56,8 @@ impl TestStand {
         let config = Config::read()
             .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
-        let target = Target::new(&config.target)
-            .map_err(|err| TestStandInitError::TargetInit(err))?;
+        let target = Conn::new(&config.target)
+            .map_err(|err| TestStandInitError::ConnInit(err))?;
         let serial = Serial::new(&config.serial)
             .map_err(|err| TestStandInitError::SerialInit(err))?;
 
@@ -76,6 +76,6 @@ impl TestStand {
 #[derive(Debug)]
 pub enum TestStandInitError {
     ConfigRead(ConfigReadError),
+    ConnInit(ConnInitError),
     SerialInit(SerialInitError),
-    TargetInit(TargetInitError),
 }
