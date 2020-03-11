@@ -14,10 +14,6 @@ extern crate panic_semihosting;
 
 
 use cortex_m_semihosting::hprintln;
-use heapless::{
-    ArrayLength,
-    spsc,
-};
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
@@ -230,29 +226,13 @@ const APP: () = {
 
     #[task(binds = USART0, resources = [host_rx_int])]
     fn usart0(cx: usart0::Context) {
-        let rx = cx.resources.host_rx_int;
-        receive(&mut rx.usart, &mut rx.queue);
+        cx.resources.host_rx_int.receive()
+            .expect("Error receiving from USART0");
     }
 
     #[task(binds = USART1, resources = [usart_rx_int])]
     fn usart1(cx: usart1::Context) {
-        let rx = cx.resources.usart_rx_int;
-        receive(&mut rx.usart, &mut rx.queue);
+        cx.resources.usart_rx_int.receive()
+            .expect("Error receiving from USART1");
     }
 };
-
-
-fn receive<USART, Capacity>(
-    usart: &mut usart::Rx<USART>,
-    queue: &mut spsc::Producer<u8, Capacity>,
-)
-    where
-        USART:    usart::Instance,
-        Capacity: ArrayLength<u8>,
-{
-    // We're ignoring all errors here, as there's nothing we can do about them
-    // anyway. They will show up on the host as test failures.
-    while let Ok(b) = usart.read() {
-        let _ = queue.enqueue(b);
-    }
-}

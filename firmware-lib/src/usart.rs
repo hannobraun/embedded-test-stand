@@ -3,7 +3,10 @@ use heapless::{
     consts::U256,
     spsc,
 };
-use lpc8xx_hal::usart;
+use lpc8xx_hal::{
+    prelude::*,
+    usart,
+};
 
 
 /// Interrupt-enabled USART receiver
@@ -55,6 +58,28 @@ pub struct RxInt<'r, I> {
     pub queue: spsc::Producer<'r, u8, QueueCap>,
 }
 
+impl<I> RxInt<'_, I>
+    where
+        I: usart::Instance,
+{
+    pub fn receive(&mut self) -> Result<(), ReceiveError> {
+        loop {
+            match self.usart.read() {
+                Ok(b) => {
+                    self.queue.enqueue(b)
+                        .map_err(|_| ReceiveError::QueueFull)?;
+                }
+                Err(nb::Error::WouldBlock) => {
+                    return Ok(());
+                }
+                Err(nb::Error::Other(err)) => {
+                    return Err(ReceiveError::Usart(err));
+                }
+            }
+        }
+    }
+}
+
 
 /// API for processing received data
 ///
@@ -72,3 +97,10 @@ pub struct RxIdle<'r> {
 // require a generic with trait bound on all the structs. As of this writing,
 // `const fn`s with trait bounds are unstable, so we can't do it yet.
 type QueueCap = U256;
+
+
+#[derive(Debug)]
+pub enum ReceiveError {
+    QueueFull,
+    Usart(usart::Error),
+}
