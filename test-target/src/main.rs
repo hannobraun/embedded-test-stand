@@ -16,8 +16,6 @@ extern crate panic_semihosting;
 use cortex_m_semihosting::hprintln;
 use heapless::{
     ArrayLength,
-    Vec,
-    consts::U256,
     spsc,
 };
 use lpc8xx_hal::{
@@ -49,17 +47,13 @@ use lpc845_messages::{
 #[rtfm::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
-        host_rx: usart::Rx<USART0>,
-        host_tx: usart::Tx<USART0>,
+        host_rx_int:  firmware_lib::usart::RxInt<'static, USART0>,
+        host_rx_idle: firmware_lib::usart::RxIdle<'static>,
+        host_tx:      usart::Tx<USART0>,
 
-        usart_rx: usart::Rx<USART1>,
-        usart_tx: usart::Tx<USART1>,
-
-        host_prod: spsc::Producer<'static, u8, U256>,
-        host_cons: spsc::Consumer<'static, u8, U256>,
-
-        usart_prod: spsc::Producer<'static, u8, U256>,
-        usart_cons: spsc::Consumer<'static, u8, U256>,
+        usart_rx_int:  firmware_lib::usart::RxInt<'static, USART1>,
+        usart_rx_idle: firmware_lib::usart::RxIdle<'static>,
+        usart_tx:      usart::Tx<USART1>,
     }
 
     #[init]
@@ -69,10 +63,10 @@ const APP: () = {
         // here. RTFM knows this too, and by putting these statics right here,
         // at the beginning of the method, we're opting into some RTFM magic
         // that gives us safe access to them.
-        static mut HOST_QUEUE: spsc::Queue<u8, U256> =
-            spsc::Queue(heapless::i::Queue::new());
-        static mut USART_QUEUE: spsc::Queue<u8, U256> =
-            spsc::Queue(heapless::i::Queue::new());
+        static mut HOST_RX: firmware_lib::usart::Rx =
+            firmware_lib::usart::Rx::new();
+        static mut USART_RX: firmware_lib::usart::Rx =
+            firmware_lib::usart::Rx::new();
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
@@ -141,33 +135,32 @@ const APP: () = {
         );
         usart.enable_rxrdy();
 
-        let (host_prod,  host_cons)  = HOST_QUEUE.split();
-        let (usart_prod, usart_cons) = USART_QUEUE.split();
+        let (host_rx_int,  host_rx_idle)  = HOST_RX.init(host.rx);
+        let (usart_rx_int, usart_rx_idle) = USART_RX.init(usart.rx);
 
         init::LateResources {
-            host_rx:  host.rx,
-            host_tx:  host.tx,
-            usart_rx: usart.rx,
+            host_rx_int,
+            host_rx_idle,
+            host_tx: host.tx,
+
+            usart_rx_int,
+            usart_rx_idle,
             usart_tx: usart.tx,
-            host_prod,
-            host_cons,
-            usart_prod,
-            usart_cons,
         }
     }
 
-    #[idle(resources = [host_tx, usart_tx, host_cons, usart_cons])]
+    #[idle(resources = [host_rx_idle, host_tx, usart_rx_idle, usart_tx])]
     fn idle(cx: idle::Context) -> ! {
-        let usart       = cx.resources.usart_tx;
-        let usart_queue = cx.resources.usart_cons;
+        let usart_rx = cx.resources.usart_rx_idle;
+        let usart_tx = cx.resources.usart_tx;
+        let host_rx  = cx.resources.host_rx_idle;
+        let host_tx  = cx.resources.host_tx;
 
         let mut receiver_buf = [0; 256];
         let mut sender_buf   = [0; 256];
 
-        let mut usart_buf = Vec::<_, U256>::new();
-
         let mut receiver = Receiver::new(
-            cx.resources.host_cons,
+            &mut host_rx.queue,
             // At some point, we'll be able to just pass an array here directly.
             // For the time being though, traits are only implemented for arrays
             // with lengths of up to 32, so instead we need to create the array
@@ -177,22 +170,22 @@ const APP: () = {
             &mut receiver_buf[..],
         );
         let mut sender = Sender::new(
-            cx.resources.host_tx,
+            host_tx,
             // See comment on `Receiver::new` argument above. The same applies
             // here.
             &mut sender_buf[..],
         );
 
         loop {
-            while let Some(b) = usart_queue.dequeue() {
-                usart_buf.push(b)
+            while let Some(b) = usart_rx.queue.dequeue() {
+                usart_rx.buf.push(b)
                     .expect("USART buffer full");
             }
 
-            if usart_buf.len() > 0 {
-                sender.send(&TargetToHost::UsartReceive(&usart_buf))
+            if usart_rx.buf.len() > 0 {
+                sender.send(&TargetToHost::UsartReceive(&usart_rx.buf))
                     .expect("Failed to send `UsartReceive` event");
-                usart_buf.clear();
+                usart_rx.buf.clear();
             }
 
             if let Some(request) = receiver.receive() {
@@ -200,7 +193,7 @@ const APP: () = {
                 // tells us.
                 match request {
                     Ok(HostToTarget::SendUsart(message)) => {
-                        usart.bwrite_all(message)
+                        usart_tx.bwrite_all(message)
                             .void_unwrap();
                     }
                     Err(err) => {
@@ -228,21 +221,23 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                if !receiver.can_receive() && !usart_queue.ready() {
+                if !receiver.can_receive() && !usart_rx.queue.ready() {
                     asm::wfi();
                 }
             });
         }
     }
 
-    #[task(binds = USART0, resources = [host_rx, host_prod])]
+    #[task(binds = USART0, resources = [host_rx_int])]
     fn usart0(cx: usart0::Context) {
-        receive(cx.resources.host_rx, cx.resources.host_prod);
+        let rx = cx.resources.host_rx_int;
+        receive(&mut rx.usart, &mut rx.queue);
     }
 
-    #[task(binds = USART1, resources = [usart_rx, usart_prod])]
+    #[task(binds = USART1, resources = [usart_rx_int])]
     fn usart1(cx: usart1::Context) {
-        receive(cx.resources.usart_rx, cx.resources.usart_prod);
+        let rx = cx.resources.usart_rx_int;
+        receive(&mut rx.usart, &mut rx.queue);
     }
 };
 
