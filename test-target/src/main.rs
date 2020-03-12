@@ -212,7 +212,7 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                if !receiver.can_receive() && !usart_rx.queue.ready() {
+                if !receiver.can_receive() && !usart_rx.can_process() {
                     asm::wfi();
                 }
             });

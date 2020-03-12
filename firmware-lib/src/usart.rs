@@ -93,6 +93,11 @@ pub struct RxIdle<'r> {
 }
 
 impl RxIdle<'_> {
+    /// Indicates whether data has been received that can be processed
+    pub fn can_process(&self) -> bool {
+        self.queue.ready()
+    }
+
     /// Process received data
     ///
     /// Copies any available data to the internal buffer. If the buffer is not
