@@ -173,16 +173,11 @@ const APP: () = {
         );
 
         loop {
-            while let Some(b) = usart_rx.queue.dequeue() {
-                usart_rx.buf.push(b)
-                    .expect("USART buffer full");
-            }
-
-            if usart_rx.buf.len() > 0 {
-                sender.send(&TargetToHost::UsartReceive(&usart_rx.buf))
-                    .expect("Failed to send `UsartReceive` event");
-                usart_rx.buf.clear();
-            }
+            usart_rx
+                .process_raw(|buf| {
+                    sender.send(&TargetToHost::UsartReceive(buf))
+                })
+                .expect("Error processing USART data");
 
             if let Some(request) = receiver.receive() {
                 // Receive a request from the test suite and do whatever it

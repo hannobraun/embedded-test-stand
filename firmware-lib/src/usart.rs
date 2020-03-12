@@ -92,6 +92,31 @@ pub struct RxIdle<'r> {
     pub buf:   Vec<u8, QueueCap>,
 }
 
+impl RxIdle<'_> {
+    /// Process received data
+    ///
+    /// Copies any available data to the internal buffer. If the buffer is not
+    /// empty, the closure is called, with the buffer data as an argument.
+    ///
+    /// The internal buffer is cleared, once the closure returns.
+    pub fn process_raw<E>(&mut self, f: impl FnOnce(&[u8]) -> Result<(), E>)
+        -> Result<(), ProcessError<E>>
+    {
+        while let Some(b) = self.queue.dequeue() {
+            self.buf.push(b)
+                .map_err(|_| ProcessError::BufferFull)?;
+        }
+
+        if self.buf.len() > 0 {
+            f(&self.buf)
+                .map_err(|err| ProcessError::Other(err))?;
+            self.buf.clear();
+        }
+
+        Ok(())
+    }
+}
+
 
 // It would be nice to make the queue capacity configurable, but that would
 // require a generic with trait bound on all the structs. As of this writing,
@@ -103,4 +128,10 @@ type QueueCap = U256;
 pub enum ReceiveError {
     QueueFull,
     Usart(usart::Error),
+}
+
+#[derive(Debug)]
+pub enum ProcessError<E> {
+    BufferFull,
+    Other(E),
 }
