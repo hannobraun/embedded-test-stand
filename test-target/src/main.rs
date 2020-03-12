@@ -13,7 +13,6 @@
 extern crate panic_semihosting;
 
 
-use cortex_m_semihosting::hprintln;
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
@@ -28,12 +27,8 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
-use void::ResultVoidExt;
 
-use firmware_lib::{
-    Receiver,
-    Sender,
-};
+use firmware_lib::Sender;
 use lpc845_messages::{
     HostToTarget,
     TargetToHost,
@@ -152,23 +147,16 @@ const APP: () = {
         let host_rx  = cx.resources.host_rx_idle;
         let host_tx  = cx.resources.host_tx;
 
-        let mut receiver_buf = [0; 256];
-        let mut sender_buf   = [0; 256];
+        let mut sender_buf = [0; 256];
 
-        let mut receiver = Receiver::new(
-            &mut host_rx.queue,
+        let mut sender = Sender::new(
+            host_tx,
             // At some point, we'll be able to just pass an array here directly.
             // For the time being though, traits are only implemented for arrays
             // with lengths of up to 32, so instead we need to create the array
             // in a variable, and pass a slice referencing it. Since we don't
             // intend to move the receiver anywhere else, it doesn't make a
             // difference (besides being a bit more verbose).
-            &mut receiver_buf[..],
-        );
-        let mut sender = Sender::new(
-            host_tx,
-            // See comment on `Receiver::new` argument above. The same applies
-            // here.
             &mut sender_buf[..],
         );
 
@@ -179,26 +167,16 @@ const APP: () = {
                 })
                 .expect("Error processing USART data");
 
-            if let Some(request) = receiver.receive() {
-                // Receive a request from the test suite and do whatever it
-                // tells us.
-                match request {
-                    Ok(HostToTarget::SendUsart(message)) => {
-                        usart_tx.bwrite_all(message)
-                            .void_unwrap();
+            host_rx
+                .process_message(|message| {
+                    match message {
+                        HostToTarget::SendUsart(message) => {
+                            usart_tx.bwrite_all(message)
+                        }
                     }
-                    Err(err) => {
-                        // Nothing we can do really. Let's just send an error
-                        // message to the host via semihosting and carry on.
-                        let _ = hprintln!(
-                            "Error receiving host request: {:?}",
-                            err,
-                        );
-                    }
-                }
-
-                receiver.reset();
-            }
+                })
+                .expect("Error processing host request");
+            host_rx.clear_buf();
 
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
@@ -212,7 +190,7 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                if !receiver.can_receive() && !usart_rx.can_process() {
+                if !host_rx.can_process() && !usart_rx.can_process() {
                     asm::wfi();
                 }
             });
