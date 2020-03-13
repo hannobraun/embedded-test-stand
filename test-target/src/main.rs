@@ -14,7 +14,6 @@ extern crate panic_semihosting;
 
 
 use lpc8xx_hal::{
-    prelude::*,
     Peripherals,
     cortex_m::{
         asm,
@@ -174,7 +173,7 @@ const APP: () = {
                 .process_message(|message| {
                     match message {
                         HostToTarget::SendUsart(data) => {
-                            usart_tx.usart.bwrite_all(data)
+                            usart_tx.send_raw(data)
                         }
                     }
                 })
