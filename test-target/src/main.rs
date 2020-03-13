@@ -148,14 +148,14 @@ const APP: () = {
         let host_rx  = cx.resources.host_rx_idle;
         let host_tx  = cx.resources.host_tx;
 
-        let mut sender_buf = [0; 256];
+        let mut buf = [0; 256];
 
         loop {
             usart_rx
                 .process_raw(|data| {
                     host_tx.send_message(
                         &TargetToHost::UsartReceive(data),
-                        &mut sender_buf,
+                        &mut buf,
                     )
                 })
                 .expect("Error processing USART data");
