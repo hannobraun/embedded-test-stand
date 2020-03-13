@@ -152,9 +152,9 @@ const APP: () = {
 
         loop {
             usart_rx
-                .process_raw(|buf| {
+                .process_raw(|data| {
                     host_tx.send_message(
-                        &TargetToHost::UsartReceive(buf),
+                        &TargetToHost::UsartReceive(data),
                         &mut sender_buf,
                     )
                 })
