@@ -173,8 +173,8 @@ const APP: () = {
             host_rx
                 .process_message(|message| {
                     match message {
-                        HostToTarget::SendUsart(message) => {
-                            usart_tx.usart.bwrite_all(message)
+                        HostToTarget::SendUsart(data) => {
+                            usart_tx.usart.bwrite_all(data)
                         }
                     }
                 })
