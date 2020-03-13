@@ -27,7 +27,6 @@ use lpc8xx_hal::{
     usart,
 };
 
-use firmware_lib::Sender;
 use lpc845_messages::{
     HostToTarget,
     TargetToHost,
@@ -151,21 +150,13 @@ const APP: () = {
 
         let mut sender_buf = [0; 256];
 
-        let mut sender = Sender::new(
-            &mut host_tx.usart,
-            // At some point, we'll be able to just pass an array here directly.
-            // For the time being though, traits are only implemented for arrays
-            // with lengths of up to 32, so instead we need to create the array
-            // in a variable, and pass a slice referencing it. Since we don't
-            // intend to move the receiver anywhere else, it doesn't make a
-            // difference (besides being a bit more verbose).
-            &mut sender_buf[..],
-        );
-
         loop {
             usart_rx
                 .process_raw(|buf| {
-                    sender.send(&TargetToHost::UsartReceive(buf))
+                    host_tx.send_message(
+                        &TargetToHost::UsartReceive(buf),
+                        &mut sender_buf,
+                    )
                 })
                 .expect("Error processing USART data");
 
