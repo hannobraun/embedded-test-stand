@@ -40,11 +40,11 @@ const APP: () = {
     struct Resources {
         host_rx_int:  firmware_lib::usart::RxInt<'static, USART0>,
         host_rx_idle: firmware_lib::usart::RxIdle<'static>,
-        host_tx:      usart::Tx<USART0>,
+        host_tx:      firmware_lib::usart::Tx<USART0>,
 
         usart_rx_int:  firmware_lib::usart::RxInt<'static, USART1>,
         usart_rx_idle: firmware_lib::usart::RxIdle<'static>,
-        usart_tx:      usart::Tx<USART1>,
+        usart_tx:      firmware_lib::usart::Tx<USART1>,
     }
 
     #[init]
@@ -129,14 +129,17 @@ const APP: () = {
         let (host_rx_int,  host_rx_idle)  = HOST_RX.init(host.rx);
         let (usart_rx_int, usart_rx_idle) = USART_RX.init(usart.rx);
 
+        let host_tx  = firmware_lib::usart::Tx { usart: host.tx  };
+        let usart_tx = firmware_lib::usart::Tx { usart: usart.tx };
+
         init::LateResources {
             host_rx_int,
             host_rx_idle,
-            host_tx: host.tx,
+            host_tx,
 
             usart_rx_int,
             usart_rx_idle,
-            usart_tx: usart.tx,
+            usart_tx,
         }
     }
 
@@ -150,7 +153,7 @@ const APP: () = {
         let mut sender_buf = [0; 256];
 
         let mut sender = Sender::new(
-            host_tx,
+            &mut host_tx.usart,
             // At some point, we'll be able to just pass an array here directly.
             // For the time being though, traits are only implemented for arrays
             // with lengths of up to 32, so instead we need to create the array
@@ -171,7 +174,7 @@ const APP: () = {
                 .process_message(|message| {
                     match message {
                         HostToTarget::SendUsart(message) => {
-                            usart_tx.bwrite_all(message)
+                            usart_tx.usart.bwrite_all(message)
                         }
                     }
                 })
