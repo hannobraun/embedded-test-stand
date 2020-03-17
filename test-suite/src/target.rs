@@ -16,13 +16,9 @@ use host_lib::conn::{
 
 
 /// Test-suite-specific wrapper around `host_lib::Target`
-pub struct Target<'r>(&'r mut Conn);
+pub struct Target<'r>(pub(crate) &'r mut Conn);
 
 impl<'r> Target<'r> {
-    pub(crate) fn new(target: &'r mut Conn) -> Self {
-        Self(target)
-    }
-
     /// Instruct the target to send this message via USART
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>

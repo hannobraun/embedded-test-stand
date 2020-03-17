@@ -24,7 +24,7 @@ impl TestStand {
     /// Returns the connection to the test target (device under test)
     pub fn target(&mut self) -> Result<Target, NotConfiguredError> {
         match &mut self.0.target {
-            Some(target) => Ok(Target::new(target)),
+            Some(target) => Ok(Target(target)),
             None         => Err(NotConfiguredError("target")),
         }
     }
