@@ -15,7 +15,7 @@ use host_lib::conn::{
 };
 
 
-/// Test-suite-specific wrapper around `host_lib::Target`
+/// The connection to the test target
 pub struct Target<'r>(pub(crate) &'r mut Conn);
 
 impl<'r> Target<'r> {
