@@ -31,10 +31,7 @@ use lpc8xx_hal::{
         USART0,
         USART1,
     },
-    syscon::{
-        clocksource::UsartClock,
-        frg,
-    },
+    syscon::frg,
     usart,
 };
 use void::ResultVoidExt;
@@ -97,7 +94,7 @@ const APP: () = {
             syscon.frg0.select_clock(frg::Clock::FRO);
             syscon.frg0.set_mult(22);
             syscon.frg0.set_div(0xFF);
-            UsartClock::new(&syscon.frg0, 5, 16)
+            usart::Clock::new(&syscon.frg0, 5, 16)
         };
 
         // Assign pins to USART0 for RX/TX functions. On the LPC845-BRK, those
@@ -124,16 +121,6 @@ const APP: () = {
             u0_txd,
         );
         host.enable_rxrdy();
-
-        // USART0 is already set up for 115200 baud, which is also fine for
-        // USART1. Let's reuse the FRG0 configuration.
-        //
-        // Please note that as of this writing, a bug in LPC8xx HAL would allow
-        // us to overwrite the FRG0 configuration here, which would totally mess
-        // up USART0's baud rate. If you want to change the baud rate for
-        // USART1, please use a different clock (like FRG1), or use the same
-        // clock and pass different divider values to `UsartClock::new`.
-        let clock_config = UsartClock::new(&syscon.frg0, 5, 16);
 
         // Assign pins to USART1.
         let (u1_rxd, _) = swm.movable_functions.u1_rxd.assign(
