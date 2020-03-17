@@ -11,6 +11,7 @@ use super::{
         TargetUsartSendError,
         TargetUsartWaitError,
     },
+    test_stand::NotConfiguredError,
 };
 
 
@@ -21,11 +22,18 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 /// Error type specific to this test suite
 #[derive(Debug)]
 pub enum Error {
+    NotConfigured(NotConfiguredError),
     SerialSend(SerialSendError),
     SerialWait(SerialWaitError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
+}
+
+impl From<NotConfiguredError> for Error {
+    fn from(err: NotConfiguredError) -> Self {
+        Self::NotConfigured(err)
+    }
 }
 
 impl From<SerialSendError> for Error {

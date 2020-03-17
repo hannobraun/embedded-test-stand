@@ -28,8 +28,8 @@ use crate::{
 pub struct TestStand {
     _guard: LockResult<MutexGuard<'static, ()>>,
 
-    pub target: Conn,
-    pub serial: Serial,
+    pub target: Option<Conn>,
+    pub serial: Option<Serial>,
 }
 
 impl TestStand {
@@ -56,10 +56,21 @@ impl TestStand {
         let config = Config::read()
             .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
-        let target = Conn::new(&config.target)
-            .map_err(|err| TestStandInitError::ConnInit(err))?;
-        let serial = Serial::new(&config.serial)
-            .map_err(|err| TestStandInitError::SerialInit(err))?;
+        let mut target = None;
+        let mut serial = None;
+
+        if let Some(path) = config.target {
+            target = Some(
+                Conn::new(&path)
+                    .map_err(|err| TestStandInitError::ConnInit(err))?
+            );
+        }
+        if let Some(path) = config.serial {
+            serial = Some(
+                Serial::new(&path)
+                    .map_err(|err| TestStandInitError::SerialInit(err))?
+            );
+        }
 
         Ok(
             Self {

@@ -27,10 +27,10 @@ fn it_should_send_messages() -> Result {
     let mut test_stand = TestStand::new()?;
 
     let message = b"Hello, world!";
-    test_stand.target().send_usart(message)?;
+    test_stand.target()?.send_usart(message)?;
 
     let timeout  = Duration::from_millis(50);
-    let received = test_stand.serial().wait_for(message, timeout)?;
+    let received = test_stand.serial()?.wait_for(message, timeout)?;
 
     assert_eq!(received, message);
     Ok(())
@@ -41,10 +41,10 @@ fn it_should_receive_messages() -> Result {
     let mut test_stand = TestStand::new()?;
 
     let message = b"Hello, world!";
-    test_stand.serial().send(message)?;
+    test_stand.serial()?.send(message)?;
 
     let timeout  = Duration::from_millis(50);
-    let received = test_stand.target().wait_for_usart_rx(message, timeout)?;
+    let received = test_stand.target()?.wait_for_usart_rx(message, timeout)?;
 
     assert_eq!(received, message);
     Ok(())

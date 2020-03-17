@@ -10,8 +10,8 @@ use crate::Error;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub target: String,
-    pub serial: String,
+    pub target: Option<String>,
+    pub serial: Option<String>,
 }
 
 impl Config {
