@@ -27,7 +27,12 @@ use lpc8xx_hal::{
     usart,
 };
 
-use firmware_lib::usart::Usart;
+use firmware_lib::usart::{
+    RxIdle,
+    RxInt,
+    Tx,
+    Usart,
+};
 use lpc845_messages::{
     HostToTarget,
     TargetToHost,
@@ -37,13 +42,13 @@ use lpc845_messages::{
 #[rtfm::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
-        host_rx_int:  firmware_lib::usart::RxInt<'static, USART0>,
-        host_rx_idle: firmware_lib::usart::RxIdle<'static>,
-        host_tx:      firmware_lib::usart::Tx<USART0>,
+        host_rx_int:  RxInt<'static, USART0>,
+        host_rx_idle: RxIdle<'static>,
+        host_tx:      Tx<USART0>,
 
-        usart_rx_int:  firmware_lib::usart::RxInt<'static, USART1>,
-        usart_rx_idle: firmware_lib::usart::RxIdle<'static>,
-        usart_tx:      firmware_lib::usart::Tx<USART1>,
+        usart_rx_int:  RxInt<'static, USART1>,
+        usart_rx_idle: RxIdle<'static>,
+        usart_tx:      Tx<USART1>,
     }
 
     #[init]
