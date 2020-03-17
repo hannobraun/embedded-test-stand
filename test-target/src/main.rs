@@ -84,7 +84,7 @@ const APP: () = {
         // USB.
         //
         // Careful, the LCP845-BRK documentation uses the opposite designations
-        // (i.e. from the perspective of the on-boardprogrammer, not the
+        // (i.e. from the perspective of the on-board programmer, not the
         // microcontroller).
         let (u0_rxd, _) = swm.movable_functions.u0_rxd.assign(
             p.pins.pio0_24.into_swm_pin(),
