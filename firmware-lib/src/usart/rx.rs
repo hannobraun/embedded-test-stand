@@ -1,6 +1,5 @@
 use heapless::{
     Vec,
-    consts::U256,
     spsc,
 };
 use lpc8xx_hal::{
@@ -9,46 +8,7 @@ use lpc8xx_hal::{
 };
 use serde::Deserialize;
 
-
-/// Interrupt-enabled USART receiver
-///
-/// Can be allocated in a `static` or another memory location with an
-/// appropriate lifetime. Once initialized, it is split into two parts:
-///
-/// - [`RxInt`], which handles the timing-critical parts of receiving, and is
-///   intended to be moved into the interrupt handler.
-/// - [`RxIdle`], which can be used to process the received data.
-pub struct Rx {
-    queue: spsc::Queue<u8, QueueCap>,
-}
-
-impl Rx {
-    /// Create a new instance of `Rx`
-    pub const fn new() -> Self {
-        Self {
-            queue: spsc::Queue(heapless::i::Queue::new()),
-        }
-    }
-
-    /// Initialize the receiver
-    ///
-    /// Returns the two parts, [`RxInt`] and [`RxIdle`], which can then be moved
-    /// into different contexts.
-    pub fn init<I>(&mut self, usart: usart::Rx<I>) -> (RxInt<I>, RxIdle) {
-        let (prod, cons) = self.queue.split();
-
-        let rx_int = RxInt {
-            usart,
-            queue: prod,
-        };
-        let rx_idle = RxIdle {
-            queue: cons,
-            buf:   Vec::new(),
-        };
-
-        (rx_int, rx_idle)
-    }
-}
+use super::QueueCap;
 
 
 /// API for receiving data from a USART instance in an interrupt handler
@@ -168,12 +128,6 @@ impl RxIdle<'_> {
         self.buf.clear();
     }
 }
-
-
-// It would be nice to make the queue capacity configurable, but that would
-// require a generic with trait bound on all the structs. As of this writing,
-// `const fn`s with trait bounds are unstable, so we can't do it yet.
-type QueueCap = U256;
 
 
 #[derive(Debug)]

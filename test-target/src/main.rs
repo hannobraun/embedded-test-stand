@@ -27,6 +27,7 @@ use lpc8xx_hal::{
     usart,
 };
 
+use firmware_lib::usart::Usart;
 use lpc845_messages::{
     HostToTarget,
     TargetToHost,
@@ -52,10 +53,8 @@ const APP: () = {
         // here. RTFM knows this too, and by putting these statics right here,
         // at the beginning of the method, we're opting into some RTFM magic
         // that gives us safe access to them.
-        static mut HOST_RX: firmware_lib::usart::Rx =
-            firmware_lib::usart::Rx::new();
-        static mut USART_RX: firmware_lib::usart::Rx =
-            firmware_lib::usart::Rx::new();
+        static mut HOST:  Usart = Usart::new();
+        static mut USART: Usart = Usart::new();
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
@@ -124,11 +123,8 @@ const APP: () = {
         );
         usart.enable_rxrdy();
 
-        let (host_rx_int,  host_rx_idle)  = HOST_RX.init(host.rx);
-        let (usart_rx_int, usart_rx_idle) = USART_RX.init(usart.rx);
-
-        let host_tx  = firmware_lib::usart::Tx { usart: host.tx  };
-        let usart_tx = firmware_lib::usart::Tx { usart: usart.tx };
+        let (host_rx_int,  host_rx_idle,  host_tx)  = HOST.init(host);
+        let (usart_rx_int, usart_rx_idle, usart_tx) = USART.init(usart);
 
         init::LateResources {
             host_rx_int,
