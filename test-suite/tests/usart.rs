@@ -2,16 +2,15 @@
 //!
 //! This test suite requires two serial connections:
 //! - To the test target, to control the device's behavior.
-//! - To the target's USART instance used for the test, via a USB/Serial
-//!   converter.
+//! - To the test assistant, to send/receive message to/from the target's USART.
 //!
 //! The configuration file (`test-stand.toml`) is used to determine which serial
 //! ports to connect to for each purpose. You probably need to update it, to
 //! reflect the realities on your system.
 //!
-//! As of this writing, the USART being used for this test expects to receive
-//! on PIO0_26 (pin 12 on the LPC845-BRK) and send on PIO0_27 (pin 13). Please
-//! connect your USB/Serial converter accordingly.
+//! As of this writing, both the target and the assistant use PIO0_26 (pin 12 on
+//! the LPC845-BRK) for receiving and PIO0_27 (pin 13) for sending. Please
+//! connect the target and assistant accordingly.
 
 
 use std::time::Duration;
@@ -27,10 +26,11 @@ fn it_should_send_messages() -> Result {
     let mut test_stand = TestStand::new()?;
 
     let message = b"Hello, world!";
-    test_stand.target().send_usart(message)?;
+    test_stand.target()?.send_usart(message)?;
 
     let timeout  = Duration::from_millis(50);
-    let received = test_stand.serial().wait_for(message, timeout)?;
+    let received = test_stand.assistant()?
+        .receive_from_target_usart(message, timeout)?;
 
     assert_eq!(received, message);
     Ok(())
@@ -41,10 +41,10 @@ fn it_should_receive_messages() -> Result {
     let mut test_stand = TestStand::new()?;
 
     let message = b"Hello, world!";
-    test_stand.serial().send(message)?;
+    test_stand.assistant()?.send_to_target_usart(message)?;
 
     let timeout  = Duration::from_millis(50);
-    let received = test_stand.target().wait_for_usart_rx(message, timeout)?;
+    let received = test_stand.target()?.wait_for_usart_rx(message, timeout)?;
 
     assert_eq!(received, message);
     Ok(())

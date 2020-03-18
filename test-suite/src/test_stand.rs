@@ -3,7 +3,10 @@ use host_lib::{
     test_stand::TestStandInitError,
 };
 
-use super::target::Target;
+use super::{
+    assistant::Assistant,
+    target::Target,
+};
 
 
 /// An instance of the test stand
@@ -22,12 +25,30 @@ impl TestStand {
     }
 
     /// Returns the connection to the test target (device under test)
-    pub fn target(&mut self) -> Target {
-        Target::new(&mut self.0.target)
+    pub fn target(&mut self) -> Result<Target, NotConfiguredError> {
+        match &mut self.0.target {
+            Some(target) => Ok(Target(target)),
+            None         => Err(NotConfiguredError("target")),
+        }
+    }
+
+    /// Returns the connection to the test assistant
+    pub fn assistant(&mut self) -> Result<Assistant, NotConfiguredError> {
+        match &mut self.0.assistant {
+            Some(assistant) => Ok(Assistant(assistant)),
+            None            => Err(NotConfiguredError("assistant")),
+        }
     }
 
     /// Returns the connection to the Serial-to-USB converter
-    pub fn serial(&mut self) -> &mut Serial {
-        &mut self.0.serial
+    pub fn serial(&mut self) -> Result<&mut Serial, NotConfiguredError> {
+        match &mut self.0.serial {
+            Some(serial) => Ok(serial),
+            None         => Err(NotConfiguredError("serial")),
+        }
     }
 }
+
+
+#[derive(Debug)]
+pub struct NotConfiguredError(&'static str);

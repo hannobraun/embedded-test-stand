@@ -5,6 +5,7 @@
 //! a generally usable library that can be shared with other test suites.
 
 
+pub mod assistant;
 pub mod error;
 pub mod target;
 pub mod test_stand;

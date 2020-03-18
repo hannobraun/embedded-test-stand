@@ -14,6 +14,19 @@ Implementation work has started, and a small (but growing) test suite covering L
 No work is being done right now to support other microcontrollers than the LPC845. This would be a welcome addition though, so please get in touch by opening an issue, if you're interested.
 
 
+## Concepts
+
+This section explains some concepts, which should make the structure of this repository easier to understand.
+
+**Test target**: The test target is the hardware under test. It is a microcontroller that runs special firmware, which can communicate with the test suite.
+
+**Test suite**: A collection of test cases, which runs on the host computer. It communicates with the firmwares on the test target and test assistant, to orchestrate the test and gather information about the test target's behavior.
+
+**Test case**: A single test that is part of a test suite.
+
+**Test assistant**: Additional hardware (likely a microcontroller development board) that assists the test suite in orchestrating the tests, and gathering information about the test target's behavior.
+
+
 ## Structure
 
 At the time of writing, there are 5 Cargo packages in this repository. It's a bit unfortunate that there are this many, but it doesn't make sense to reduce the number, because of the following factors:
@@ -25,7 +38,7 @@ At the time of writing, there are 5 Cargo packages in this repository. It's a bi
 
 These are the crates that are independent of the LPC845 test suite. If you want to use this test stand for your own project, these are the crates you want to use:
 
-- `firmware-lib`: Library for firmware running on the test target.
+- `firmware-lib`: Library for firmware running on the target or assistant.
 - `host-lib`: Library for test suites running on the host.
 
 ### LPC845 Test Suite
@@ -34,6 +47,7 @@ These crates belong to the LPC845 test suite. They are not directly applicable t
 
 - `messages`: The messages used to communicate between test suite and target firmware.
 - `test-target`: The firmware running on the hardware under test.
+- `test-assistant`: The firmware running on the test assistant.
 - `test-suite`: The test suite itself, plus some suite-specific convenience wrappers around APIs in `host-lib`.
 
 
@@ -41,12 +55,27 @@ These crates belong to the LPC845 test suite. They are not directly applicable t
 
 This repository contains an example test suite that sends commands to the device under test and verifies its response.
 
-Before you can run the test suite, you first need to download the firmware to an [LPC845-BRK]. This requires [arm-none-eabi-gdb] and OpenOCD (the latest official release won't do; use a recent version from Git, or the [xPack binaries]).
+Before you can successfully run the test suite, you need the following:
 
-If you have those installed, you can download the test firmware like this:
+1. Two [LPC845-BRK] boards. One will be the test target, the other will function as the test assistant.
+1. OpenOCD and [arm-none-eabi-gdb] installed on your workstation. The latest official release of OpenOCD won't do, unfortunately. Use a recent version from Git, or the [xPack binaries].
+
+In addition, you need to update some configuration, to reflect the realities on your system:
+
+1. Update `test-target/dap-serial.cfg` and `test-assistant/dap-serial.cfg`, as described in those files. Otherwise OpenOCD/GDB won't be able to distinguish the two LPC845-BRK boards, and might try to upload both firmwares to the same device.
+1. Update `test-suite/test-stand.toml` to make sure the test suite has the correct paths to the serial device files. Otherwise, it won't be able to communicate with the firmwares.
+
+Once you have all of this set up, you can download the test target firmware like this:
 
 ```
-cd test-firmware
+cd test-target
+cargo run
+```
+
+And the test assistant firmware like this:
+
+```
+cd test-assistant
 cargo run
 ```
 
@@ -57,9 +86,7 @@ cd test-suite
 cargo test
 ```
 
-Depending on which system you're running this on, you might need to adapt the test stand configuration file (`test-suite/test-stand.toml`) to your needs.
-
-You should see a list of successfully execute test cases.
+You should see a list of successfully executed test cases.
 
 [LPC845-BRK]: https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/general-purpose-mcus/lpc800-cortex-m0-plus-/lpc845-breakout-board-for-lpc84x-family-mcus:LPC845-BRK
 [xPack binaries]: https://github.com/xpack-dev-tools/openocd-xpack/releases/
