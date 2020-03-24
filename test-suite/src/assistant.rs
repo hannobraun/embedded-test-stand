@@ -45,10 +45,10 @@ impl<'r> Assistant<'r> {
             }
 
             let mut tmp = Vec::new();
-            let event = self.0.receive::<AssistantToHost>(timeout, &mut tmp)
+            let message = self.0.receive::<AssistantToHost>(timeout, &mut tmp)
                 .map_err(|err| AssistantUsartWaitError::Receive(err))?;
 
-            match event {
+            match message {
                 AssistantToHost::UsartReceive(data) => buf.extend(data),
             }
         }
