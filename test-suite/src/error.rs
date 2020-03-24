@@ -8,6 +8,7 @@ use host_lib::{
 
 use super::{
     assistant::{
+        AssistantPinReadError,
         AssistantUsartSendError,
         AssistantUsartWaitError,
     },
@@ -28,6 +29,7 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 /// Error type specific to this test suite
 #[derive(Debug)]
 pub enum Error {
+    AssistantPinRead(AssistantPinReadError),
     AssistantUsartSend(AssistantUsartSendError),
     AssistantUsartWait(AssistantUsartWaitError),
     NotConfigured(NotConfiguredError),
@@ -38,6 +40,12 @@ pub enum Error {
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
+}
+
+impl From<AssistantPinReadError> for Error {
+    fn from(err: AssistantPinReadError) -> Self {
+        Self::AssistantPinRead(err)
+    }
 }
 
 impl From<AssistantUsartSendError> for Error {
