@@ -1,4 +1,5 @@
 use std::{
+    io,
     slice,
     time::Duration,
 };
@@ -106,8 +107,23 @@ impl Conn {
 #[derive(Debug)]
 pub struct ConnInitError(serialport::Error);
 
+
 #[derive(Debug)]
 pub struct ConnSendError(Error);
 
+
 #[derive(Debug)]
 pub struct ConnReceiveError(Error);
+
+impl ConnReceiveError {
+    pub fn is_timeout(&self) -> bool {
+        match &self.0 {
+            Error::Io(err) if err.kind() == io::ErrorKind::TimedOut => {
+                true
+            }
+            _ => {
+                false
+            }
+        }
+    }
+}
