@@ -40,4 +40,10 @@ pub enum HostToAssistant<'r> {
 pub enum AssistantToHost<'r> {
     /// Notify the host that data has been received from the target via USART
     UsartReceive(&'r [u8]),
+
+    /// Notify the host that pin has been set high
+    PinIsHigh,
+
+    /// Notify the host that pin has been set low
+    PinIsLow,
 }

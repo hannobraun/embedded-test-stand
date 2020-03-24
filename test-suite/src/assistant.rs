@@ -49,7 +49,16 @@ impl<'r> Assistant<'r> {
                 .map_err(|err| AssistantUsartWaitError::Receive(err))?;
 
             match message {
-                AssistantToHost::UsartReceive(data) => buf.extend(data),
+                AssistantToHost::UsartReceive(data) => {
+                    buf.extend(data)
+                }
+                _ => {
+                    return Err(
+                        AssistantUsartWaitError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
             }
         }
     }
@@ -63,5 +72,6 @@ pub struct AssistantUsartSendError(ConnSendError);
 pub enum AssistantUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
+    UnexpectedMessage(String),
 }
 

@@ -13,16 +13,30 @@
 extern crate panic_semihosting;
 
 
+use heapless::{
+    consts::U16,
+    spsc::{
+        Consumer,
+        Producer,
+        Queue,
+    },
+};
 use lpc8xx_hal::{
     Peripherals,
     cortex_m::{
         asm,
         interrupt,
     },
+    init_state::Enabled,
     pac::{
         USART0,
         USART1,
     },
+    pinint::{
+        self,
+        PININT0,
+    },
+    pins::PIO1_0,
     syscon::frg,
     usart,
 };
@@ -49,6 +63,10 @@ const APP: () = {
         target_rx_int:  RxInt<'static, USART1>,
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
+
+        pin_prod: Producer<'static, bool, U16>,
+        pin_cons: Consumer<'static, bool, U16>,
+        pin_int:  pinint::Interrupt<PININT0, PIO1_0, Enabled>,
     }
 
     #[init]
@@ -61,14 +79,28 @@ const APP: () = {
         static mut HOST:   Usart = Usart::new();
         static mut TARGET: Usart = Usart::new();
 
+        static mut PIN_QUEUE: Queue<bool, U16> =
+            Queue(heapless::i::Queue::new());
+
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
         let p = Peripherals::take().unwrap_or_else(|| unreachable!());
 
         let mut syscon = p.SYSCON.split();
         let     swm    = p.SWM.split();
+        let     gpio   = p.GPIO.enable(&mut syscon.handle);
+        let     pinint = p.PININT.enable(&mut syscon.handle);
 
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
+
+        // Configure interrupt for pin connected to assistant's LED pin
+        let _pin = p.pins.pio1_0.into_input_pin(gpio.tokens.pio1_0);
+        let mut pin_int = pinint
+            .interrupts
+            .pinint0
+            .select::<PIO1_0>(&mut syscon.handle);
+        pin_int.enable_rising_edge();
+        pin_int.enable_falling_edge();
 
         // Configure the clock for USART0, using the Fractional Rate Generator
         // (FRG) and the USART's own baud rate divider value (BRG). See user
@@ -131,6 +163,8 @@ const APP: () = {
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);
         let (target_rx_int, target_rx_idle, target_tx) = TARGET.init(target);
 
+        let (pin_prod, pin_cons) = PIN_QUEUE.split();
+
         init::LateResources {
             host_rx_int,
             host_rx_idle,
@@ -139,15 +173,28 @@ const APP: () = {
             target_rx_int,
             target_rx_idle,
             target_tx,
+
+            pin_prod,
+            pin_cons,
+            pin_int,
         }
     }
 
-    #[idle(resources = [host_rx_idle, host_tx, target_rx_idle, target_tx])]
+    #[idle(
+        resources = [
+            host_rx_idle,
+            host_tx,
+            target_rx_idle,
+            target_tx,
+            pin_cons,
+        ]
+    )]
     fn idle(cx: idle::Context) -> ! {
         let host_rx   = cx.resources.host_rx_idle;
         let host_tx   = cx.resources.host_tx;
         let target_rx = cx.resources.target_rx_idle;
         let target_tx = cx.resources.target_tx;
+        let pin_queue = cx.resources.pin_cons;
 
         let mut buf = [0; 256];
 
@@ -172,6 +219,27 @@ const APP: () = {
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
+            while let Some(level) = pin_queue.dequeue() {
+                match level {
+                    true => {
+                        host_tx
+                            .send_message(
+                                &AssistantToHost::PinIsHigh,
+                                &mut buf,
+                            )
+                            .unwrap();
+                    }
+                    false => {
+                        host_tx
+                            .send_message(
+                                &AssistantToHost::PinIsLow,
+                                &mut buf,
+                            )
+                            .unwrap();
+                    }
+                }
+            }
+
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
             // sequence of events could occur:
@@ -184,7 +252,12 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                if !host_rx.can_process() && !target_rx.can_process() {
+                let should_sleep =
+                    !host_rx.can_process()
+                    && !target_rx.can_process()
+                    && !pin_queue.ready();
+
+                if should_sleep {
                     asm::wfi();
                 }
             });
@@ -201,5 +274,18 @@ const APP: () = {
     fn usart1(cx: usart1::Context) {
         cx.resources.target_rx_int.receive()
             .expect("Error receiving from USART1");
+    }
+
+    #[task(binds = PIN_INT0, resources = [pin_prod, pin_int])]
+    fn pinint0(context: pinint0::Context) {
+        let queue = context.resources.pin_prod;
+        let int   = context.resources.pin_int;
+
+        if int.clear_rising_edge_flag() {
+            queue.enqueue(true).unwrap();
+        }
+        if int.clear_falling_edge_flag() {
+            queue.enqueue(false).unwrap();
+        }
     }
 };
