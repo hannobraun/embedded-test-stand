@@ -8,10 +8,13 @@ use host_lib::{
 
 use super::{
     assistant::{
+        AssistantPinReadError,
         AssistantUsartSendError,
         AssistantUsartWaitError,
     },
     target::{
+        TargetSetPinHighError,
+        TargetSetPinLowError,
         TargetUsartSendError,
         TargetUsartWaitError,
     },
@@ -26,14 +29,23 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 /// Error type specific to this test suite
 #[derive(Debug)]
 pub enum Error {
+    AssistantPinRead(AssistantPinReadError),
     AssistantUsartSend(AssistantUsartSendError),
     AssistantUsartWait(AssistantUsartWaitError),
     NotConfigured(NotConfiguredError),
     SerialSend(SerialSendError),
     SerialWait(SerialWaitError),
+    TargetSetPinHigh(TargetSetPinHighError),
+    TargetSetPinLow(TargetSetPinLowError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
+}
+
+impl From<AssistantPinReadError> for Error {
+    fn from(err: AssistantPinReadError) -> Self {
+        Self::AssistantPinRead(err)
+    }
 }
 
 impl From<AssistantUsartSendError> for Error {
@@ -69,6 +81,18 @@ impl From<SerialWaitError> for Error {
 impl From<TargetUsartSendError> for Error {
     fn from(err: TargetUsartSendError) -> Self {
         Self::TargetUsartSend(err)
+    }
+}
+
+impl From<TargetSetPinHighError> for Error {
+    fn from(err: TargetSetPinHighError) -> Self {
+        Self::TargetSetPinHigh(err)
+    }
+}
+
+impl From<TargetSetPinLowError> for Error {
+    fn from(err: TargetSetPinLowError) -> Self {
+        Self::TargetSetPinLow(err)
     }
 }
 

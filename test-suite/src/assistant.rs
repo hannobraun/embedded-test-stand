@@ -18,6 +18,72 @@ use lpc845_messages::{
 pub struct Assistant<'r>(pub(crate) &'r mut Conn);
 
 impl<'r> Assistant<'r> {
+    /// Indicates whether the pin on the test target is set high
+    ///
+    /// Uses `pin_state` internally.
+    pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
+        let pin_state = self.pin_state()?;
+        Ok(pin_state == PinState::High)
+    }
+
+    /// Indicates whether the pin on the test target is set low
+    ///
+    /// Uses `pin_state` internally.
+    pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
+        let pin_state = self.pin_state()?;
+        Ok(pin_state == PinState::Low)
+    }
+
+    /// Receives pin state messages to determine current state of pin
+    ///
+    /// Will wait for pin state messages for a short amount of time. The most
+    /// recent one will be used to determine the pin state.
+    pub fn pin_state(&mut self) -> Result<PinState, AssistantPinReadError> {
+        let timeout = Duration::from_millis(10);
+
+        let mut buf   = Vec::new();
+        let     start = Instant::now();
+
+        let mut pin_state = None;
+
+        loop {
+            if start.elapsed() > timeout {
+                break;
+            }
+
+            let message = self.0.receive::<AssistantToHost>(timeout, &mut buf);
+            let message = match message {
+                Ok(message) => {
+                    message
+                }
+                Err(err) if err.is_timeout() => {
+                    break;
+                }
+                Err(err) => {
+                    return Err(AssistantPinReadError::Receive(err));
+                }
+            };
+
+            match message {
+                AssistantToHost::PinIsHigh => pin_state = Some(PinState::High),
+                AssistantToHost::PinIsLow  => pin_state = Some(PinState::Low),
+
+                _ => {
+                    return Err(
+                        AssistantPinReadError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
+            }
+        }
+
+        match pin_state {
+            Some(pin_state) => Ok(pin_state),
+            None            => Err(AssistantPinReadError::Timeout),
+        }
+    }
+
     /// Instruct assistant to send this message to the target via USART
     pub fn send_to_target_usart(&mut self, message: &[u8])
         -> Result<(), AssistantUsartSendError>
@@ -45,16 +111,39 @@ impl<'r> Assistant<'r> {
             }
 
             let mut tmp = Vec::new();
-            let event = self.0.receive::<AssistantToHost>(timeout, &mut tmp)
+            let message = self.0.receive::<AssistantToHost>(timeout, &mut tmp)
                 .map_err(|err| AssistantUsartWaitError::Receive(err))?;
 
-            match event {
-                AssistantToHost::UsartReceive(data) => buf.extend(data),
+            match message {
+                AssistantToHost::UsartReceive(data) => {
+                    buf.extend(data)
+                }
+                _ => {
+                    return Err(
+                        AssistantUsartWaitError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
             }
         }
     }
 }
 
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum PinState {
+    High,
+    Low,
+}
+
+
+#[derive(Debug)]
+pub enum AssistantPinReadError {
+    Receive(ConnReceiveError),
+    UnexpectedMessage(String),
+    Timeout,
+}
 
 #[derive(Debug)]
 pub struct AssistantUsartSendError(ConnSendError);
@@ -63,5 +152,5 @@ pub struct AssistantUsartSendError(ConnSendError);
 pub enum AssistantUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
+    UnexpectedMessage(String),
 }
-

@@ -1,4 +1,5 @@
 use std::{
+    io,
     slice,
     time::Duration,
 };
@@ -83,6 +84,7 @@ impl Conn {
         where T: Deserialize<'de>
     {
         self.port.set_timeout(timeout)?;
+        buf.clear();
 
         loop {
             let mut b = 0; // initialized to `0`, but could be any value
@@ -106,8 +108,23 @@ impl Conn {
 #[derive(Debug)]
 pub struct ConnInitError(serialport::Error);
 
+
 #[derive(Debug)]
 pub struct ConnSendError(Error);
 
+
 #[derive(Debug)]
 pub struct ConnReceiveError(Error);
+
+impl ConnReceiveError {
+    pub fn is_timeout(&self) -> bool {
+        match &self.0 {
+            Error::Io(err) if err.kind() == io::ErrorKind::TimedOut => {
+                true
+            }
+            _ => {
+                false
+            }
+        }
+    }
+}
