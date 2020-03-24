@@ -84,6 +84,7 @@ impl Conn {
         where T: Deserialize<'de>
     {
         self.port.set_timeout(timeout)?;
+        buf.clear();
 
         loop {
             let mut b = 0; // initialized to `0`, but could be any value
