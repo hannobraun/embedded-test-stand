@@ -6,10 +6,7 @@ use std::sync::{
 use host_lib::{
     conn::Conn,
     serial::Serial,
-    test_stand::{
-        NotConfiguredError,
-        TestStandInitError,
-    },
+    test_stand::NotConfiguredError,
 };
 
 use super::{
@@ -35,7 +32,8 @@ impl TestStand {
     /// Reads the `test-stand.toml` configuration file and initializes test
     /// stand resources, as configured in there.
     pub fn new() -> Result<Self, TestStandInitError> {
-        let test_stand = host_lib::TestStand::new()?;
+        let test_stand = host_lib::TestStand::new()
+            .map_err(|err| TestStandInitError::Inner(err))?;
 
         Ok(
             Self {
@@ -66,4 +64,10 @@ impl TestStand {
         self.serial.as_mut()
             .map_err(|err| *err)
     }
+}
+
+
+#[derive(Debug)]
+pub enum TestStandInitError {
+    Inner(host_lib::test_stand::TestStandInitError),
 }
