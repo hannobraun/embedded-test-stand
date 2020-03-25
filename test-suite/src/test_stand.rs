@@ -24,9 +24,9 @@ use super::{
 pub struct TestStand {
     _guard: LockResult<MutexGuard<'static, ()>>,
 
-    pub target:    Option<Conn>,
-    pub assistant: Option<Conn>,
-    pub serial:    Option<Serial>,
+    pub target:    Result<Conn, NotConfiguredError>,
+    pub assistant: Result<Conn, NotConfiguredError>,
+    pub serial:    Result<Serial, NotConfiguredError>,
 }
 
 impl TestStand {
@@ -49,25 +49,21 @@ impl TestStand {
 
     /// Returns the connection to the test target (device under test)
     pub fn target(&mut self) -> Result<Target, NotConfiguredError> {
-        match &mut self.target {
-            Some(target) => Ok(Target(target)),
-            None         => Err(NotConfiguredError("target")),
-        }
+        self.target.as_mut()
+            .map(|target| Target(target))
+            .map_err(|err| *err)
     }
 
     /// Returns the connection to the test assistant
     pub fn assistant(&mut self) -> Result<Assistant, NotConfiguredError> {
-        match &mut self.assistant {
-            Some(assistant) => Ok(Assistant(assistant)),
-            None            => Err(NotConfiguredError("assistant")),
-        }
+        self.assistant.as_mut()
+            .map(|assistant| Assistant(assistant))
+            .map_err(|err| *err)
     }
 
     /// Returns the connection to the Serial-to-USB converter
     pub fn serial(&mut self) -> Result<&mut Serial, NotConfiguredError> {
-        match &mut self.serial {
-            Some(serial) => Ok(serial),
-            None         => Err(NotConfiguredError("serial")),
-        }
+        self.serial.as_mut()
+            .map_err(|err| *err)
     }
 }
