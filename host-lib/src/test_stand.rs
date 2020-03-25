@@ -102,3 +102,6 @@ pub enum TestStandInitError {
     ConnInit(ConnInitError),
     SerialInit(SerialInitError),
 }
+
+#[derive(Debug)]
+pub struct NotConfiguredError(pub &'static str);

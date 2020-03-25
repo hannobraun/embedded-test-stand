@@ -6,7 +6,10 @@ use std::sync::{
 use host_lib::{
     conn::Conn,
     serial::Serial,
-    test_stand::TestStandInitError,
+    test_stand::{
+        NotConfiguredError,
+        TestStandInitError,
+    },
 };
 
 use super::{
@@ -68,7 +71,3 @@ impl TestStand {
         }
     }
 }
-
-
-#[derive(Debug)]
-pub struct NotConfiguredError(&'static str);
