@@ -26,7 +26,11 @@ use crate::{
 ///
 /// Holds all the resources that a test case might require.
 pub struct TestStand {
-    _guard: LockResult<MutexGuard<'static, ()>>,
+    /// Guarantees exclusive access to the test target
+    ///
+    /// Must not be dropped while this exclusive access is required. Once it is
+    /// dropped, another test case might start running immediately.
+    pub guard: LockResult<MutexGuard<'static, ()>>,
 
     pub target:    Option<Conn>,
     pub assistant: Option<Conn>,
