@@ -3,7 +3,7 @@ use host_lib::{
         SerialSendError,
         SerialWaitError,
     },
-    test_stand::TestStandInitError,
+    test_stand::NotConfiguredError,
 };
 
 use super::{
@@ -18,7 +18,7 @@ use super::{
         TargetUsartSendError,
         TargetUsartWaitError,
     },
-    test_stand::NotConfiguredError,
+    test_stand::TestStandInitError,
 };
 
 

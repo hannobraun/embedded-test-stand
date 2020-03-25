@@ -26,11 +26,15 @@ use crate::{
 ///
 /// Holds all the resources that a test case might require.
 pub struct TestStand {
-    _guard: LockResult<MutexGuard<'static, ()>>,
+    /// Guarantees exclusive access to the test target
+    ///
+    /// Must not be dropped while this exclusive access is required. Once it is
+    /// dropped, another test case might start running immediately.
+    pub guard: LockResult<MutexGuard<'static, ()>>,
 
-    pub target:    Option<Conn>,
-    pub assistant: Option<Conn>,
-    pub serial:    Option<Serial>,
+    pub target:    Result<Conn, NotConfiguredError>,
+    pub assistant: Result<Conn, NotConfiguredError>,
+    pub serial:    Result<Serial, NotConfiguredError>,
 }
 
 impl TestStand {
@@ -57,24 +61,24 @@ impl TestStand {
         let config = Config::read()
             .map_err(|err| TestStandInitError::ConfigRead(err))?;
 
-        let mut target    = None;
-        let mut assistant = None;
-        let mut serial    = None;
+        let mut target    = Err(NotConfiguredError("target"));
+        let mut assistant = Err(NotConfiguredError("assistant"));
+        let mut serial    = Err(NotConfiguredError("serial"));
 
         if let Some(path) = config.target {
-            target = Some(
+            target = Ok(
                 Conn::new(&path)
                     .map_err(|err| TestStandInitError::ConnInit(err))?
             );
         }
         if let Some(path) = config.assistant {
-            assistant = Some(
+            assistant = Ok(
                 Conn::new(&path)
                     .map_err(|err| TestStandInitError::ConnInit(err))?
             );
         }
         if let Some(path) = config.serial {
-            serial = Some(
+            serial = Ok(
                 Serial::new(&path)
                     .map_err(|err| TestStandInitError::SerialInit(err))?
             );
@@ -82,8 +86,7 @@ impl TestStand {
 
         Ok(
             Self {
-                _guard: guard,
-
+                guard,
                 target,
                 assistant,
                 serial,
@@ -99,3 +102,6 @@ pub enum TestStandInitError {
     ConnInit(ConnInitError),
     SerialInit(SerialInitError),
 }
+
+#[derive(Clone, Copy, Debug)]
+pub struct NotConfiguredError(pub &'static str);

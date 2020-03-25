@@ -15,9 +15,9 @@ use lpc845_messages::{
 
 
 /// The connection to the test assistant
-pub struct Assistant<'r>(pub(crate) &'r mut Conn);
+pub struct Assistant(pub(crate) Conn);
 
-impl<'r> Assistant<'r> {
+impl Assistant {
     /// Indicates whether the pin on the test target is set high
     ///
     /// Uses `pin_state` internally.
