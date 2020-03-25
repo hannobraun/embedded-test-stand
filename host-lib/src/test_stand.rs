@@ -86,8 +86,7 @@ impl TestStand {
 
         Ok(
             Self {
-                _guard: guard,
-
+                guard,
                 target,
                 assistant,
                 serial,
