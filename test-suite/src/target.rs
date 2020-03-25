@@ -16,9 +16,9 @@ use host_lib::conn::{
 
 
 /// The connection to the test target
-pub struct Target<'r>(pub(crate) &'r mut Conn);
+pub struct Target(pub(crate) Conn);
 
-impl<'r> Target<'r> {
+impl Target {
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
         self.0.send(&HostToTarget::SetPinHigh)
