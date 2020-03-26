@@ -65,9 +65,9 @@ const APP: () = {
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
 
-        pin_prod: Producer<'static, bool, U16>,
-        pin_cons: Consumer<'static, bool, U16>,
-        pin_int:  pinint::Interrupt<PININT0, PIO1_0, Enabled>,
+        green_prod: Producer<'static, bool, U16>,
+        green_cons: Consumer<'static, bool, U16>,
+        green_int:  pinint::Interrupt<PININT0, PIO1_0, Enabled>,
     }
 
     #[init]
@@ -80,7 +80,7 @@ const APP: () = {
         static mut HOST:   Usart = Usart::new();
         static mut TARGET: Usart = Usart::new();
 
-        static mut PIN_QUEUE: Queue<bool, U16> =
+        static mut GREEN_QUEUE: Queue<bool, U16> =
             Queue(heapless::i::Queue::new());
 
         // Get access to the device's peripherals. This can't panic, since this
@@ -95,13 +95,13 @@ const APP: () = {
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
         // Configure interrupt for pin connected to assistant's LED pin
-        let _pin = p.pins.pio1_0.into_input_pin(gpio.tokens.pio1_0);
-        let mut pin_int = pinint
+        let _green = p.pins.pio1_0.into_input_pin(gpio.tokens.pio1_0);
+        let mut green_int = pinint
             .interrupts
             .pinint0
             .select::<PIO1_0>(&mut syscon.handle);
-        pin_int.enable_rising_edge();
-        pin_int.enable_falling_edge();
+        green_int.enable_rising_edge();
+        green_int.enable_falling_edge();
 
         // Configure the clock for USART0, using the Fractional Rate Generator
         // (FRG) and the USART's own baud rate divider value (BRG). See user
@@ -164,7 +164,7 @@ const APP: () = {
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);
         let (target_rx_int, target_rx_idle, target_tx) = TARGET.init(target);
 
-        let (pin_prod, pin_cons) = PIN_QUEUE.split();
+        let (green_prod, green_cons) = GREEN_QUEUE.split();
 
         init::LateResources {
             host_rx_int,
@@ -175,9 +175,9 @@ const APP: () = {
             target_rx_idle,
             target_tx,
 
-            pin_prod,
-            pin_cons,
-            pin_int,
+            green_prod,
+            green_cons,
+            green_int,
         }
     }
 
@@ -187,15 +187,15 @@ const APP: () = {
             host_tx,
             target_rx_idle,
             target_tx,
-            pin_cons,
+            green_cons,
         ]
     )]
     fn idle(cx: idle::Context) -> ! {
-        let host_rx   = cx.resources.host_rx_idle;
-        let host_tx   = cx.resources.host_tx;
-        let target_rx = cx.resources.target_rx_idle;
-        let target_tx = cx.resources.target_tx;
-        let pin_queue = cx.resources.pin_cons;
+        let host_rx     = cx.resources.host_rx_idle;
+        let host_tx     = cx.resources.host_tx;
+        let target_rx   = cx.resources.target_rx_idle;
+        let target_tx   = cx.resources.target_tx;
+        let green_queue = cx.resources.green_cons;
 
         let mut buf = [0; 256];
 
@@ -220,7 +220,7 @@ const APP: () = {
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
-            while let Some(level) = pin_queue.dequeue() {
+            while let Some(level) = green_queue.dequeue() {
                 match level {
                     true => {
                         host_tx
@@ -256,7 +256,7 @@ const APP: () = {
                 let should_sleep =
                     !host_rx.can_process()
                     && !target_rx.can_process()
-                    && !pin_queue.ready();
+                    && !green_queue.ready();
 
                 if should_sleep {
                     asm::wfi();
@@ -277,10 +277,10 @@ const APP: () = {
             .expect("Error receiving from USART1");
     }
 
-    #[task(binds = PIN_INT0, resources = [pin_prod, pin_int])]
+    #[task(binds = PIN_INT0, resources = [green_prod, green_int])]
     fn pinint0(context: pinint0::Context) {
-        let queue = context.resources.pin_prod;
-        let int   = context.resources.pin_int;
+        let queue = context.resources.green_prod;
+        let int   = context.resources.green_int;
 
         if int.clear_rising_edge_flag() {
             queue.enqueue(true).unwrap();
