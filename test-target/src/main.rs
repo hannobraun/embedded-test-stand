@@ -19,6 +19,7 @@ use lpc8xx_hal::{
     cortex_m::{
         asm,
         interrupt,
+        peripheral::SYST,
     },
     gpio::{
         GpioPin,
@@ -29,10 +30,14 @@ use lpc8xx_hal::{
         USART0,
         USART1,
     },
-    pins::PIO1_0,
+    pins::{
+        PIO1_0,
+        PIO1_1,
+    },
     syscon::frg,
     usart,
 };
+use void::ResultVoidExt as _;
 
 use firmware_lib::usart::{
     RxIdle,
@@ -58,10 +63,13 @@ const APP: () = {
         usart_tx:      Tx<USART1>,
 
         green: GpioPin<PIO1_0, Output>,
+        blue:  GpioPin<PIO1_1, Output>,
+
+        systick: SYST,
     }
 
     #[init]
-    fn init(_: init::Context) -> init::LateResources {
+    fn init(context: init::Context) -> init::LateResources {
         // Normally, access to a `static mut` would be unsafe, but we know that
         // this method is only called once, which means we have exclusive access
         // here. RTFM knows this too, and by putting these statics right here,
@@ -74,15 +82,19 @@ const APP: () = {
         // is the only place in this program where we call this method.
         let p = Peripherals::take().unwrap_or_else(|| unreachable!());
 
+        let systick = context.core.SYST;
+
         let mut syscon = p.SYSCON.split();
         let     swm    = p.SWM.split();
         let     gpio   = p.GPIO.enable(&mut syscon.handle);
 
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
-        // Configure green LED for output.
+        // Configure GPIO pins
         let green = p.pins.pio1_0
             .into_output_pin(gpio.tokens.pio1_0, Level::High);
+        let blue = p.pins.pio1_1
+            .into_output_pin(gpio.tokens.pio1_1, Level::High);
 
         // Configure the clock for USART0, using the Fractional Rate Generator
         // (FRG) and the USART's own baud rate divider value (BRG). See user
@@ -155,16 +167,25 @@ const APP: () = {
             usart_tx,
 
             green,
+            blue,
+
+            systick,
         }
     }
 
-    #[idle(resources = [host_rx_idle, host_tx, usart_rx_idle, usart_tx, green])]
+    #[idle(resources = [
+        host_rx_idle, host_tx,
+        usart_rx_idle, usart_tx,
+        green,
+        systick,
+    ])]
     fn idle(cx: idle::Context) -> ! {
         let usart_rx = cx.resources.usart_rx_idle;
         let usart_tx = cx.resources.usart_tx;
         let host_rx  = cx.resources.host_rx_idle;
         let host_tx  = cx.resources.host_tx;
         let green    = cx.resources.green;
+        let systick  = cx.resources.systick;
 
         let mut buf = [0; 256];
 
@@ -189,6 +210,29 @@ const APP: () = {
                         }
                         HostToTarget::SetPinLow => {
                             green.set_low()
+                        }
+                        HostToTarget::StartTimerInterrupt { period_ms } => {
+                            // By default (and we haven't changed that setting)
+                            // the SysTick timer runs at half the system
+                            // frequency. The system frequency runs at 12 MHz by
+                            // default (again, we haven't changed it), meaning
+                            // the SysTick timer runs at 6 MHz.
+                            //
+                            // At 6 MHz, 1 ms are 6000 timer ticks.
+                            let reload = period_ms * 6000;
+                            systick.set_reload(reload);
+
+                            systick.clear_current();
+                            systick.enable_interrupt();
+                            systick.enable_counter();
+
+                            Ok(())
+                        }
+                        HostToTarget::StopTimerInterrupt => {
+                            systick.disable_interrupt();
+                            systick.disable_counter();
+
+                            Ok(())
                         }
                     }
                 })
@@ -224,5 +268,11 @@ const APP: () = {
     fn usart1(cx: usart1::Context) {
         cx.resources.usart_rx_int.receive()
             .expect("Error receiving from USART1");
+    }
+
+    #[task(binds = SysTick, resources = [blue])]
+    fn syst(cx: syst::Context) {
+        cx.resources.blue.toggle()
+            .void_unwrap()
     }
 };

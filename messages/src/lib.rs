@@ -18,6 +18,12 @@ pub enum HostToTarget<'r> {
 
     /// Instruct the target to set a specific pin low
     SetPinLow,
+
+    /// Instruct the target to start the timer interrupt
+    StartTimerInterrupt { period_ms: u32 },
+
+    /// Instruct the target to stop the timer interrupt
+    StopTimerInterrupt,
 }
 
 /// An message from the target to the test suite on the host
