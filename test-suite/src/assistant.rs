@@ -9,8 +9,9 @@ use host_lib::conn::{
     ConnSendError,
 };
 use lpc845_messages::{
-    HostToAssistant,
     AssistantToHost,
+    HostToAssistant,
+    Pin,
 };
 
 
@@ -18,19 +19,19 @@ use lpc845_messages::{
 pub struct Assistant(pub(crate) Conn);
 
 impl Assistant {
-    /// Indicates whether the pin on the test target is set high
+    /// Indicates whether the GPIO pin on the test target is set high
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state()?;
+        let pin_state = self.pin_state(Pin::Green)?;
         Ok(pin_state == PinState::High)
     }
 
-    /// Indicates whether the pin on the test target is set low
+    /// Indicates whether the GPIO pin on the test target is set low
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state()?;
+        let pin_state = self.pin_state(Pin::Green)?;
         Ok(pin_state == PinState::Low)
     }
 
@@ -38,7 +39,9 @@ impl Assistant {
     ///
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self) -> Result<PinState, AssistantPinReadError> {
+    pub fn pin_state(&mut self, pin: Pin)
+        -> Result<PinState, AssistantPinReadError>
+    {
         let timeout = Duration::from_millis(10);
 
         let mut buf   = Vec::new();
@@ -65,8 +68,12 @@ impl Assistant {
             };
 
             match message {
-                AssistantToHost::PinIsHigh => pin_state = Some(PinState::High),
-                AssistantToHost::PinIsLow  => pin_state = Some(PinState::Low),
+                AssistantToHost::PinIsHigh(p) if p == pin => {
+                    pin_state = Some(PinState::High);
+                }
+                AssistantToHost::PinIsLow(p) if p == pin => {
+                    pin_state = Some(PinState::Low);
+                }
 
                 _ => {
                     return Err(

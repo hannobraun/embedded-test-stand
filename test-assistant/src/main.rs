@@ -50,6 +50,7 @@ use firmware_lib::usart::{
 use lpc845_messages::{
     AssistantToHost,
     HostToAssistant,
+    Pin,
 };
 
 
@@ -224,7 +225,7 @@ const APP: () = {
                     true => {
                         host_tx
                             .send_message(
-                                &AssistantToHost::PinIsHigh,
+                                &AssistantToHost::PinIsHigh(Pin::Green),
                                 &mut buf,
                             )
                             .unwrap();
@@ -232,7 +233,7 @@ const APP: () = {
                     false => {
                         host_tx
                             .send_message(
-                                &AssistantToHost::PinIsLow,
+                                &AssistantToHost::PinIsLow(Pin::Green),
                                 &mut buf,
                             )
                             .unwrap();
