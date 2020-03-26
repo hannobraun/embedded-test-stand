@@ -57,7 +57,7 @@ const APP: () = {
         usart_rx_idle: RxIdle<'static>,
         usart_tx:      Tx<USART1>,
 
-        led: GpioPin<PIO1_0, Output>,
+        green: GpioPin<PIO1_0, Output>,
     }
 
     #[init]
@@ -81,7 +81,7 @@ const APP: () = {
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
         // Configure green LED for output.
-        let led = p.pins.pio1_0
+        let green = p.pins.pio1_0
             .into_output_pin(gpio.tokens.pio1_0, Level::High);
 
         // Configure the clock for USART0, using the Fractional Rate Generator
@@ -154,17 +154,17 @@ const APP: () = {
             usart_rx_idle,
             usart_tx,
 
-            led,
+            green,
         }
     }
 
-    #[idle(resources = [host_rx_idle, host_tx, usart_rx_idle, usart_tx, led])]
+    #[idle(resources = [host_rx_idle, host_tx, usart_rx_idle, usart_tx, green])]
     fn idle(cx: idle::Context) -> ! {
         let usart_rx = cx.resources.usart_rx_idle;
         let usart_tx = cx.resources.usart_tx;
         let host_rx  = cx.resources.host_rx_idle;
         let host_tx  = cx.resources.host_tx;
-        let led      = cx.resources.led;
+        let green    = cx.resources.green;
 
         let mut buf = [0; 256];
 
@@ -185,10 +185,10 @@ const APP: () = {
                             usart_tx.send_raw(data)
                         }
                         HostToTarget::SetPinHigh => {
-                            led.set_high()
+                            green.set_high()
                         }
                         HostToTarget::SetPinLow => {
-                            led.set_low()
+                            green.set_low()
                         }
                     }
                 })
