@@ -48,10 +48,10 @@ pub enum AssistantToHost<'r> {
     UsartReceive(&'r [u8]),
 
     /// Notify the host that pin has been set high
-    PinIsHigh(Pin),
+    PinIsHigh { pin: Pin },
 
     /// Notify the host that pin has been set low
-    PinIsLow(Pin),
+    PinIsLow { pin: Pin },
 }
 
 

@@ -271,7 +271,7 @@ fn handle_timer_interrupts<U>(
             gpio::Level::High => {
                 host_tx
                     .send_message(
-                        &AssistantToHost::PinIsHigh(pin),
+                        &AssistantToHost::PinIsHigh { pin },
                         buf,
                     )
                     .unwrap();
@@ -279,7 +279,7 @@ fn handle_timer_interrupts<U>(
             gpio::Level::Low => {
                 host_tx
                     .send_message(
-                        &AssistantToHost::PinIsLow(pin),
+                        &AssistantToHost::PinIsLow { pin },
                         buf,
                     )
                     .unwrap();
