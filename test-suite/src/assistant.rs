@@ -39,7 +39,7 @@ impl Assistant {
     ///
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, pin: Pin, timeout: Duration)
+    pub fn pin_state(&mut self, expected_pin: Pin, timeout: Duration)
         -> Result<PinState, AssistantPinReadError>
     {
         let mut buf   = Vec::new();
@@ -66,10 +66,10 @@ impl Assistant {
             };
 
             match message {
-                AssistantToHost::PinIsHigh(p) if p == pin => {
+                AssistantToHost::PinIsHigh(p) if p == expected_pin => {
                     pin_state = Some(PinState::High);
                 }
-                AssistantToHost::PinIsLow(p) if p == pin => {
+                AssistantToHost::PinIsLow(p) if p == expected_pin => {
                     pin_state = Some(PinState::Low);
                 }
 
