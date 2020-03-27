@@ -212,26 +212,7 @@ const APP: () = {
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
-            while let Some(level) = green.next() {
-                match level {
-                    gpio::Level::High => {
-                        host_tx
-                            .send_message(
-                                &AssistantToHost::PinIsHigh(Pin::Green),
-                                &mut buf,
-                            )
-                            .unwrap();
-                    }
-                    gpio::Level::Low => {
-                        host_tx
-                            .send_message(
-                                &AssistantToHost::PinIsLow(Pin::Green),
-                                &mut buf,
-                            )
-                            .unwrap();
-                    }
-                }
-            }
+            handle_timer_interrupts(green, Pin::Green, host_tx, &mut buf);
 
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
@@ -274,3 +255,35 @@ const APP: () = {
         context.resources.green_int.handle_interrupt();
     }
 };
+
+
+fn handle_timer_interrupts<U>(
+    int:     &mut pin_interrupt::Idle,
+    pin:     Pin,
+    host_tx: &mut Tx<U>,
+    buf:     &mut [u8],
+)
+    where
+        U: usart::Instance,
+{
+    while let Some(level) = int.next() {
+        match level {
+            gpio::Level::High => {
+                host_tx
+                    .send_message(
+                        &AssistantToHost::PinIsHigh(pin),
+                        buf,
+                    )
+                    .unwrap();
+            }
+            gpio::Level::Low => {
+                host_tx
+                    .send_message(
+                        &AssistantToHost::PinIsLow(pin),
+                        buf,
+                    )
+                    .unwrap();
+            }
+        }
+    }
+}
