@@ -87,7 +87,7 @@ const APP: () = {
 
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
-        // Configure interrupt for pin connected to assistant's LED pin
+        // Configure interrupt for pin connected target's GPIO pin
         let _green = p.pins.pio1_0.into_input_pin(gpio.tokens.pio1_0);
         let mut green_int = pinint
             .interrupts
