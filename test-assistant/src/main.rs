@@ -13,39 +13,34 @@
 extern crate panic_semihosting;
 
 
-use heapless::{
-    consts::U16,
-    spsc::{
-        Consumer,
-        Producer,
-        Queue,
-    },
-};
 use lpc8xx_hal::{
     Peripherals,
     cortex_m::{
         asm,
         interrupt,
     },
-    init_state::Enabled,
+    gpio,
     pac::{
         USART0,
         USART1,
     },
-    pinint::{
-        self,
-        PININT0,
-    },
+    pinint::PININT0,
     pins::PIO1_0,
     syscon::frg,
     usart,
 };
 
-use firmware_lib::usart::{
-    RxIdle,
-    RxInt,
-    Tx,
-    Usart,
+use firmware_lib::{
+    pin_interrupt::{
+        self,
+        PinInterrupt,
+    },
+    usart::{
+        RxIdle,
+        RxInt,
+        Tx,
+        Usart,
+    },
 };
 use lpc845_messages::{
     AssistantToHost,
@@ -65,9 +60,8 @@ const APP: () = {
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
 
-        green_prod: Producer<'static, bool, U16>,
-        green_cons: Consumer<'static, bool, U16>,
-        green_int:  pinint::Interrupt<PININT0, PIO1_0, Enabled>,
+        green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0>,
+        green_idle: pin_interrupt::Idle<'static>,
     }
 
     #[init]
@@ -80,8 +74,7 @@ const APP: () = {
         static mut HOST:   Usart = Usart::new();
         static mut TARGET: Usart = Usart::new();
 
-        static mut GREEN_QUEUE: Queue<bool, U16> =
-            Queue(heapless::i::Queue::new());
+        static mut GREEN: PinInterrupt = PinInterrupt::new();
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
@@ -164,7 +157,7 @@ const APP: () = {
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);
         let (target_rx_int, target_rx_idle, target_tx) = TARGET.init(target);
 
-        let (green_prod, green_cons) = GREEN_QUEUE.split();
+        let (green_int, green_idle) = GREEN.init(green_int);
 
         init::LateResources {
             host_rx_int,
@@ -175,9 +168,8 @@ const APP: () = {
             target_rx_idle,
             target_tx,
 
-            green_prod,
-            green_cons,
             green_int,
+            green_idle,
         }
     }
 
@@ -187,15 +179,15 @@ const APP: () = {
             host_tx,
             target_rx_idle,
             target_tx,
-            green_cons,
+            green_idle,
         ]
     )]
     fn idle(cx: idle::Context) -> ! {
-        let host_rx     = cx.resources.host_rx_idle;
-        let host_tx     = cx.resources.host_tx;
-        let target_rx   = cx.resources.target_rx_idle;
-        let target_tx   = cx.resources.target_tx;
-        let green_queue = cx.resources.green_cons;
+        let host_rx   = cx.resources.host_rx_idle;
+        let host_tx   = cx.resources.host_tx;
+        let target_rx = cx.resources.target_rx_idle;
+        let target_tx = cx.resources.target_tx;
+        let green     = cx.resources.green_idle;
 
         let mut buf = [0; 256];
 
@@ -220,9 +212,9 @@ const APP: () = {
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
-            while let Some(level) = green_queue.dequeue() {
+            while let Some(level) = green.next() {
                 match level {
-                    true => {
+                    gpio::Level::High => {
                         host_tx
                             .send_message(
                                 &AssistantToHost::PinIsHigh(Pin::Green),
@@ -230,7 +222,7 @@ const APP: () = {
                             )
                             .unwrap();
                     }
-                    false => {
+                    gpio::Level::Low => {
                         host_tx
                             .send_message(
                                 &AssistantToHost::PinIsLow(Pin::Green),
@@ -256,7 +248,7 @@ const APP: () = {
                 let should_sleep =
                     !host_rx.can_process()
                     && !target_rx.can_process()
-                    && !green_queue.ready();
+                    && !green.is_ready();
 
                 if should_sleep {
                     asm::wfi();
@@ -277,16 +269,8 @@ const APP: () = {
             .expect("Error receiving from USART1");
     }
 
-    #[task(binds = PIN_INT0, resources = [green_prod, green_int])]
+    #[task(binds = PIN_INT0, resources = [green_int])]
     fn pinint0(context: pinint0::Context) {
-        let queue = context.resources.green_prod;
-        let int   = context.resources.green_int;
-
-        if int.clear_rising_edge_flag() {
-            queue.enqueue(true).unwrap();
-        }
-        if int.clear_falling_edge_flag() {
-            queue.enqueue(false).unwrap();
-        }
+        context.resources.green_int.handle_interrupt();
     }
 };
