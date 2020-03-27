@@ -268,7 +268,7 @@ fn handle_timer_interrupts<U>(
 {
     while let Some(level) = int.next() {
         match level {
-            gpio::Level::High => {
+            pin_interrupt::Event { level: gpio::Level::High } => {
                 host_tx
                     .send_message(
                         &AssistantToHost::PinIsHigh { pin },
@@ -276,7 +276,7 @@ fn handle_timer_interrupts<U>(
                     )
                     .unwrap();
             }
-            gpio::Level::Low => {
+            pin_interrupt::Event { level: gpio::Level::Low } => {
                 host_tx
                     .send_message(
                         &AssistantToHost::PinIsLow { pin },

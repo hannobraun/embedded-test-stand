@@ -19,7 +19,7 @@ use lpc8xx_hal::{
 
 /// Represents a pin interrupt
 pub struct PinInterrupt {
-    queue: Queue<gpio::Level, QueueCap>,
+    queue: Queue<Event, QueueCap>,
 }
 
 impl PinInterrupt {
@@ -68,7 +68,7 @@ impl PinInterrupt {
 /// [`PinInterrupt::init`]: struct.PinInterrupt.html#method.init
 pub struct Int<'r, I, P> {
     int:   pinint::Interrupt<I, P, Enabled>,
-    queue: Producer<'r, gpio::Level, QueueCap>
+    queue: Producer<'r, Event, QueueCap>
 }
 
 impl<I, P> Int<'_, I, P>
@@ -85,10 +85,10 @@ impl<I, P> Int<'_, I, P>
     /// [`Idle`]: struct.Idle.html
     pub fn handle_interrupt(&mut self) {
         if self.int.clear_rising_edge_flag() {
-            self.queue.enqueue(gpio::Level::High).unwrap();
+            self.queue.enqueue(Event { level: gpio::Level::High }).unwrap();
         }
         if self.int.clear_falling_edge_flag() {
-            self.queue.enqueue(gpio::Level::Low).unwrap();
+            self.queue.enqueue(Event { level: gpio::Level::Low }).unwrap();
         }
     }
 }
@@ -104,12 +104,12 @@ impl<I, P> Int<'_, I, P>
 /// [`PinInterrupt::init`]: struct.PinInterrupt.html#method.init
 /// [`Int`]: struct.Int.html
 pub struct Idle<'r> {
-    queue: Consumer<'r, gpio::Level, QueueCap>,
+    queue: Consumer<'r, Event, QueueCap>,
 }
 
 impl Idle<'_> {
     /// Returns the next pin interrupt event, if available
-    pub fn next(&mut self) -> Option<gpio::Level> {
+    pub fn next(&mut self) -> Option<Event> {
         self.queue.dequeue()
     }
 
@@ -117,6 +117,14 @@ impl Idle<'_> {
     pub fn is_ready(&self) -> bool {
         self.queue.ready()
     }
+}
+
+
+/// A pin interrupt event
+#[derive(Debug)]
+pub struct Event {
+    /// The level of the pin after this event
+    pub level: gpio::Level,
 }
 
 
