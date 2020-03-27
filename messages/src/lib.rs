@@ -42,8 +42,15 @@ pub enum AssistantToHost<'r> {
     UsartReceive(&'r [u8]),
 
     /// Notify the host that pin has been set high
-    PinIsHigh,
+    PinIsHigh(Pin),
 
     /// Notify the host that pin has been set low
-    PinIsLow,
+    PinIsLow(Pin),
+}
+
+
+/// Represents one of the pins that the assistant is monitoring
+#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum Pin {
+    Green,
 }
