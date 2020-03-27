@@ -66,10 +66,10 @@ impl Assistant {
             };
 
             match message {
-                AssistantToHost::PinIsHigh(p) if p == expected_pin => {
+                AssistantToHost::PinIsHigh(pin) if pin == expected_pin => {
                     pin_state = Some(PinState::High);
                 }
-                AssistantToHost::PinIsLow(p) if p == expected_pin => {
+                AssistantToHost::PinIsLow(pin) if pin == expected_pin => {
                     pin_state = Some(PinState::Low);
                 }
 
