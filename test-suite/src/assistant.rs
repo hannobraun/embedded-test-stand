@@ -23,7 +23,7 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green)?;
+        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
         Ok(pin_state == PinState::High)
     }
 
@@ -31,7 +31,7 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green)?;
+        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
         Ok(pin_state == PinState::Low)
     }
 
@@ -39,11 +39,9 @@ impl Assistant {
     ///
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, pin: Pin)
+    pub fn pin_state(&mut self, pin: Pin, timeout: Duration)
         -> Result<PinState, AssistantPinReadError>
     {
-        let timeout = Duration::from_millis(10);
-
         let mut buf   = Vec::new();
         let     start = Instant::now();
 
