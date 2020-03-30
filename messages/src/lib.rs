@@ -48,10 +48,28 @@ pub enum AssistantToHost<'r> {
     UsartReceive(&'r [u8]),
 
     /// Notify the host that pin has been set high
-    PinIsHigh { pin: Pin },
+    PinIsHigh {
+        /// The pin that has been set high
+        pin: Pin,
+
+        /// The period since the last change to this pin in ms, if available
+        ///
+        /// If the time since the last change has been too long, this value will
+        /// not be reliable.
+        period_ms: Option<u32>,
+    },
 
     /// Notify the host that pin has been set low
-    PinIsLow { pin: Pin },
+    PinIsLow {
+        /// The pin that has been set low
+        pin: Pin,
+
+        /// The period since the last change to this pin in ms, if available
+        ///
+        /// If the time since the last change has been too long, this value will
+        /// not be reliable.
+        period_ms: Option<u32>,
+    },
 }
 
 

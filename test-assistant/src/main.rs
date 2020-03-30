@@ -20,6 +20,7 @@ use lpc8xx_hal::{
         interrupt,
     },
     gpio,
+    mrt::MRT0,
     pac::{
         USART0,
         USART1,
@@ -60,7 +61,7 @@ const APP: () = {
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
 
-        green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0>,
+        green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0, MRT0>,
         green_idle: pin_interrupt::Idle<'static>,
     }
 
@@ -84,6 +85,7 @@ const APP: () = {
         let     swm    = p.SWM.split();
         let     gpio   = p.GPIO.enable(&mut syscon.handle);
         let     pinint = p.PININT.enable(&mut syscon.handle);
+        let     timers = p.MRT0.split(&mut syscon.handle);
 
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
@@ -157,7 +159,7 @@ const APP: () = {
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);
         let (target_rx_int, target_rx_idle, target_tx) = TARGET.init(target);
 
-        let (green_int, green_idle) = GREEN.init(green_int);
+        let (green_int, green_idle) = GREEN.init(green_int, timers.mrt0);
 
         init::LateResources {
             host_rx_int,
@@ -268,18 +270,20 @@ fn handle_timer_interrupts<U>(
 {
     while let Some(level) = int.next() {
         match level {
-            pin_interrupt::Event { level: gpio::Level::High } => {
+            pin_interrupt::Event { level: gpio::Level::High, period } => {
+                let period_ms = period.map(|value| value / 12_000);
                 host_tx
                     .send_message(
-                        &AssistantToHost::PinIsHigh { pin },
+                        &AssistantToHost::PinIsHigh { pin, period_ms },
                         buf,
                     )
                     .unwrap();
             }
-            pin_interrupt::Event { level: gpio::Level::Low } => {
+            pin_interrupt::Event { level: gpio::Level::Low, period } => {
+                let period_ms = period.map(|value| value / 12_000);
                 host_tx
                     .send_message(
-                        &AssistantToHost::PinIsLow { pin },
+                        &AssistantToHost::PinIsLow { pin, period_ms },
                         buf,
                     )
                     .unwrap();

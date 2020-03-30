@@ -24,7 +24,7 @@ impl Assistant {
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
         let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
-        Ok(pin_state == PinState::High)
+        Ok(pin_state.0 == PinState::High)
     }
 
     /// Indicates whether the GPIO pin on the test target is set low
@@ -32,7 +32,7 @@ impl Assistant {
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
         let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
-        Ok(pin_state == PinState::Low)
+        Ok(pin_state.0 == PinState::Low)
     }
 
     /// Receives pin state messages to determine current state of pin
@@ -40,7 +40,7 @@ impl Assistant {
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
     pub fn pin_state(&mut self, expected_pin: Pin, timeout: Duration)
-        -> Result<PinState, AssistantPinReadError>
+        -> Result<(PinState, Option<u32>), AssistantPinReadError>
     {
         let mut buf   = Vec::new();
         let     start = Instant::now();
@@ -66,11 +66,15 @@ impl Assistant {
             };
 
             match message {
-                AssistantToHost::PinIsHigh { pin } if pin == expected_pin => {
-                    pin_state = Some(PinState::High);
+                AssistantToHost::PinIsHigh { pin, period_ms }
+                    if pin == expected_pin
+                => {
+                    pin_state = Some((PinState::High, period_ms));
                 }
-                AssistantToHost::PinIsLow { pin } if pin == expected_pin => {
-                    pin_state = Some(PinState::Low);
+                AssistantToHost::PinIsLow { pin, period_ms }
+                    if pin == expected_pin
+                => {
+                    pin_state = Some((PinState::Low, period_ms));
                 }
 
                 _ => {

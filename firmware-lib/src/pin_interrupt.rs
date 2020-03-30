@@ -10,8 +10,10 @@ use heapless::{
     },
 };
 use lpc8xx_hal::{
+    prelude::*,
     gpio,
     init_state::Enabled,
+    mrt,
     pinint,
     pins,
 };
@@ -47,12 +49,15 @@ impl PinInterrupt {
     ///
     /// [`Int`]: struct.Int.html
     /// [`Idle`]: struct.Idle.html
-    pub fn init<I, P>(&mut self, interrupt: pinint::Interrupt<I, P, Enabled>)
-        -> (Int<I, P>, Idle)
+    pub fn init<I, P, T: mrt::Trait>(&mut self,
+        interrupt: pinint::Interrupt<I, P, Enabled>,
+        timer:     mrt::Channel<T>,
+    )
+        -> (Int<I, P, T>, Idle)
     {
         let (prod, cons) = self.queue.split();
 
-        let int  = Int { int: interrupt, queue: prod };
+        let int  = Int { int: interrupt, queue: prod, timer, measuring: false };
         let idle = Idle { queue: cons };
 
         (int, idle)
@@ -66,15 +71,18 @@ impl PinInterrupt {
 /// The `Int` instance can then be moved into the interrupt handler.
 ///
 /// [`PinInterrupt::init`]: struct.PinInterrupt.html#method.init
-pub struct Int<'r, I, P> {
-    int:   pinint::Interrupt<I, P, Enabled>,
-    queue: Producer<'r, Event, QueueCap>
+pub struct Int<'r, I, P, T: mrt::Trait> {
+    int:       pinint::Interrupt<I, P, Enabled>,
+    queue:     Producer<'r, Event, QueueCap>,
+    timer:     mrt::Channel<T>,
+    measuring: bool,
 }
 
-impl<I, P> Int<'_, I, P>
+impl<I, P, T> Int<'_, I, P, T>
     where
         I: pinint::Trait,
         P: pins::Trait,
+        T: mrt::Trait,
 {
     /// Handles a pin interrupts
     ///
@@ -84,11 +92,25 @@ impl<I, P> Int<'_, I, P>
     ///
     /// [`Idle`]: struct.Idle.html
     pub fn handle_interrupt(&mut self) {
+        let mut period = None;
+
+        if self.measuring {
+            let timer_wrapped = self.timer.wait().is_ok();
+            if !timer_wrapped {
+                period = Some(mrt::MAX_VALUE - self.timer.value());
+            }
+        }
+
+        self.timer.start(mrt::MAX_VALUE);
+        self.measuring = true;
+
         if self.int.clear_rising_edge_flag() {
-            self.queue.enqueue(Event { level: gpio::Level::High }).unwrap();
+            let event = Event { level: gpio::Level::High, period };
+            self.queue.enqueue(event).unwrap();
         }
         if self.int.clear_falling_edge_flag() {
-            self.queue.enqueue(Event { level: gpio::Level::Low }).unwrap();
+            let event = Event { level: gpio::Level::Low, period };
+            self.queue.enqueue(event).unwrap();
         }
     }
 }
@@ -125,6 +147,9 @@ impl Idle<'_> {
 pub struct Event {
     /// The level of the pin after this event
     pub level: gpio::Level,
+
+    /// The period measured since the last event, if available
+    pub period: Option<u32>,
 }
 
 
