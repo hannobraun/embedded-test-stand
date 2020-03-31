@@ -2,7 +2,7 @@
 
 
 use heapless::{
-    consts::U16,
+    consts::U256,
     spsc::{
         Consumer,
         Producer,
@@ -156,4 +156,4 @@ pub struct Event {
 // It would be nice to make the queue capacity configurable, but that would
 // require a generic with trait bound on all the structs. As of this writing,
 // `const fn`s with trait bounds are unstable, so we can't do it yet.
-type QueueCap = U16;
+type QueueCap = U256;
