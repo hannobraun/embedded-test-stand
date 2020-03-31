@@ -1,3 +1,6 @@
+//! Receiving part of the interrupt-enabled USART API
+
+
 use heapless::{
     Vec,
     spsc,
@@ -13,7 +16,9 @@ use super::QueueCap;
 
 /// API for receiving data from a USART instance in an interrupt handler
 ///
-/// You can get an instance of this struct from [`Rx::init`].
+/// You can get an instance of this struct by calling [`Usart::init`].
+///
+/// [`Usart::init`]: ../struct.Usart.html#method.init
 pub struct RxInt<'r, I> {
     pub usart: usart::Rx<I>,
     pub queue: spsc::Producer<'r, u8, QueueCap>,
@@ -23,6 +28,14 @@ impl<I> RxInt<'_, I>
     where
         I: usart::Instance,
 {
+    /// Receive available data
+    ///
+    /// This method should be called directly from the interrupt handler.
+    /// Receives any available data, putting it into the internal queue, so it
+    /// can be processed by the corresponging [`RxIdle`] instance without any
+    /// time pressure.
+    ///
+    /// [`RxIdle`]: struct.RxIdle.html
     pub fn receive(&mut self) -> Result<(), ReceiveError> {
         loop {
             match self.usart.read() {
@@ -47,7 +60,9 @@ impl<I> RxInt<'_, I>
 /// This processing can be done in a lower-priority context, for example an idle
 /// loop.
 ///
-/// You can get an instance of this struct from [`Rx::init`].
+/// You can get an instance of this struct by calling [`Usart::init`].
+///
+/// [`Usart::init`]: ../struct.Usart.html#method.init
 pub struct RxIdle<'r> {
     pub queue: spsc::Consumer<'r, u8, QueueCap>,
     pub buf:   Vec<u8, QueueCap>,
@@ -89,8 +104,10 @@ impl RxIdle<'_> {
     /// received, that message is deserialized and the closure is called.
     ///
     /// After calling this method, you must clear the internal buffer by calling
-    /// [`RxIdle::clear_buf`]. Otherwise, the same message will be processed
-    /// again on the next call.
+    /// [`clear_buf`]. Otherwise, the same message will be processed again on
+    /// the next call.
+    ///
+    /// [`clear_buf`]: #method.clear_buf
     pub fn process_message<'de, M, E>(&'de mut self,
         f: impl FnOnce(M) -> Result<(), E>,
     )
@@ -117,28 +134,42 @@ impl RxIdle<'_> {
 
     /// Clear the internal buffer
     ///
-    /// This method _must_ be called after every call to `process_message`, or
+    /// This method _must_ be called after every call to [`process_message`], or
     /// on the next call, the same message will be processed again.
     ///
     /// It would be much nice, if this functionality could be included in
-    /// `process_message`, but unfortunately there's no straight-forward way to
-    /// do this, as the lifetime required by the use of `Deserialize`
+    /// [`process_message`], but unfortunately there's no straight-forward way
+    /// to do this, as the lifetime required by the use of `Deserialize`
     /// interferes.
+    ///
+    /// [`process_message`]: #method.process_message
     pub fn clear_buf(&mut self) {
         self.buf.clear();
     }
 }
 
 
+/// Error receiving data from USART
 #[derive(Debug)]
 pub enum ReceiveError {
+    /// The internal queue is full
     QueueFull,
+
+    /// An error was returned by the wrapped USART receiver
     Usart(usart::Error),
 }
 
+/// Error processing received USART data
 #[derive(Debug)]
 pub enum ProcessError<E> {
+    /// The internal buffer is full
     BufferFull,
+
+    /// Error decoding the message
     Postcard(postcard::Error),
+
+    /// Another error occured
+    ///
+    /// This is an error that was returned from the user-provided closure.
     Other(E),
 }
