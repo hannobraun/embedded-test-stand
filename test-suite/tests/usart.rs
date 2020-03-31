@@ -1,16 +1,7 @@
 //! Test Suite for the USART API in LPC8xx HAL
 //!
-//! This test suite requires two serial connections:
-//! - To the test target, to control the device's behavior.
-//! - To the test assistant, to send/receive message to/from the target's USART.
-//!
-//! The configuration file (`test-stand.toml`) is used to determine which serial
-//! ports to connect to for each purpose. You probably need to update it, to
-//! reflect the realities on your system.
-//!
-//! As of this writing, both the target and the assistant use PIO0_26 (pin 12 on
-//! the LPC845-BRK) for receiving and PIO0_27 (pin 13) for sending. Please
-//! connect the target and assistant accordingly.
+//! This test suite communicates with hardware. See top-level README.md for
+//! wiring instructions.
 
 
 use std::time::Duration;
