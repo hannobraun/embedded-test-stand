@@ -1,10 +1,16 @@
+/// Defines the error type for this library
+
+
 use std::io;
 
 
+/// The result type for this library
+///
+/// This is just a convenient short-hand.
 pub type Result<T = ()> = core::result::Result<T, Error>;
 
 
-/// Various low-level errors that can occur in the test suite support code
+/// The error type for this library
 #[derive(Debug)]
 pub enum Error {
     /// Error occured while deserializing the configuration file

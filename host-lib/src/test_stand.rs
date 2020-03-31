@@ -32,9 +32,23 @@ pub struct TestStand {
     /// dropped, another test case might start running immediately.
     pub guard: LockResult<MutexGuard<'static, ()>>,
 
-    pub target:    Result<Conn, NotConfiguredError>,
+    /// Connection to the test target
+    ///
+    /// This field will be `Err`, if the test target has not been specified in
+    /// the configuration file.
+    pub target: Result<Conn, NotConfiguredError>,
+
+    /// Connection to the test assistant
+    ///
+    /// This field will be `Err`, if the test assistant has not been specified
+    /// in the configuration file.
     pub assistant: Result<Conn, NotConfiguredError>,
-    pub serial:    Result<Serial, NotConfiguredError>,
+
+    /// Connection to the USB/serial converter
+    ///
+    /// This field will be `Err`, if the USB/serial converter has not been
+    /// specified in the configuration file.
+    pub serial: Result<Serial, NotConfiguredError>,
 }
 
 impl TestStand {
@@ -96,12 +110,22 @@ impl TestStand {
 }
 
 
+/// Error initializing the test stand
 #[derive(Debug)]
 pub enum TestStandInitError {
+    /// Error reading configuration
     ConfigRead(ConfigReadError),
+
+    /// Error initializing a serial connection
     ConnInit(ConnInitError),
+
+    /// Error initializing the USB/serial converter
     SerialInit(SerialInitError),
 }
 
+/// The resource you tried to access was not specified in the configuration file
+///
+/// If something isn't specified the configuration file, it is not going to be
+/// available.
 #[derive(Clone, Copy, Debug)]
 pub struct NotConfiguredError(pub &'static str);
