@@ -106,15 +106,15 @@ impl Conn {
 
 
 #[derive(Debug)]
-pub struct ConnInitError(serialport::Error);
+pub struct ConnInitError(pub serialport::Error);
 
 
 #[derive(Debug)]
-pub struct ConnSendError(Error);
+pub struct ConnSendError(pub Error);
 
 
 #[derive(Debug)]
-pub struct ConnReceiveError(Error);
+pub struct ConnReceiveError(pub Error);
 
 impl ConnReceiveError {
     pub fn is_timeout(&self) -> bool {

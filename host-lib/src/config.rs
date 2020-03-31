@@ -36,4 +36,4 @@ impl Config {
 
 
 #[derive(Debug)]
-pub struct ConfigReadError(Error);
+pub struct ConfigReadError(pub Error);

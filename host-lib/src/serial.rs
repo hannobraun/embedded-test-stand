@@ -91,10 +91,11 @@ impl Serial {
 
 
 #[derive(Debug)]
-pub struct SerialInitError(serialport::Error);
+pub struct SerialInitError(pub serialport::Error);
 
 #[derive(Debug)]
-pub struct SerialSendError(io::Error);
+pub struct SerialSendError(pub io::Error);
+
 
 #[derive(Debug)]
-pub struct SerialWaitError(Error);
+pub struct SerialWaitError(pub Error);
