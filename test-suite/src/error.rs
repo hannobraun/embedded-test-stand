@@ -18,6 +18,7 @@ use super::{
     target::{
         TargetSetPinHighError,
         TargetSetPinLowError,
+        TargetStartTimerInterruptError,
         TargetUsartSendError,
         TargetUsartWaitError,
     },
@@ -40,6 +41,7 @@ pub enum Error {
     SerialWait(SerialWaitError),
     TargetSetPinHigh(TargetSetPinHighError),
     TargetSetPinLow(TargetSetPinLowError),
+    TargetStartTimerInterrupt(TargetStartTimerInterruptError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
@@ -78,6 +80,12 @@ impl From<SerialSendError> for Error {
 impl From<SerialWaitError> for Error {
     fn from(err: SerialWaitError) -> Self {
         Self::SerialWait(err)
+    }
+}
+
+impl From<TargetStartTimerInterruptError> for Error {
+    fn from(err: TargetStartTimerInterruptError) -> Self {
+        Self::TargetStartTimerInterrupt(err)
     }
 }
 
