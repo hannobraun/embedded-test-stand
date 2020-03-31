@@ -29,7 +29,7 @@ This section explains some concepts, which should make the structure of this rep
 
 ## Structure
 
-At the time of writing, there are 5 Cargo packages in this repository. It's a bit unfortunate that there are this many, but it doesn't make sense to reduce the number, because of the following factors:
+At the time of writing, there are 6 Cargo packages in this repository. It's a bit unfortunate that there are this many, but it doesn't make sense to reduce the number, because of the following factors:
 
 1. There is firmware code targetting microcontrollers and code intended to be run on the host computer. Those have very different requirements regarding their dependencies, which makes having them in the same crate more trouble than it would be worth.
 1. Right now, there are basically two projects in this repository: The test framework, and the test suite for LPC845 HAL. Eventually, both can live in separate places, but for now it makes sense to develop them together.
@@ -53,17 +53,33 @@ These crates belong to the LPC845 test suite. They are not directly applicable t
 
 ## Running the Test Suite
 
-This repository contains an example test suite that sends commands to the device under test and verifies its response.
+This repository contains an example test suite that sends commands to the device under test and verifies its response. This section describes what prerequisites you need for running the test suite, and how to do so.
 
-Before you can successfully run the test suite, you need the following:
+### Hardware Setup
 
-1. Two [LPC845-BRK] boards. One will be the test target, the other will function as the test assistant.
-1. OpenOCD and [arm-none-eabi-gdb] installed on your workstation. The latest official release of OpenOCD won't do, unfortunately. Use a recent version from Git, or the [xPack binaries].
+You need two [LPC845-BRK] boards. One will be the test target, the other will serve as the test assistant.
+
+Connect both boards to the host computer via their USB ports. This is required both to download the firmware and to communicate with it during the test.
+
+In addition, you need to connect the following pins of the target and the assistant:
+
+Target Pin | Assistant Pin | Note
+--------------------------------------------------------------
+        12 |            13 | USART: Target RX, Assistant TX
+        13 |            12 | USART: Target TX, Assistant RX
+        30 |            30 | Timer interrupt signal (blue LED)
+        31 |            31 | GPIO (green LED)
+
+### Software Setup
+
+Besides a Rust toolchain, you need OpenOCD and [arm-none-eabi-gdb] installed on your workstation, to download the firmware. The latest official release of OpenOCD won't do, unfortunately. Use a recent version from Git, or the [xPack binaries].
 
 In addition, you need to update some configuration, to reflect the realities on your system:
 
 1. Update `test-target/dap-serial.cfg` and `test-assistant/dap-serial.cfg`, as described in those files. Otherwise OpenOCD/GDB won't be able to distinguish the two LPC845-BRK boards, and might try to upload both firmwares to the same device.
 1. Update `test-suite/test-stand.toml` to make sure the test suite has the correct paths to the serial device files. Otherwise, it won't be able to communicate with the firmwares.
+
+### Running
 
 Once you have all of this set up, you can download the test target firmware like this:
 
@@ -88,9 +104,24 @@ cargo test
 
 You should see a list of successfully executed test cases.
 
+### Troubleshooting
+
+I make sure that the test suite runs reliably on my machine before merging any changes. While it is always possible that I missed a bug (please open an issue, if you find one!), the most common source of problems is the set-up.
+
+Here are some tips to help you find problems:
+
+- Make sure that the serial device paths you specified in `test-stand.toml` are correct. Please note that the path that is assigned to the target's or assistant's serial device can depend on the order in which they are connected to the host PC.
+- Make sure that the correct version of the firmware is running on the devices. If you recently checked out another commit (maybe switched to another branch?), make sure your firmwares match your test suite by re-uploading them.
+- Make sure the target and assistant are connected as documented above, and that no connections are loose or faulty.
+- Make sure that both firmwares are in a valid state. They should be in a valid state after reset, and a successful test run should also leave them in a valid state. But a failed test run could render them unable to perform any more tests successfully.
+
+These are just some suggestions. Please feel free to add more, if you experience any more problems. There are currently open issues ([#6], [#46]) that would help make the whole setup more robust.
+
 [LPC845-BRK]: https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/general-purpose-mcus/lpc800-cortex-m0-plus-/lpc845-breakout-board-for-lpc84x-family-mcus:LPC845-BRK
 [xPack binaries]: https://github.com/xpack-dev-tools/openocd-xpack/releases/
 [arm-none-eabi-gdb]: https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads
+[#6]: https://github.com/braun-embedded/lpc845-test-stand/issues/6
+[#46]: https://github.com/braun-embedded/lpc845-test-stand/issues/46
 
 
 ## License
