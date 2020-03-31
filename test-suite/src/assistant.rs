@@ -137,6 +137,62 @@ impl Assistant {
             }
         }
     }
+
+    /// Measures the period of changes in a GPIO signal
+    ///
+    /// Waits for changes in the GPIO signal until the given number of samples
+    /// has been measured. Returns the minimum and maximum period measured, in
+    /// milliseconds.
+    ///
+    /// # Panics
+    ///
+    /// `samples` must be at least `1`. This method will panic, if this is not
+    /// the case.
+    pub fn measure_gpio_period(&mut self, samples: u32, timeout: Duration)
+        -> Result<GpioPeriodMeasurement, AssistantPinReadError>
+    {
+        assert!(samples > 0);
+
+        let mut measurement: Option<GpioPeriodMeasurement> = None;
+
+        let (mut state, _) = self.pin_state(Pin::Blue, timeout)?;
+
+        for _ in 0 .. samples {
+            let (new_state, period_ms) = self.pin_state(Pin::Blue, timeout)?;
+            print!("{:?}, {:?}\n", new_state, period_ms);
+
+            if new_state == state {
+                continue;
+            }
+
+            state = new_state;
+
+            let period = match period_ms {
+                Some(period_ms) => Duration::from_millis(period_ms as u64),
+                None            => continue,
+            };
+
+            match &mut measurement {
+                Some(measurement) => {
+                    measurement.min = Ord::min(measurement.min, period);
+                    measurement.max = Ord::max(measurement.max, period);
+                }
+                None => {
+                    measurement = Some(
+                        GpioPeriodMeasurement {
+                            min: period,
+                            max: period,
+                        }
+                    )
+                }
+            }
+        }
+
+        // Due to the assertion above, we know that samples is at least `1` and
+        // therefore, that the loop ran at least once. `measurement` must be
+        // `Some`.
+        Ok(measurement.unwrap())
+    }
 }
 
 
@@ -144,6 +200,13 @@ impl Assistant {
 pub enum PinState {
     High,
     Low,
+}
+
+
+#[derive(Debug)]
+pub struct GpioPeriodMeasurement {
+    pub min: Duration,
+    pub max: Duration,
 }
 
 
