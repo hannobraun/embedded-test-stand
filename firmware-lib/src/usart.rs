@@ -1,3 +1,6 @@
+//! Interrupt-enabled USART API
+
+
 pub mod rx;
 pub mod tx;
 
@@ -28,6 +31,10 @@ use lpc8xx_hal::USART;
 ///   intended to be moved into the interrupt handler.
 /// - [`RxIdle`], which can be used to process the received data somewhere else.
 /// - [`Tx`], which can be used to send data.
+///
+/// [`RxInt`]: rx/struct.RxInt.html
+/// [`RxIdle`]: rx/struct.RxIdle.html
+/// [`Tx`]: tx/struct.Tx.html
 pub struct Usart {
     queue: spsc::Queue<u8, QueueCap>,
 }
@@ -44,6 +51,10 @@ impl Usart {
     ///
     /// Returns the three parts - [`RxInt`], [`RxIdle`], and [`Tx`] - which can
     /// then be moved into different contexts.
+    ///
+    /// [`RxInt`]: rx/struct.RxInt.html
+    /// [`RxIdle`]: rx/struct.RxIdle.html
+    /// [`Tx`]: tx/struct.Tx.html
     pub fn init<I>(&mut self, usart: USART<I>) -> (RxInt<I>, RxIdle, Tx<I>) {
         let (prod, cons) = self.queue.split();
 

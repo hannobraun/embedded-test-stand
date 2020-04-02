@@ -24,6 +24,9 @@ pub struct Conn {
 
 impl Conn {
     /// Open the connection
+    ///
+    /// `path` is the path to the serial device file that connects to the
+    /// firmware.
     pub fn new(path: &str) -> Result<Self, ConnInitError> {
         let port =
             serialport::open_with_settings(
@@ -49,6 +52,8 @@ impl Conn {
     }
 
     /// Send a message
+    ///
+    /// `message` can be any type that can be serialized using `serde`.
     pub fn send<T>(&mut self, message: &T) -> Result<(), ConnSendError>
         where T: Serialize
     {
@@ -68,6 +73,13 @@ impl Conn {
     }
 
     /// Receive a message
+    ///
+    /// Accepts the following arguments:
+    /// - `timeout`, which specifies (unsurprisingly) the timeout. An error is
+    ///   returned, if nothing is received after this duration.
+    /// - `buf` is the buffer used to receive data into. Its lifetime is tied to
+    ///   the return value, as the received type might still borrow data from
+    ///   this buffer.
     pub fn receive<'de, T>(&mut self, timeout: Duration, buf: &'de mut Vec<u8>)
         -> Result<T, ConnReceiveError>
         where T: Deserialize<'de>
@@ -105,14 +117,17 @@ impl Conn {
 }
 
 
+/// Error initializing connection
 #[derive(Debug)]
 pub struct ConnInitError(pub serialport::Error);
 
 
+/// Error sending data through a connection
 #[derive(Debug)]
 pub struct ConnSendError(pub Error);
 
 
+/// Error receiving from a connection
 #[derive(Debug)]
 pub struct ConnReceiveError(pub Error);
 

@@ -1,3 +1,6 @@
+//! Shared code for test target and assistant firmwares
+
+
 #![no_std]
 
 

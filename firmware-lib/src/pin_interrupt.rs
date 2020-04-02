@@ -1,3 +1,6 @@
+//! Convenient pin interrupt API
+
+
 use heapless::{
     consts::U16,
     spsc::{
@@ -21,6 +24,9 @@ pub struct PinInterrupt {
 
 impl PinInterrupt {
     /// Create a new instance of `PinInterrupt`
+    ///
+    /// Can be called in a const context, which means it can be used to
+    /// initialize a `static`.
     pub const fn new() -> Self {
         Self {
             queue: Queue(heapless::i::Queue::new()),
@@ -33,6 +39,14 @@ impl PinInterrupt {
     /// - [`Int`] is intended to be used from the interrupt context.
     /// - [`Idle`] is intended to be used from a lower-piority context, for
     ///   example the idle loop, to process events from the interrupt context.
+    ///
+    /// Both structs have a lifetime that is tied to the lifetime of `self`.
+    /// This can be prohibitive, if you're going to move the structs into
+    /// different contexts. It is recommended to avoid this problem by
+    /// allocating the `PinInterrupt` struct in a `static`.
+    ///
+    /// [`Int`]: struct.Int.html
+    /// [`Idle`]: struct.Idle.html
     pub fn init<I, P>(&mut self, interrupt: pinint::Interrupt<I, P, Enabled>)
         -> (Int<I, P>, Idle)
     {
@@ -47,6 +61,11 @@ impl PinInterrupt {
 
 
 /// Pin interrupt API for the interrupt context
+///
+/// You can get an instance of this struct by calling [`PinInterrupt::init`].
+/// The `Int` instance can then be moved into the interrupt handler.
+///
+/// [`PinInterrupt::init`]: struct.PinInterrupt.html#method.init
 pub struct Int<'r, I, P> {
     int:   pinint::Interrupt<I, P, Enabled>,
     queue: Producer<'r, gpio::Level, QueueCap>
@@ -62,6 +81,8 @@ impl<I, P> Int<'_, I, P>
     /// This should be called directly from the interrupt handler. Will check
     /// whether this interrupt was triggered by a rising or falling edge, and
     /// will send the respective event to the corresponding [`Idle`] instance.
+    ///
+    /// [`Idle`]: struct.Idle.html
     pub fn handle_interrupt(&mut self) {
         if self.int.clear_rising_edge_flag() {
             self.queue.enqueue(gpio::Level::High).unwrap();
@@ -74,6 +95,14 @@ impl<I, P> Int<'_, I, P>
 
 
 /// Pin interrupt API for a lower-priority context
+///
+/// You can get an instance of this struct by calling [`PinInterrupt::init`].
+/// The `Idle` instance can then be moved to a lower-priority context, for
+/// example the idle loop, where it can be used to process events received from
+/// the corresponding [`Int`] instance without any time pressure.
+///
+/// [`PinInterrupt::init`]: struct.PinInterrupt.html#method.init
+/// [`Int`]: struct.Int.html
 pub struct Idle<'r> {
     queue: Consumer<'r, gpio::Level, QueueCap>,
 }

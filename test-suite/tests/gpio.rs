@@ -1,3 +1,9 @@
+//! Test Suite for the GPIO API in LPC8xx HAL
+//!
+//! This test suite communicates with hardware. See top-level README.md for
+//! wiring instructions.
+
+
 use lpc845_test_suite::{
     Result,
     TestStand,

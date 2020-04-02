@@ -15,13 +15,15 @@ use serialport::{
 use crate::Error;
 
 
-/// A Serial-to-USB converter that is connected to the device under test
+/// A Serial-to-USB converter that is connected to the test target
 pub struct Serial {
     port: Box<dyn SerialPort>,
 }
 
 impl Serial {
     /// Open a serial connection
+    ///
+    /// `path` is the path to the serial device file.
     pub fn new(path: &str) -> Result<Self, SerialInitError> {
         let port =
             serialport::open_with_settings(
@@ -42,7 +44,7 @@ impl Serial {
         )
     }
 
-    /// Send data
+    /// Send raw byte data through the serial connection
     pub fn send(&mut self, data: &[u8]) -> Result<(), SerialSendError> {
         self.port.write_all(data)
             .map_err(|err| SerialSendError(err))
@@ -90,12 +92,15 @@ impl Serial {
 }
 
 
+/// Error initializing the serial connection
 #[derive(Debug)]
 pub struct SerialInitError(pub serialport::Error);
 
+/// Error sending data through the serial connection
 #[derive(Debug)]
 pub struct SerialSendError(pub io::Error);
 
 
+/// Error receiving data from the serial connection
 #[derive(Debug)]
 pub struct SerialWaitError(pub Error);

@@ -1,3 +1,6 @@
+//! Sending part of the interrupt-enabled USART API
+
+
 use lpc8xx_hal::{
     prelude::*,
     usart,
@@ -43,4 +46,5 @@ impl<I> Tx<I>
 }
 
 
+/// Error occurred while serializing message
 pub type Error = postcard::Error;

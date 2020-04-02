@@ -1,3 +1,6 @@
+/// Test-suite specific error module
+
+
 use host_lib::{
     serial::{
         SerialSendError,
