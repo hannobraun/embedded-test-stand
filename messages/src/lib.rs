@@ -18,6 +18,12 @@ pub enum HostToTarget<'r> {
 
     /// Instruct the target to set a specific pin low
     SetPinLow,
+
+    /// Instruct the target to start the timer interrupt
+    StartTimerInterrupt { period_ms: u32 },
+
+    /// Instruct the target to stop the timer interrupt
+    StopTimerInterrupt,
 }
 
 /// An message from the target to the test suite on the host
@@ -42,15 +48,34 @@ pub enum AssistantToHost<'r> {
     UsartReceive(&'r [u8]),
 
     /// Notify the host that pin has been set high
-    PinIsHigh(Pin),
+    PinIsHigh {
+        /// The pin that has been set high
+        pin: Pin,
+
+        /// The period since the last change to this pin in ms, if available
+        ///
+        /// If the time since the last change has been too long, this value will
+        /// not be reliable.
+        period_ms: Option<u32>,
+    },
 
     /// Notify the host that pin has been set low
-    PinIsLow(Pin),
+    PinIsLow {
+        /// The pin that has been set low
+        pin: Pin,
+
+        /// The period since the last change to this pin in ms, if available
+        ///
+        /// If the time since the last change has been too long, this value will
+        /// not be reliable.
+        period_ms: Option<u32>,
+    },
 }
 
 
 /// Represents one of the pins that the assistant is monitoring
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum Pin {
+    Blue,
     Green,
 }

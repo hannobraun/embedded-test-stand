@@ -23,27 +23,25 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green)?;
-        Ok(pin_state == PinState::High)
+        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
+        Ok(pin_state.0 == PinState::High)
     }
 
     /// Indicates whether the GPIO pin on the test target is set low
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green)?;
-        Ok(pin_state == PinState::Low)
+        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
+        Ok(pin_state.0 == PinState::Low)
     }
 
     /// Receives pin state messages to determine current state of pin
     ///
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, pin: Pin)
-        -> Result<PinState, AssistantPinReadError>
+    pub fn pin_state(&mut self, expected_pin: Pin, timeout: Duration)
+        -> Result<(PinState, Option<u32>), AssistantPinReadError>
     {
-        let timeout = Duration::from_millis(10);
-
         let mut buf   = Vec::new();
         let     start = Instant::now();
 
@@ -68,11 +66,15 @@ impl Assistant {
             };
 
             match message {
-                AssistantToHost::PinIsHigh(p) if p == pin => {
-                    pin_state = Some(PinState::High);
+                AssistantToHost::PinIsHigh { pin, period_ms }
+                    if pin == expected_pin
+                => {
+                    pin_state = Some((PinState::High, period_ms));
                 }
-                AssistantToHost::PinIsLow(p) if p == pin => {
-                    pin_state = Some(PinState::Low);
+                AssistantToHost::PinIsLow { pin, period_ms }
+                    if pin == expected_pin
+                => {
+                    pin_state = Some((PinState::Low, period_ms));
                 }
 
                 _ => {
@@ -135,6 +137,62 @@ impl Assistant {
             }
         }
     }
+
+    /// Measures the period of changes in a GPIO signal
+    ///
+    /// Waits for changes in the GPIO signal until the given number of samples
+    /// has been measured. Returns the minimum and maximum period measured, in
+    /// milliseconds.
+    ///
+    /// # Panics
+    ///
+    /// `samples` must be at least `1`. This method will panic, if this is not
+    /// the case.
+    pub fn measure_gpio_period(&mut self, samples: u32, timeout: Duration)
+        -> Result<GpioPeriodMeasurement, AssistantPinReadError>
+    {
+        assert!(samples > 0);
+
+        let mut measurement: Option<GpioPeriodMeasurement> = None;
+
+        let (mut state, _) = self.pin_state(Pin::Blue, timeout)?;
+
+        for _ in 0 .. samples {
+            let (new_state, period_ms) = self.pin_state(Pin::Blue, timeout)?;
+            print!("{:?}, {:?}\n", new_state, period_ms);
+
+            if new_state == state {
+                continue;
+            }
+
+            state = new_state;
+
+            let period = match period_ms {
+                Some(period_ms) => Duration::from_millis(period_ms as u64),
+                None            => continue,
+            };
+
+            match &mut measurement {
+                Some(measurement) => {
+                    measurement.min = Ord::min(measurement.min, period);
+                    measurement.max = Ord::max(measurement.max, period);
+                }
+                None => {
+                    measurement = Some(
+                        GpioPeriodMeasurement {
+                            min: period,
+                            max: period,
+                        }
+                    )
+                }
+            }
+        }
+
+        // Due to the assertion above, we know that samples is at least `1` and
+        // therefore, that the loop ran at least once. `measurement` must be
+        // `Some`.
+        Ok(measurement.unwrap())
+    }
 }
 
 
@@ -142,6 +200,13 @@ impl Assistant {
 pub enum PinState {
     High,
     Low,
+}
+
+
+#[derive(Debug)]
+pub struct GpioPeriodMeasurement {
+    pub min: Duration,
+    pub max: Duration,
 }
 
 

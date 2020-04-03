@@ -20,12 +20,22 @@ use lpc8xx_hal::{
         interrupt,
     },
     gpio,
+    mrt::{
+        MRT0,
+        MRT1,
+    },
     pac::{
         USART0,
         USART1,
     },
-    pinint::PININT0,
-    pins::PIO1_0,
+    pinint::{
+        PININT0,
+        PININT1,
+    },
+    pins::{
+        PIO1_0,
+        PIO1_1,
+    },
     syscon::frg,
     usart,
 };
@@ -60,8 +70,11 @@ const APP: () = {
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
 
-        green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0>,
+        green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0, MRT0>,
         green_idle: pin_interrupt::Idle<'static>,
+
+        blue_int:  pin_interrupt::Int<'static, PININT1, PIO1_1, MRT1>,
+        blue_idle: pin_interrupt::Idle<'static>,
     }
 
     #[init]
@@ -75,6 +88,7 @@ const APP: () = {
         static mut TARGET: Usart = Usart::new();
 
         static mut GREEN: PinInterrupt = PinInterrupt::new();
+        static mut BLUE:  PinInterrupt = PinInterrupt::new();
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
@@ -84,10 +98,11 @@ const APP: () = {
         let     swm    = p.SWM.split();
         let     gpio   = p.GPIO.enable(&mut syscon.handle);
         let     pinint = p.PININT.enable(&mut syscon.handle);
+        let     timers = p.MRT0.split(&mut syscon.handle);
 
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
-        // Configure interrupt for pin connected to assistant's LED pin
+        // Configure interrupt for pin connected target's GPIO pin
         let _green = p.pins.pio1_0.into_input_pin(gpio.tokens.pio1_0);
         let mut green_int = pinint
             .interrupts
@@ -95,6 +110,15 @@ const APP: () = {
             .select::<PIO1_0>(&mut syscon.handle);
         green_int.enable_rising_edge();
         green_int.enable_falling_edge();
+
+        // Configure interrupt for pin connected to target's timer interrupt pin
+        let _blue = p.pins.pio1_1.into_input_pin(gpio.tokens.pio1_1);
+        let mut blue_int = pinint
+            .interrupts
+            .pinint1
+            .select::<PIO1_1>(&mut syscon.handle);
+        blue_int.enable_rising_edge();
+        blue_int.enable_falling_edge();
 
         // Configure the clock for USART0, using the Fractional Rate Generator
         // (FRG) and the USART's own baud rate divider value (BRG). See user
@@ -157,7 +181,8 @@ const APP: () = {
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);
         let (target_rx_int, target_rx_idle, target_tx) = TARGET.init(target);
 
-        let (green_int, green_idle) = GREEN.init(green_int);
+        let (green_int, green_idle) = GREEN.init(green_int, timers.mrt0);
+        let (blue_int,  blue_idle)  = BLUE.init(blue_int, timers.mrt1);
 
         init::LateResources {
             host_rx_int,
@@ -170,6 +195,9 @@ const APP: () = {
 
             green_int,
             green_idle,
+
+            blue_int,
+            blue_idle,
         }
     }
 
@@ -180,6 +208,7 @@ const APP: () = {
             target_rx_idle,
             target_tx,
             green_idle,
+            blue_idle,
         ]
     )]
     fn idle(cx: idle::Context) -> ! {
@@ -188,6 +217,7 @@ const APP: () = {
         let target_rx = cx.resources.target_rx_idle;
         let target_tx = cx.resources.target_tx;
         let green     = cx.resources.green_idle;
+        let blue      = cx.resources.blue_idle;
 
         let mut buf = [0; 256];
 
@@ -212,26 +242,8 @@ const APP: () = {
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
-            while let Some(level) = green.next() {
-                match level {
-                    gpio::Level::High => {
-                        host_tx
-                            .send_message(
-                                &AssistantToHost::PinIsHigh(Pin::Green),
-                                &mut buf,
-                            )
-                            .unwrap();
-                    }
-                    gpio::Level::Low => {
-                        host_tx
-                            .send_message(
-                                &AssistantToHost::PinIsLow(Pin::Green),
-                                &mut buf,
-                            )
-                            .unwrap();
-                    }
-                }
-            }
+            handle_timer_interrupts(green, Pin::Green, host_tx, &mut buf);
+            handle_timer_interrupts(blue,  Pin::Blue,  host_tx, &mut buf);
 
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
@@ -273,4 +285,43 @@ const APP: () = {
     fn pinint0(context: pinint0::Context) {
         context.resources.green_int.handle_interrupt();
     }
+
+    #[task(binds = PIN_INT1, resources = [blue_int])]
+    fn pinint1(context: pinint1::Context) {
+        context.resources.blue_int.handle_interrupt();
+    }
 };
+
+
+fn handle_timer_interrupts<U>(
+    int:     &mut pin_interrupt::Idle,
+    pin:     Pin,
+    host_tx: &mut Tx<U>,
+    buf:     &mut [u8],
+)
+    where
+        U: usart::Instance,
+{
+    while let Some(level) = int.next() {
+        match level {
+            pin_interrupt::Event { level: gpio::Level::High, period } => {
+                let period_ms = period.map(|value| value / 12_000);
+                host_tx
+                    .send_message(
+                        &AssistantToHost::PinIsHigh { pin, period_ms },
+                        buf,
+                    )
+                    .unwrap();
+            }
+            pin_interrupt::Event { level: gpio::Level::Low, period } => {
+                let period_ms = period.map(|value| value / 12_000);
+                host_tx
+                    .send_message(
+                        &AssistantToHost::PinIsLow { pin, period_ms },
+                        buf,
+                    )
+                    .unwrap();
+            }
+        }
+    }
+}
