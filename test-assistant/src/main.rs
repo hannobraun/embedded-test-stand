@@ -302,8 +302,8 @@ fn handle_timer_interrupts<U>(
     where
         U: usart::Instance,
 {
-    while let Some(level) = int.next() {
-        match level {
+    while let Some(event) = int.next() {
+        match event {
             pin_interrupt::Event { level: gpio::Level::High, period } => {
                 let period_ms = period.map(|value| value / 12_000);
                 host_tx
