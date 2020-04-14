@@ -12,6 +12,7 @@ use lpc845_messages::{
     AssistantToHost,
     HostToAssistant,
     Pin,
+    PinState,
 };
 
 
@@ -193,13 +194,6 @@ impl Assistant {
         // `Some`.
         Ok(measurement.unwrap())
     }
-}
-
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum PinState {
-    High,
-    Low,
 }
 
 

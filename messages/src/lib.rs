@@ -79,3 +79,11 @@ pub enum Pin {
     Blue,
     Green,
 }
+
+
+/// Represents the electrical level of a pin
+#[derive(Debug, Eq, PartialEq)]
+pub enum PinState {
+    High,
+    Low,
+}
