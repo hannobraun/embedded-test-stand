@@ -13,11 +13,8 @@ pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
     SendUsart(&'r [u8]),
 
-    /// Instruct the device to set a specific pin high
-    SetPinHigh,
-
-    /// Instruct the target to set a specific pin low
-    SetPinLow,
+    /// Instruct the device to change the electrical level of the pin
+    SetPin(PinState),
 
     /// Instruct the target to start the timer interrupt
     StartTimerInterrupt { period_ms: u32 },
