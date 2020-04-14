@@ -82,7 +82,7 @@ pub enum Pin {
 
 
 /// Represents the electrical level of a pin
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum PinState {
     High,
     Low,
