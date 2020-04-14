@@ -47,29 +47,20 @@ pub enum AssistantToHost<'r> {
     /// Notify the host that data has been received from the target via USART
     UsartReceive(&'r [u8]),
 
-    /// Notify the host that pin has been set high
-    PinIsHigh {
-        /// The pin that has been set high
+    /// Notify the host that the level of a pin has changed
+    PinLevelChanged {
+        /// The pin whose level has changed
         pin: Pin,
 
-        /// The period since the last change to this pin in ms, if available
+        /// The new level of the pin
+        level: PinState,
+
+        /// The period since the last change of this pin in ms, if available
         ///
         /// If the time since the last change has been too long, this value will
         /// not be reliable.
         period_ms: Option<u32>,
-    },
-
-    /// Notify the host that pin has been set low
-    PinIsLow {
-        /// The pin that has been set low
-        pin: Pin,
-
-        /// The period since the last change to this pin in ms, if available
-        ///
-        /// If the time since the last change has been too long, this value will
-        /// not be reliable.
-        period_ms: Option<u32>,
-    },
+    }
 }
 
 

@@ -56,6 +56,7 @@ use lpc845_messages::{
     AssistantToHost,
     HostToAssistant,
     Pin,
+    PinState,
 };
 
 
@@ -304,20 +305,20 @@ fn handle_timer_interrupts<U>(
 {
     while let Some(event) = int.next() {
         match event {
-            pin_interrupt::Event { level: gpio::Level::High, period } => {
+            pin_interrupt::Event { level, period } => {
+                let level = match level {
+                    gpio::Level::High => PinState::High,
+                    gpio::Level::Low  => PinState::Low,
+                };
+
                 let period_ms = period.map(|value| value / 12_000);
                 host_tx
                     .send_message(
-                        &AssistantToHost::PinIsHigh { pin, period_ms },
-                        buf,
-                    )
-                    .unwrap();
-            }
-            pin_interrupt::Event { level: gpio::Level::Low, period } => {
-                let period_ms = period.map(|value| value / 12_000);
-                host_tx
-                    .send_message(
-                        &AssistantToHost::PinIsLow { pin, period_ms },
+                        &AssistantToHost::PinLevelChanged {
+                            pin,
+                            level,
+                            period_ms,
+                        },
                         buf,
                     )
                     .unwrap();
