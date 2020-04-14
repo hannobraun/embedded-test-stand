@@ -12,6 +12,7 @@ use lpc845_messages::{
     AssistantToHost,
     HostToAssistant,
     Pin,
+    PinState,
 };
 
 
@@ -66,15 +67,10 @@ impl Assistant {
             };
 
             match message {
-                AssistantToHost::PinIsHigh { pin, period_ms }
+                AssistantToHost::PinLevelChanged { pin, level, period_ms }
                     if pin == expected_pin
                 => {
-                    pin_state = Some((PinState::High, period_ms));
-                }
-                AssistantToHost::PinIsLow { pin, period_ms }
-                    if pin == expected_pin
-                => {
-                    pin_state = Some((PinState::Low, period_ms));
+                    pin_state = Some((level, period_ms));
                 }
 
                 _ => {
@@ -193,13 +189,6 @@ impl Assistant {
         // `Some`.
         Ok(measurement.unwrap())
     }
-}
-
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum PinState {
-    High,
-    Low,
 }
 
 

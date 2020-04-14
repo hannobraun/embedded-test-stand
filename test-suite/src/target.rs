@@ -5,6 +5,7 @@ use std::time::{
 
 use lpc845_messages::{
     HostToTarget,
+    PinState,
     TargetToHost,
 };
 
@@ -21,13 +22,13 @@ pub struct Target(pub(crate) Conn);
 impl Target {
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
-        self.0.send(&HostToTarget::SetPinHigh)
+        self.0.send(&HostToTarget::SetPin(PinState::High))
             .map_err(|err| TargetSetPinHighError(err))
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
-        self.0.send(&HostToTarget::SetPinLow)
+        self.0.send(&HostToTarget::SetPin(PinState::Low))
             .map_err(|err| TargetSetPinLowError(err))
     }
 

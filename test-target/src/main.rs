@@ -47,6 +47,7 @@ use firmware_lib::usart::{
 };
 use lpc845_messages::{
     HostToTarget,
+    PinState,
     TargetToHost,
 };
 
@@ -205,10 +206,10 @@ const APP: () = {
                         HostToTarget::SendUsart(data) => {
                             usart_tx.send_raw(data)
                         }
-                        HostToTarget::SetPinHigh => {
+                        HostToTarget::SetPin(PinState::High) => {
                             green.set_high()
                         }
-                        HostToTarget::SetPinLow => {
+                        HostToTarget::SetPin(PinState::Low) => {
                             green.set_low()
                         }
                         HostToTarget::StartTimerInterrupt { period_ms } => {
