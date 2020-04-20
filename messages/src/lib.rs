@@ -36,6 +36,9 @@ pub enum TargetToHost<'r> {
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
     SendUsart(&'r [u8]),
+
+    /// Instruct the assistant to change level of the target's input pin
+    SetPin(PinState),
 }
 
 /// A message from the test assistant to the test suite on the host

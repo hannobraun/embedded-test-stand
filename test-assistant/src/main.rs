@@ -14,12 +14,17 @@ extern crate panic_semihosting;
 
 
 use lpc8xx_hal::{
+    prelude::*,
     Peripherals,
     cortex_m::{
         asm,
         interrupt,
     },
-    gpio,
+    gpio::{
+        self,
+        GpioPin,
+        direction::Output,
+    },
     mrt::{
         MRT0,
         MRT1,
@@ -35,10 +40,12 @@ use lpc8xx_hal::{
     pins::{
         PIO1_0,
         PIO1_1,
+        PIO1_2,
     },
     syscon::frg,
     usart,
 };
+use void::ResultVoidExt;
 
 use firmware_lib::{
     pin_interrupt::{
@@ -76,6 +83,8 @@ const APP: () = {
 
         blue_int:  pin_interrupt::Int<'static, PININT1, PIO1_1, MRT1>,
         blue_idle: pin_interrupt::Idle<'static>,
+
+        red: GpioPin<PIO1_2, Output>,
     }
 
     #[init]
@@ -120,6 +129,12 @@ const APP: () = {
             .select::<PIO1_1>(&mut syscon.handle);
         blue_int.enable_rising_edge();
         blue_int.enable_falling_edge();
+
+        // Configure pin connected to target's input pin
+        let red = p.pins.pio1_2.into_output_pin(
+            gpio.tokens.pio1_2,
+            gpio::Level::High,
+        );
 
         // Configure the clock for USART0, using the Fractional Rate Generator
         // (FRG) and the USART's own baud rate divider value (BRG). See user
@@ -199,6 +214,8 @@ const APP: () = {
 
             blue_int,
             blue_idle,
+
+            red,
         }
     }
 
@@ -210,6 +227,7 @@ const APP: () = {
             target_tx,
             green_idle,
             blue_idle,
+            red,
         ]
     )]
     fn idle(cx: idle::Context) -> ! {
@@ -219,6 +237,7 @@ const APP: () = {
         let target_tx = cx.resources.target_tx;
         let green     = cx.resources.green_idle;
         let blue      = cx.resources.blue_idle;
+        let red       = cx.resources.red;
 
         let mut buf = [0; 256];
 
@@ -237,6 +256,19 @@ const APP: () = {
                     match message {
                         HostToAssistant::SendUsart(data) => {
                             target_tx.send_raw(data)
+                        }
+                        HostToAssistant::SetPin(level) => {
+                            match level {
+                                PinState::High => {
+                                    red.set_high()
+                                        .void_unwrap();
+                                }
+                                PinState::Low => {
+                                    red.set_low()
+                                        .void_unwrap();
+                                }
+                            }
+                            Ok(())
                         }
                     }
                 })
