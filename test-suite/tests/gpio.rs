@@ -22,3 +22,16 @@ fn it_should_set_pin_level() -> Result {
 
     Ok(())
 }
+
+#[test]
+fn it_should_read_input_level() -> Result {
+    let mut test_stand = TestStand::new()?;
+
+    test_stand.assistant.set_pin_low()?;
+    assert!(test_stand.target.pin_is_low()?);
+
+    test_stand.assistant.set_pin_high()?;
+    assert!(test_stand.target.pin_is_high()?);
+
+    Ok(())
+}
