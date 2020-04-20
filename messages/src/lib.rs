@@ -28,6 +28,12 @@ pub enum HostToTarget<'r> {
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
     UsartReceive(&'r [u8]),
+
+    /// Notify the host that the level of GPIO input changed
+    PinLevelChanged {
+        /// The new level of the pin
+        level: PinState,
+    }
 }
 
 

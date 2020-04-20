@@ -63,7 +63,16 @@ impl Target {
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match event {
-                TargetToHost::UsartReceive(data) => buf.extend(data),
+                TargetToHost::UsartReceive(data) => {
+                    buf.extend(data)
+                }
+                message => {
+                    return Err(
+                        TargetUsartWaitError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
             }
         }
     }
@@ -109,4 +118,5 @@ pub struct TargetStartTimerInterruptError(ConnSendError);
 pub enum TargetUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
+    UnexpectedMessage(String),
 }
