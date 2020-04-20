@@ -18,6 +18,7 @@ use super::{
         AssistantUsartWaitError,
     },
     target::{
+        TargetPinReadError,
         TargetSetPinHighError,
         TargetSetPinLowError,
         TargetStartTimerInterruptError,
@@ -43,6 +44,7 @@ pub enum Error {
     NotConfigured(NotConfiguredError),
     SerialSend(SerialSendError),
     SerialWait(SerialWaitError),
+    TargetPinRead(TargetPinReadError),
     TargetSetPinHigh(TargetSetPinHighError),
     TargetSetPinLow(TargetSetPinLowError),
     TargetStartTimerInterrupt(TargetStartTimerInterruptError),
@@ -96,6 +98,12 @@ impl From<SerialSendError> for Error {
 impl From<SerialWaitError> for Error {
     fn from(err: SerialWaitError) -> Self {
         Self::SerialWait(err)
+    }
+}
+
+impl From<TargetPinReadError> for Error {
+    fn from(err: TargetPinReadError) -> Self {
+        Self::TargetPinRead(err)
     }
 }
 
