@@ -12,6 +12,8 @@ use host_lib::{
 use super::{
     assistant::{
         AssistantPinReadError,
+        AssistantSetPinHighError,
+        AssistantSetPinLowError,
         AssistantUsartSendError,
         AssistantUsartWaitError,
     },
@@ -34,6 +36,8 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     AssistantPinRead(AssistantPinReadError),
+    AssistantSetPinHigh(AssistantSetPinHighError),
+    AssistantSetPinLow(AssistantSetPinLowError),
     AssistantUsartSend(AssistantUsartSendError),
     AssistantUsartWait(AssistantUsartWaitError),
     NotConfigured(NotConfiguredError),
@@ -50,6 +54,18 @@ pub enum Error {
 impl From<AssistantPinReadError> for Error {
     fn from(err: AssistantPinReadError) -> Self {
         Self::AssistantPinRead(err)
+    }
+}
+
+impl From<AssistantSetPinHighError> for Error {
+    fn from(err: AssistantSetPinHighError) -> Self {
+        Self::AssistantSetPinHigh(err)
+    }
+}
+
+impl From<AssistantSetPinLowError> for Error {
+    fn from(err: AssistantSetPinLowError) -> Self {
+        Self::AssistantSetPinLow(err)
     }
 }
 

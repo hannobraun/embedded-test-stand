@@ -20,6 +20,18 @@ use lpc845_messages::{
 pub struct Assistant(pub(crate) Conn);
 
 impl Assistant {
+    /// Instruct the assistant to set the target's input pin high
+    pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
+        self.0.send(&HostToAssistant::SetPin(PinState::High))
+            .map_err(|err| AssistantSetPinHighError(err))
+    }
+
+    /// Instruct the assistant to set the target's input pin low
+    pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
+        self.0.send(&HostToAssistant::SetPin(PinState::Low))
+            .map_err(|err| AssistantSetPinLowError(err))
+    }
+
     /// Indicates whether the GPIO pin on the test target is set high
     ///
     /// Uses `pin_state` internally.
@@ -198,6 +210,12 @@ pub struct GpioPeriodMeasurement {
     pub max: Duration,
 }
 
+
+#[derive(Debug)]
+pub struct AssistantSetPinHighError(ConnSendError);
+
+#[derive(Debug)]
+pub struct AssistantSetPinLowError(ConnSendError);
 
 #[derive(Debug)]
 pub enum AssistantPinReadError {
