@@ -24,15 +24,24 @@ use lpc8xx_hal::{
     gpio::{
         GpioPin,
         Level,
-        direction::Output,
+        direction::{
+            Input,
+            Output,
+        },
     },
+    init_state::Enabled,
     pac::{
         USART0,
         USART1,
     },
+    pinint::{
+        self,
+        PININT0,
+    },
     pins::{
         PIO1_0,
         PIO1_1,
+        PIO1_2,
     },
     syscon::frg,
     usart,
@@ -65,6 +74,9 @@ const APP: () = {
 
         green: GpioPin<PIO1_0, Output>,
         blue:  GpioPin<PIO1_1, Output>,
+        red:   GpioPin<PIO1_2, Input>,
+
+        red_int: pinint::Interrupt<PININT0, PIO1_2, Enabled>,
 
         systick: SYST,
     }
@@ -88,6 +100,7 @@ const APP: () = {
         let mut syscon = p.SYSCON.split();
         let     swm    = p.SWM.split();
         let     gpio   = p.GPIO.enable(&mut syscon.handle);
+        let     pinint = p.PININT.enable(&mut syscon.handle);
 
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
@@ -96,6 +109,16 @@ const APP: () = {
             .into_output_pin(gpio.tokens.pio1_0, Level::High);
         let blue = p.pins.pio1_1
             .into_output_pin(gpio.tokens.pio1_1, Level::High);
+        let red = p.pins.pio1_2
+            .into_input_pin(gpio.tokens.pio1_2);
+
+        // Set up interrupt for input pin
+        let mut red_int = pinint
+            .interrupts
+            .pinint0
+            .select::<PIO1_2>(&mut syscon.handle);
+        red_int.enable_rising_edge();
+        red_int.enable_falling_edge();
 
         // Configure the clock for USART0, using the Fractional Rate Generator
         // (FRG) and the USART's own baud rate divider value (BRG). See user
@@ -169,6 +192,9 @@ const APP: () = {
 
             green,
             blue,
+            red,
+
+            red_int,
 
             systick,
         }
@@ -178,6 +204,7 @@ const APP: () = {
         host_rx_idle, host_tx,
         usart_rx_idle, usart_tx,
         green,
+        red,
         systick,
     ])]
     fn idle(cx: idle::Context) -> ! {
@@ -186,9 +213,13 @@ const APP: () = {
         let host_rx  = cx.resources.host_rx_idle;
         let host_tx  = cx.resources.host_tx;
         let green    = cx.resources.green;
+        let red      = cx.resources.red;
         let systick  = cx.resources.systick;
 
         let mut buf = [0; 256];
+
+        let mut input_was_high = red.is_high()
+            .void_unwrap();
 
         loop {
             usart_rx
@@ -252,6 +283,24 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
+                let input_is_high = red.is_high()
+                    .void_unwrap();
+                if input_is_high != input_was_high {
+                    let level = match input_is_high {
+                        true  => PinState::High,
+                        false => PinState::Low,
+                    };
+
+                    host_tx
+                        .send_message(
+                            &TargetToHost::PinLevelChanged { level },
+                            &mut buf,
+                        )
+                        .unwrap();
+
+                    input_was_high = input_is_high;
+                }
+
                 if !host_rx.can_process() && !usart_rx.can_process() {
                     asm::wfi();
                 }
@@ -275,5 +324,13 @@ const APP: () = {
     fn syst(cx: syst::Context) {
         cx.resources.blue.toggle()
             .void_unwrap()
+    }
+
+    #[task(binds = PIN_INT0, resources = [red_int])]
+    fn pinint0(context: pinint0::Context) {
+        let red_int = context.resources.red_int;
+
+        red_int.clear_rising_edge_flag();
+        red_int.clear_falling_edge_flag();
     }
 };

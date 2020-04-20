@@ -12,10 +12,13 @@ use host_lib::{
 use super::{
     assistant::{
         AssistantPinReadError,
+        AssistantSetPinHighError,
+        AssistantSetPinLowError,
         AssistantUsartSendError,
         AssistantUsartWaitError,
     },
     target::{
+        TargetPinReadError,
         TargetSetPinHighError,
         TargetSetPinLowError,
         TargetStartTimerInterruptError,
@@ -34,11 +37,14 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     AssistantPinRead(AssistantPinReadError),
+    AssistantSetPinHigh(AssistantSetPinHighError),
+    AssistantSetPinLow(AssistantSetPinLowError),
     AssistantUsartSend(AssistantUsartSendError),
     AssistantUsartWait(AssistantUsartWaitError),
     NotConfigured(NotConfiguredError),
     SerialSend(SerialSendError),
     SerialWait(SerialWaitError),
+    TargetPinRead(TargetPinReadError),
     TargetSetPinHigh(TargetSetPinHighError),
     TargetSetPinLow(TargetSetPinLowError),
     TargetStartTimerInterrupt(TargetStartTimerInterruptError),
@@ -50,6 +56,18 @@ pub enum Error {
 impl From<AssistantPinReadError> for Error {
     fn from(err: AssistantPinReadError) -> Self {
         Self::AssistantPinRead(err)
+    }
+}
+
+impl From<AssistantSetPinHighError> for Error {
+    fn from(err: AssistantSetPinHighError) -> Self {
+        Self::AssistantSetPinHigh(err)
+    }
+}
+
+impl From<AssistantSetPinLowError> for Error {
+    fn from(err: AssistantSetPinLowError) -> Self {
+        Self::AssistantSetPinLow(err)
     }
 }
 
@@ -80,6 +98,12 @@ impl From<SerialSendError> for Error {
 impl From<SerialWaitError> for Error {
     fn from(err: SerialWaitError) -> Self {
         Self::SerialWait(err)
+    }
+}
+
+impl From<TargetPinReadError> for Error {
+    fn from(err: TargetPinReadError) -> Self {
+        Self::TargetPinRead(err)
     }
 }
 

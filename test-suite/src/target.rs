@@ -32,6 +32,72 @@ impl Target {
             .map_err(|err| TargetSetPinLowError(err))
     }
 
+    /// Indicates whether the input pin is set high
+    ///
+    /// Uses `pin_state` internally.
+    pub fn pin_is_high(&mut self) -> Result<bool, TargetPinReadError> {
+        let pin_state = self.pin_state(Duration::from_millis(10))?;
+        Ok(pin_state == PinState::High)
+    }
+
+    /// Indicates whether the input pin is set low
+    ///
+    /// Uses `pin_state` internally.
+    pub fn pin_is_low(&mut self) -> Result<bool, TargetPinReadError> {
+        let pin_state = self.pin_state(Duration::from_millis(10))?;
+        Ok(pin_state == PinState::Low)
+    }
+
+    /// Receives pin state messages to determine current state of pin
+    ///
+    /// Will wait for pin state messages for a short amount of time. The most
+    /// recent one will be used to determine the pin state.
+    pub fn pin_state(&mut self, timeout: Duration)
+        -> Result<PinState, TargetPinReadError>
+    {
+        let mut buf   = Vec::new();
+        let     start = Instant::now();
+
+        let mut pin_state = None;
+
+        loop {
+            if start.elapsed() > timeout {
+                break;
+            }
+
+            let message = self.0.receive::<TargetToHost>(timeout, &mut buf);
+            let message = match message {
+                Ok(message) => {
+                    message
+                }
+                Err(err) if err.is_timeout() => {
+                    break;
+                }
+                Err(err) => {
+                    return Err(TargetPinReadError::Receive(err));
+                }
+            };
+
+            match message {
+                TargetToHost::PinLevelChanged { level } => {
+                    pin_state = Some(level);
+                }
+                message => {
+                    return Err(
+                        TargetPinReadError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
+            }
+        }
+
+        match pin_state {
+            Some(pin_state) => Ok(pin_state),
+            None            => Err(TargetPinReadError::Timeout),
+        }
+    }
+
     /// Instruct the target to send this message via USART
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
@@ -63,7 +129,16 @@ impl Target {
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match event {
-                TargetToHost::UsartReceive(data) => buf.extend(data),
+                TargetToHost::UsartReceive(data) => {
+                    buf.extend(data)
+                }
+                message => {
+                    return Err(
+                        TargetUsartWaitError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
             }
         }
     }
@@ -100,6 +175,14 @@ pub struct TargetSetPinHighError(ConnSendError);
 pub struct TargetSetPinLowError(ConnSendError);
 
 #[derive(Debug)]
+pub enum TargetPinReadError {
+    Receive(ConnReceiveError),
+    Timeout,
+    UnexpectedMessage(String),
+}
+
+
+#[derive(Debug)]
 pub struct TargetUsartSendError(ConnSendError);
 
 #[derive(Debug)]
@@ -109,4 +192,5 @@ pub struct TargetStartTimerInterruptError(ConnSendError);
 pub enum TargetUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
+    UnexpectedMessage(String),
 }

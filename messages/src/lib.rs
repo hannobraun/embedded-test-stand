@@ -28,6 +28,12 @@ pub enum HostToTarget<'r> {
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
     UsartReceive(&'r [u8]),
+
+    /// Notify the host that the level of GPIO input changed
+    PinLevelChanged {
+        /// The new level of the pin
+        level: PinState,
+    }
 }
 
 
@@ -36,6 +42,9 @@ pub enum TargetToHost<'r> {
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
     SendUsart(&'r [u8]),
+
+    /// Instruct the assistant to change level of the target's input pin
+    SetPin(PinState),
 }
 
 /// A message from the test assistant to the test suite on the host
