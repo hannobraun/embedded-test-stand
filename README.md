@@ -114,6 +114,7 @@ Here are some tips to help you find problems:
 - Make sure that the correct version of the firmware is running on the devices. If you recently checked out another commit (maybe switched to another branch?), make sure your firmwares match your test suite by re-uploading them.
 - Make sure the target and assistant are connected as documented above, and that no connections are loose or faulty.
 - Make sure that both firmwares are in a valid state. They should be in a valid state after reset, and a successful test run should also leave them in a valid state. But a failed test run could render them unable to perform any more tests successfully.
+- Make sure the serial device is in a valid state. A failed test run can leave unprocessed bytes in the serial device's read buffer. These bytes will be read on the next test run, confusing the test suite. You should be able to fix this problem by physically disconnecting and reconnecting the USB connections (make sure to reconnect them in the right order, so they match the configuration in `test-stand.toml`).
 
 These are just some suggestions. Please feel free to add more, if you experience any more problems. There are currently open issues ([#6], [#46]) that would help make the whole setup more robust.
 
