@@ -64,11 +64,12 @@ Connect both boards to the host computer via their USB ports. This is required b
 In addition, you need to connect the following pins of the target and the assistant:
 
 Target Pin | Assistant Pin | Note
---------------------------------------------------------------
+-----------------------------------------------------------------------
         12 |            13 | USART: Target RX, Assistant TX
         13 |            12 | USART: Target TX, Assistant RX
+        29 |            29 | GPIO: Target In, Assistant Out (red LED)
         30 |            30 | Timer interrupt signal (blue LED)
-        31 |            31 | GPIO (green LED)
+        31 |            31 | GPIO: Target Out, Assistant In (green LED)
 
 ### Software Setup
 
