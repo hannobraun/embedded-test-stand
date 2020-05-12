@@ -1,13 +1,7 @@
 /// Test-suite specific error module
 
 
-use host_lib::{
-    serial::{
-        SerialSendError,
-        SerialWaitError,
-    },
-    test_stand::NotConfiguredError,
-};
+use host_lib::test_stand::NotConfiguredError;
 
 use super::{
     assistant::{
@@ -42,8 +36,6 @@ pub enum Error {
     AssistantUsartSend(AssistantUsartSendError),
     AssistantUsartWait(AssistantUsartWaitError),
     NotConfigured(NotConfiguredError),
-    SerialSend(SerialSendError),
-    SerialWait(SerialWaitError),
     TargetPinRead(TargetPinReadError),
     TargetSetPinHigh(TargetSetPinHighError),
     TargetSetPinLow(TargetSetPinLowError),
@@ -86,18 +78,6 @@ impl From<AssistantUsartWaitError> for Error {
 impl From<NotConfiguredError> for Error {
     fn from(err: NotConfiguredError) -> Self {
         Self::NotConfigured(err)
-    }
-}
-
-impl From<SerialSendError> for Error {
-    fn from(err: SerialSendError) -> Self {
-        Self::SerialSend(err)
-    }
-}
-
-impl From<SerialWaitError> for Error {
-    fn from(err: SerialWaitError) -> Self {
-        Self::SerialWait(err)
     }
 }
 

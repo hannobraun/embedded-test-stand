@@ -3,10 +3,7 @@ use std::sync::{
     MutexGuard,
 };
 
-use host_lib::{
-    serial::Serial,
-    test_stand::NotConfiguredError,
-};
+use host_lib::test_stand::NotConfiguredError;
 
 use super::{
     assistant::Assistant,
@@ -22,7 +19,6 @@ pub struct TestStand {
 
     pub target:    Target,
     pub assistant: Assistant,
-    pub serial:    Result<Serial, NotConfiguredError>,
 }
 
 impl TestStand {
@@ -39,7 +35,6 @@ impl TestStand {
                 _guard:    test_stand.guard,
                 target:    Target(test_stand.target?),
                 assistant: Assistant(test_stand.assistant?),
-                serial:    test_stand.serial,
             }
         )
     }
