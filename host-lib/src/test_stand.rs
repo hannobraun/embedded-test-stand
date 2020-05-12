@@ -15,10 +15,6 @@ use crate::{
         Conn,
         ConnInitError,
     },
-    serial::{
-        Serial,
-        SerialInitError,
-    },
 };
 
 
@@ -43,12 +39,6 @@ pub struct TestStand {
     /// This field will be `Err`, if the test assistant has not been specified
     /// in the configuration file.
     pub assistant: Result<Conn, NotConfiguredError>,
-
-    /// Connection to the USB/serial converter
-    ///
-    /// This field will be `Err`, if the USB/serial converter has not been
-    /// specified in the configuration file.
-    pub serial: Result<Serial, NotConfiguredError>,
 }
 
 impl TestStand {
@@ -77,7 +67,6 @@ impl TestStand {
 
         let mut target    = Err(NotConfiguredError("target"));
         let mut assistant = Err(NotConfiguredError("assistant"));
-        let mut serial    = Err(NotConfiguredError("serial"));
 
         if let Some(path) = config.target {
             target = Ok(
@@ -91,19 +80,12 @@ impl TestStand {
                     .map_err(|err| TestStandInitError::ConnInit(err))?
             );
         }
-        if let Some(path) = config.serial {
-            serial = Ok(
-                Serial::new(&path)
-                    .map_err(|err| TestStandInitError::SerialInit(err))?
-            );
-        }
 
         Ok(
             Self {
                 guard,
                 target,
                 assistant,
-                serial,
             },
         )
     }
@@ -118,9 +100,6 @@ pub enum TestStandInitError {
 
     /// Error initializing a serial connection
     ConnInit(ConnInitError),
-
-    /// Error initializing the USB/serial converter
-    SerialInit(SerialInitError),
 }
 
 /// The resource you tried to access was not specified in the configuration file
