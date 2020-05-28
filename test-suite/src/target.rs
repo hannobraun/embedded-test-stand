@@ -124,7 +124,7 @@ impl Target {
                 return Err(TargetUsartWaitError::Timeout);
             }
 
-            let mut tmp   = Vec::new();
+            let mut tmp = Vec::new();
             let event = self.0.receive::<TargetToHost>(timeout, &mut tmp)
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
