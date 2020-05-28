@@ -125,10 +125,10 @@ impl Target {
             }
 
             let mut tmp = Vec::new();
-            let event = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+            let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
-            match event {
+            match message {
                 TargetToHost::UsartReceive(data) => {
                     buf.extend(data)
                 }
