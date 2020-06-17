@@ -67,7 +67,7 @@ use lpc845_messages::{
 };
 
 
-#[rtfm::app(device = lpc8xx_hal::pac)]
+#[rtic::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
         host_rx_int:  RxInt<'static, USART0>,

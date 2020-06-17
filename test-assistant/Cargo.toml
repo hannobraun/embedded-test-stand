@@ -6,7 +6,7 @@ edition = "2018"
 
 
 [dependencies]
-cortex-m-rtfm     = "0.5.1"
+cortex-m-rtic     = "0.5.3"
 heapless          = "0.5.4"
 panic-semihosting = "0.5.3"
 
