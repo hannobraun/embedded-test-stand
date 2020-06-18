@@ -11,7 +11,10 @@
 extern crate panic_rtt_target;
 
 
+use core::marker::PhantomData;
+
 use lpc8xx_hal::{
+    prelude::*,
     Peripherals,
     cortex_m::{
         interrupt,
@@ -25,8 +28,10 @@ use lpc8xx_hal::{
             Output,
         },
     },
+    i2c,
     init_state::Enabled,
     pac::{
+        I2C0,
         USART0,
         USART1,
     },
@@ -39,7 +44,10 @@ use lpc8xx_hal::{
         PIO1_1,
         PIO1_2,
     },
-    syscon::frg,
+    syscon::{
+        IOSC,
+        frg,
+    },
     usart,
 };
 use rtt_target::rprintln;
@@ -78,6 +86,7 @@ const APP: () = {
         red_int: pinint::Interrupt<PININT0, PIO1_2, Enabled>,
 
         systick: SYST,
+        i2c:     i2c::Master<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
     }
 
     #[init]
@@ -183,6 +192,26 @@ const APP: () = {
         let (host_rx_int,  host_rx_idle,  host_tx)  = HOST.init(host);
         let (usart_rx_int, usart_rx_idle, usart_tx) = USART.init(usart);
 
+        let (i2c0_sda, _) = swm
+            .fixed_functions
+            .i2c0_sda
+            .assign(p.pins.pio0_11.into_swm_pin(), &mut swm_handle);
+        let (i2c0_scl, _) = swm
+            .fixed_functions
+            .i2c0_scl
+            .assign(p.pins.pio0_10.into_swm_pin(), &mut swm_handle);
+
+        let i2c = p.I2C0
+            .enable(
+                &syscon.iosc,
+                i2c0_scl,
+                i2c0_sda,
+                &mut syscon.handle,
+            )
+            .enable_master_mode(
+                &i2c::Clock::new_400khz(),
+            );
+
         init::LateResources {
             host_rx_int,
             host_rx_idle,
@@ -199,6 +228,7 @@ const APP: () = {
             red_int,
 
             systick,
+            i2c: i2c.master,
         }
     }
 
@@ -208,6 +238,7 @@ const APP: () = {
         green,
         red,
         systick,
+        i2c,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let usart_rx = cx.resources.usart_rx_idle;
@@ -217,6 +248,7 @@ const APP: () = {
         let green    = cx.resources.green;
         let red      = cx.resources.red;
         let systick  = cx.resources.systick;
+        let i2c      = cx.resources.i2c;
 
         let mut buf = [0; 256];
 
@@ -264,6 +296,27 @@ const APP: () = {
                         HostToTarget::StopTimerInterrupt => {
                             systick.disable_interrupt();
                             systick.disable_counter();
+
+                            Ok(())
+                        }
+                        HostToTarget::StartI2cTransaction { address, data } => {
+                            rprintln!("I2C: Write");
+                            i2c.write(address, &[data])
+                                .unwrap();
+
+                            rprintln!("I2C: Read");
+                            let mut rx_buf = [0u8; 1];
+                            i2c.read(address, &mut rx_buf)
+                                .unwrap();
+
+                            rprintln!("I2C: Done");
+
+                            host_tx
+                                .send_message(
+                                    &TargetToHost::I2cReply(rx_buf[0]),
+                                    &mut buf,
+                                )
+                                .unwrap();
 
                             Ok(())
                         }
