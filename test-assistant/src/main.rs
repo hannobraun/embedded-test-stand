@@ -11,6 +11,8 @@
 extern crate panic_rtt_target;
 
 
+use core::marker::PhantomData;
+
 use lpc8xx_hal::{
     Peripherals,
     cortex_m::interrupt,
@@ -19,11 +21,15 @@ use lpc8xx_hal::{
         GpioPin,
         direction::Output,
     },
+    i2c,
+    init_state::Enabled,
     mrt::{
         MRT0,
         MRT1,
     },
+    nb,
     pac::{
+        I2C0,
         USART0,
         USART1,
     },
@@ -36,7 +42,10 @@ use lpc8xx_hal::{
         PIO1_1,
         PIO1_2,
     },
-    syscon::frg,
+    syscon::{
+        IOSC,
+        frg,
+    },
     usart,
 };
 use rtt_target::rprintln;
@@ -82,6 +91,8 @@ const APP: () = {
         blue_idle: pin_interrupt::Idle<'static>,
 
         red: GpioPin<PIO1_2, Output>,
+
+        i2c: i2c::Slave<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
     }
 
     #[init]
@@ -200,6 +211,28 @@ const APP: () = {
         let (green_int, green_idle) = GREEN.init(green_int, timers.mrt0);
         let (blue_int,  blue_idle)  = BLUE.init(blue_int, timers.mrt1);
 
+        // Assign I2C0 pin functions
+        let (i2c0_sda, _) = swm.fixed_functions.i2c0_sda
+            .assign(p.pins.pio0_11.into_swm_pin(), &mut swm_handle);
+        let (i2c0_scl, _) = swm.fixed_functions.i2c0_scl
+            .assign(p.pins.pio0_10.into_swm_pin(), &mut swm_handle);
+
+        // Initialize I2C0
+        let mut i2c = p.I2C0
+            .enable(
+                &syscon.iosc,
+                i2c0_scl,
+                i2c0_sda,
+                &mut syscon.handle,
+            )
+            .enable_slave_mode(
+                0x48,
+            );
+        i2c.enable_interrupts(i2c::Interrupts {
+            slave_pending: true,
+            .. i2c::Interrupts::default()
+        });
+
         init::LateResources {
             host_rx_int,
             host_rx_idle,
@@ -216,6 +249,8 @@ const APP: () = {
             blue_idle,
 
             red,
+
+            i2c: i2c.slave,
         }
     }
 
@@ -325,6 +360,47 @@ const APP: () = {
     #[task(binds = PIN_INT1, resources = [blue_int])]
     fn pinint1(context: pinint1::Context) {
         context.resources.blue_int.handle_interrupt();
+    }
+
+    #[task(binds = I2C0, resources = [i2c])]
+    fn i2c0(context: i2c0::Context) {
+        static mut DATA: Option<u8> = None;
+
+        rprintln!("I2C: Handling I2C0 interrupt...");
+
+        match context.resources.i2c.wait() {
+            Ok(i2c::slave::State::AddressMatched(i2c)) => {
+                rprintln!("I2C: Address matched.");
+
+                // TASK: Looks like nothing (no ACK, no NACK) is written to the
+                //       bus.
+                i2c.ack().unwrap();
+
+                rprintln!("I2C: Ack'ed address.");
+            }
+            Ok(i2c::slave::State::RxReady(i2c)) => {
+                rprintln!("I2C: Ready to receive.");
+
+                *DATA = Some(i2c.read().unwrap());
+                i2c.ack().unwrap();
+
+                rprintln!("I2C: Received and ack'ed.");
+            }
+            Ok(i2c::slave::State::TxReady(i2c)) => {
+                rprintln!("I2C: Ready to transmit.");
+
+                if let Some(data) = *DATA {
+                    i2c.transmit(data << 1).unwrap();
+                    rprintln!("I2C: Transmitted.");
+                }
+            }
+            Err(nb::Error::WouldBlock) => {
+                // I2C not ready; nothing to do
+            }
+            Err(err) => {
+                panic!("I2C error: {:?}", err);
+            }
+        }
     }
 };
 
