@@ -1,0 +1,5 @@
+[probe]
+probe_selector = "1fc9:0132:11020031"
+
+[general]
+chip = "LPC845M301JHI48"
