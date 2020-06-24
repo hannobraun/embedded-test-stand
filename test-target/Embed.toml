@@ -1,0 +1,7 @@
+[probe]
+# The item behind the last ":" is the serial number of the device. You need to
+# update this. See README.md for more information.
+probe_selector = "1fc9:0132:11020031"
+
+[general]
+chip = "LPC845M301JHI48"

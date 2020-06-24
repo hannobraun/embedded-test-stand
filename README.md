@@ -73,12 +73,13 @@ Target Pin | Assistant Pin | Note
 
 ### Software Setup
 
-Besides a Rust toolchain, you need OpenOCD and [arm-none-eabi-gdb] installed on your workstation, to download the firmware. The latest official release of OpenOCD won't do, unfortunately. Use a recent version from Git, or the [xPack binaries].
+Besides a Rust toolchain, you need `cargo-embed` to download the firmware: `cargo install cargo-embed`
 
-In addition, you need to update some configuration, to reflect the realities on your system:
+Since the setup uses two identical LPC845-BRK boards, `cargo-embed` needs some way to distinguish between them. For this reason, the configuration files (`test-target/Embed.toml` and `test-assisant/Embed.toml`) specify serial number in the `probe_selector` configuration.
 
-1. Update `test-target/dap-serial.cfg` and `test-assistant/dap-serial.cfg`, as described in those files. Otherwise OpenOCD/GDB won't be able to distinguish the two LPC845-BRK boards, and might try to upload both firmwares to the same device.
-1. Update `test-suite/test-stand.toml` to make sure the test suite has the correct paths to the serial device files. Otherwise, it won't be able to communicate with the firmwares.
+Either update the serial number there, or override `probe_selector` in an `Embed.local.toml`. On Linux, you can figure out the serial number of your device like this: `udevadm info /path/to/device`
+
+Watch out for `ID_SERIAL_SHORT` in the output.
 
 ### Running
 
@@ -86,14 +87,14 @@ Once you have all of this set up, you can download the test target firmware like
 
 ```
 cd test-target
-cargo run
+cargo embed
 ```
 
 And the test assistant firmware like this:
 
 ```
 cd test-assistant
-cargo run
+cargo embed
 ```
 
 Once the firmware is running on the device, you can execute the test suite:
