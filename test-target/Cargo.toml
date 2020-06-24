@@ -20,6 +20,7 @@ path     = "../firmware-lib"
 
 [dependencies.lpc8xx-hal]
 git      = "https://github.com/lpc-rs/lpc8xx-hal.git"
+rev      = "f8d837ecf8d086d294e96efe45bd47fe12da8f39"
 features = ["845m301jbd48", "845-rt"]
 
 [dependencies.void]
