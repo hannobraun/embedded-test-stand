@@ -12,7 +12,6 @@ extern crate panic_rtt;
 
 
 use lpc8xx_hal::{
-    prelude::*,
     Peripherals,
     cortex_m::{
         asm,
@@ -43,7 +42,6 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
-use void::ResultVoidExt;
 
 use firmware_lib::{
     pin_interrupt::{
@@ -258,12 +256,10 @@ const APP: () = {
                         HostToAssistant::SetPin(level) => {
                             match level {
                                 PinState::High => {
-                                    red.set_high()
-                                        .void_unwrap();
+                                    red.set_high();
                                 }
                                 PinState::Low => {
-                                    red.set_low()
-                                        .void_unwrap();
+                                    red.set_low();
                                 }
                             }
                             Ok(())
