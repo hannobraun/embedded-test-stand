@@ -6,9 +6,9 @@ edition = "2018"
 
 
 [dependencies]
-cortex-m-rtic     = "0.5.3"
-heapless          = "0.5.4"
-panic-semihosting = "0.5.3"
+cortex-m-rtic = "0.5.3"
+heapless      = "0.5.4"
+panic_rtt     = "0.3.0"
 
 [dependencies.lpc845-messages]
 version  = "0.1.0"
