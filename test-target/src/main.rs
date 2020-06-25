@@ -8,9 +8,7 @@
 #![no_std]
 
 
-// Includes a panic handler that outputs panic messages via semihosting. These
-// should show up in OpenOCD.
-extern crate panic_semihosting;
+extern crate panic_rtt;
 
 
 use lpc8xx_hal::{

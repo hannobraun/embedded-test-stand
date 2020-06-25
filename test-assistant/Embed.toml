@@ -5,3 +5,6 @@ probe_selector = "1fc9:0132:0F01D03A"
 
 [general]
 chip = "LPC845M301JHI48"
+
+[rtt]
+enabled = true
