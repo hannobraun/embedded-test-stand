@@ -12,7 +12,6 @@ extern crate panic_rtt;
 
 
 use lpc8xx_hal::{
-    prelude::*,
     Peripherals,
     cortex_m::{
         asm,
@@ -44,7 +43,6 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
-use void::ResultVoidExt as _;
 
 use firmware_lib::usart::{
     RxIdle,
@@ -216,8 +214,7 @@ const APP: () = {
 
         let mut buf = [0; 256];
 
-        let mut input_was_high = red.is_high()
-            .void_unwrap();
+        let mut input_was_high = red.is_high();
 
         loop {
             usart_rx
@@ -236,10 +233,10 @@ const APP: () = {
                             usart_tx.send_raw(data)
                         }
                         HostToTarget::SetPin(PinState::High) => {
-                            green.set_high()
+                            Ok(green.set_high())
                         }
                         HostToTarget::SetPin(PinState::Low) => {
-                            green.set_low()
+                            Ok(green.set_low())
                         }
                         HostToTarget::StartTimerInterrupt { period_ms } => {
                             // By default (and we haven't changed that setting)
@@ -281,8 +278,7 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                let input_is_high = red.is_high()
-                    .void_unwrap();
+                let input_is_high = red.is_high();
                 if input_is_high != input_was_high {
                     let level = match input_is_high {
                         true  => PinState::High,
@@ -320,8 +316,7 @@ const APP: () = {
 
     #[task(binds = SysTick, resources = [blue])]
     fn syst(cx: syst::Context) {
-        cx.resources.blue.toggle()
-            .void_unwrap()
+        cx.resources.blue.toggle();
     }
 
     #[task(binds = PIN_INT0, resources = [red_int])]
