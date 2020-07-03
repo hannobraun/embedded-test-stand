@@ -13,10 +13,7 @@ extern crate panic_rtt_target;
 
 use lpc8xx_hal::{
     Peripherals,
-    cortex_m::{
-        asm,
-        interrupt,
-    },
+    cortex_m::interrupt,
     gpio::{
         self,
         GpioPin,
@@ -42,6 +39,8 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
+#[cfg(feature = "sleep")]
+use lpc8xx_hal::cortex_m::asm;
 
 use firmware_lib::{
     pin_interrupt::{
@@ -292,6 +291,11 @@ const APP: () = {
                     && !green.is_ready();
 
                 if should_sleep {
+                    // On LPC84x MCUs, debug mode is not supported when
+                    // sleeping. This interferes with RTT communication. Only
+                    // sleep, if the user enables this through a compile-time
+                    // flag.
+                    #[cfg(feature = "sleep")]
                     asm::wfi();
                 }
             });

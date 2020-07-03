@@ -14,7 +14,6 @@ extern crate panic_rtt_target;
 use lpc8xx_hal::{
     Peripherals,
     cortex_m::{
-        asm,
         interrupt,
         peripheral::SYST,
     },
@@ -43,6 +42,8 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
+#[cfg(feature = "sleep")]
+use lpc8xx_hal::cortex_m::asm;
 
 use firmware_lib::usart::{
     RxIdle,
@@ -298,6 +299,11 @@ const APP: () = {
                 }
 
                 if !host_rx.can_process() && !usart_rx.can_process() {
+                    // On LPC84x MCUs, debug mode is not supported when
+                    // sleeping. This interferes with RTT communication. Only
+                    // sleep, if the user enables this through a compile-time
+                    // flag.
+                    #[cfg(feature = "sleep")]
                     asm::wfi();
                 }
             });
