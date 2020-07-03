@@ -73,7 +73,10 @@ Target Pin | Assistant Pin | Note
 
 ### Software Setup
 
-Besides a Rust toolchain, you need `cargo-embed` to download the firmware: `cargo install cargo-embed --version 0.8.0`
+Besides a Rust toolchain, you need `cargo-embed` to download the firmware:
+```
+cargo install cargo-embed --version 0.8.0
+```
 
 Since the setup uses two identical LPC845-BRK boards, `cargo-embed` needs some way to distinguish between them. For this reason, the configuration files (`test-target/Embed.toml` and `test-assisant/Embed.toml`) specify serial number in the `probe_selector` configuration.
 
