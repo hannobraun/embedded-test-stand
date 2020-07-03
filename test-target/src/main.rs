@@ -42,6 +42,8 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
+use rtt_target::rprintln;
+
 #[cfg(feature = "sleep")]
 use lpc8xx_hal::cortex_m::asm;
 
@@ -89,6 +91,7 @@ const APP: () = {
         static mut USART: Usart = Usart::new();
 
         rtt_target::rtt_init_print!();
+        rprintln!("Starting target.");
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
