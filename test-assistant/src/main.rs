@@ -8,7 +8,7 @@
 #![no_std]
 
 
-extern crate panic_rtt;
+extern crate panic_rtt_target;
 
 
 use lpc8xx_hal::{
@@ -95,6 +95,8 @@ const APP: () = {
 
         static mut GREEN: PinInterrupt = PinInterrupt::new();
         static mut BLUE:  PinInterrupt = PinInterrupt::new();
+
+        rtt_target::rtt_init_print!();
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.

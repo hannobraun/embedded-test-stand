@@ -8,7 +8,7 @@
 #![no_std]
 
 
-extern crate panic_rtt;
+extern crate panic_rtt_target;
 
 
 use lpc8xx_hal::{
@@ -86,6 +86,8 @@ const APP: () = {
         // that gives us safe access to them.
         static mut HOST:  Usart = Usart::new();
         static mut USART: Usart = Usart::new();
+
+        rtt_target::rtt_init_print!();
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
