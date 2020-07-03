@@ -8,15 +8,12 @@
 #![no_std]
 
 
-extern crate panic_rtt;
+extern crate panic_rtt_target;
 
 
 use lpc8xx_hal::{
     Peripherals,
-    cortex_m::{
-        asm,
-        interrupt,
-    },
+    cortex_m::interrupt,
     gpio::{
         self,
         GpioPin,
@@ -42,6 +39,10 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
+use rtt_target::rprintln;
+
+#[cfg(feature = "sleep")]
+use lpc8xx_hal::cortex_m::asm;
 
 use firmware_lib::{
     pin_interrupt::{
@@ -95,6 +96,9 @@ const APP: () = {
 
         static mut GREEN: PinInterrupt = PinInterrupt::new();
         static mut BLUE:  PinInterrupt = PinInterrupt::new();
+
+        rtt_target::rtt_init_print!();
+        rprintln!("Starting assistant.");
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
@@ -290,6 +294,11 @@ const APP: () = {
                     && !green.is_ready();
 
                 if should_sleep {
+                    // On LPC84x MCUs, debug mode is not supported when
+                    // sleeping. This interferes with RTT communication. Only
+                    // sleep, if the user enables this through a compile-time
+                    // flag.
+                    #[cfg(feature = "sleep")]
                     asm::wfi();
                 }
             });

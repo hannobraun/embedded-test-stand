@@ -1,10 +1,12 @@
-[probe]
-# The item behind the last ":" is the serial number of the device. You need to
-# update this. See README.md for more information.
-probe_selector = "1fc9:0132:0F01D03A"
+[default.probe]
+usb_vid = "1fc9"
+usb_pid = "0132"
+# You need to update this to match your own hardware. See README.md for more
+# information.
+serial  = "0F01D03A"
 
-[general]
+[default.general]
 chip = "LPC845M301JHI48"
 
-[rtt]
+[default.rtt]
 enabled = true

@@ -8,13 +8,12 @@
 #![no_std]
 
 
-extern crate panic_rtt;
+extern crate panic_rtt_target;
 
 
 use lpc8xx_hal::{
     Peripherals,
     cortex_m::{
-        asm,
         interrupt,
         peripheral::SYST,
     },
@@ -43,6 +42,10 @@ use lpc8xx_hal::{
     syscon::frg,
     usart,
 };
+use rtt_target::rprintln;
+
+#[cfg(feature = "sleep")]
+use lpc8xx_hal::cortex_m::asm;
 
 use firmware_lib::usart::{
     RxIdle,
@@ -86,6 +89,9 @@ const APP: () = {
         // that gives us safe access to them.
         static mut HOST:  Usart = Usart::new();
         static mut USART: Usart = Usart::new();
+
+        rtt_target::rtt_init_print!();
+        rprintln!("Starting target.");
 
         // Get access to the device's peripherals. This can't panic, since this
         // is the only place in this program where we call this method.
@@ -296,6 +302,11 @@ const APP: () = {
                 }
 
                 if !host_rx.can_process() && !usart_rx.can_process() {
+                    // On LPC84x MCUs, debug mode is not supported when
+                    // sleeping. This interferes with RTT communication. Only
+                    // sleep, if the user enables this through a compile-time
+                    // flag.
+                    #[cfg(feature = "sleep")]
                     asm::wfi();
                 }
             });
