@@ -224,7 +224,6 @@ pub enum TargetUsartWaitError {
     UnexpectedMessage(String),
 }
 
-
 #[derive(Debug)]
 pub enum TargetI2cError {
     Send(ConnSendError),
