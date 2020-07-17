@@ -372,8 +372,6 @@ const APP: () = {
             Ok(i2c::slave::State::AddressMatched(i2c)) => {
                 rprintln!("I2C: Address matched.");
 
-                // TASK: Looks like nothing (no ACK, no NACK) is written to the
-                //       bus.
                 i2c.ack().unwrap();
 
                 rprintln!("I2C: Ack'ed address.");
