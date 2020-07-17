@@ -30,6 +30,12 @@ pub enum HostToTarget<'r> {
         /// The data to send to the slave
         data: u8,
     },
+
+    /// Instruct the target to start an SPI transaction
+    StartSpiTransaction {
+        /// The data to send to the slave
+        data: u8,
+    },
 }
 
 /// An message from the target to the test suite on the host
@@ -46,6 +52,9 @@ pub enum TargetToHost<'r> {
 
     /// Notify the host that the I2C transaction completed
     I2cReply(u8),
+
+    /// Notify the host that the SPI transaction completed
+    SpiReply(u8),
 }
 
 
