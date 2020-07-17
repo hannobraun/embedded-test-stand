@@ -181,6 +181,33 @@ impl Target {
             }
         }
     }
+
+    /// Start an SPI transaction
+    ///
+    /// Sends the provided `data` and returns the reply.
+    pub fn start_spi_transaction(&mut self, data: u8, timeout: Duration)
+        -> Result<u8, TargetSpiError>
+    {
+        self.0.send(&HostToTarget::StartSpiTransaction { data })
+            .map_err(|err| TargetSpiError::Send(err))?;
+
+        let mut tmp = Vec::new();
+        let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+            .map_err(|err| TargetSpiError::Receive(err))?;
+
+        match message {
+            TargetToHost::SpiReply(reply) => {
+                Ok(reply)
+            }
+            message => {
+                Err(
+                    TargetSpiError::UnexpectedMessage(
+                        format!("{:?}", message)
+                    )
+                )
+            }
+        }
+    }
 }
 
 
@@ -226,6 +253,13 @@ pub enum TargetUsartWaitError {
 
 #[derive(Debug)]
 pub enum TargetI2cError {
+    Send(ConnSendError),
+    Receive(ConnReceiveError),
+    UnexpectedMessage(String),
+}
+
+#[derive(Debug)]
+pub enum TargetSpiError {
     Send(ConnSendError),
     Receive(ConnReceiveError),
     UnexpectedMessage(String),

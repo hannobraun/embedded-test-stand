@@ -16,6 +16,7 @@ use super::{
         TargetPinReadError,
         TargetSetPinHighError,
         TargetSetPinLowError,
+        TargetSpiError,
         TargetStartTimerInterruptError,
         TargetUsartSendError,
         TargetUsartWaitError,
@@ -41,6 +42,7 @@ pub enum Error {
     TargetPinRead(TargetPinReadError),
     TargetSetPinHigh(TargetSetPinHighError),
     TargetSetPinLow(TargetSetPinLowError),
+    TargetSpi(TargetSpiError),
     TargetStartTimerInterrupt(TargetStartTimerInterruptError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
@@ -92,6 +94,12 @@ impl From<TargetI2cError> for Error {
 impl From<TargetPinReadError> for Error {
     fn from(err: TargetPinReadError) -> Self {
         Self::TargetPinRead(err)
+    }
+}
+
+impl From<TargetSpiError> for Error {
+    fn from(err: TargetSpiError) -> Self {
+        Self::TargetSpi(err)
     }
 }
 
