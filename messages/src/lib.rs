@@ -21,6 +21,15 @@ pub enum HostToTarget<'r> {
 
     /// Instruct the target to stop the timer interrupt
     StopTimerInterrupt,
+
+    /// Instruct the target to start an I2C transaction
+    StartI2cTransaction {
+        /// The address of the slave
+        address: u8,
+
+        /// The data to send to the slave
+        data: u8,
+    },
 }
 
 /// An message from the target to the test suite on the host
@@ -33,7 +42,10 @@ pub enum TargetToHost<'r> {
     PinLevelChanged {
         /// The new level of the pin
         level: PinState,
-    }
+    },
+
+    /// Notify the host that the I2C transaction completed
+    I2cReply(u8),
 }
 
 

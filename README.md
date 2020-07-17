@@ -67,9 +67,14 @@ Target Pin | Assistant Pin | Note
 -----------------------------------------------------------------------
         12 |            13 | USART: Target RX, Assistant TX
         13 |            12 | USART: Target TX, Assistant RX
+        20 |            20 | GND (common ground for I2C)
+        23 |            23 | I2C: SCL (also connect pull-up resistor)
+        24 |            24 | I2C: SDA (also connect pull-up resistor)
         29 |            29 | GPIO: Target In, Assistant Out (red LED)
         30 |            30 | Timer interrupt signal (blue LED)
         31 |            31 | GPIO: Target Out, Assistant In (green LED)
+
+10 kOhm resistors are confirmed to work for the I2C pull-ups.
 
 ### Software Setup
 

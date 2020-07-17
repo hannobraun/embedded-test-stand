@@ -124,11 +124,11 @@ impl Target {
                 return Err(TargetUsartWaitError::Timeout);
             }
 
-            let mut tmp   = Vec::new();
-            let event = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+            let mut tmp = Vec::new();
+            let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
-            match event {
+            match message {
                 TargetToHost::UsartReceive(data) => {
                     buf.extend(data)
                 }
@@ -151,6 +151,35 @@ impl Target {
             .map_err(|err| TargetStartTimerInterruptError(err))?;
 
         Ok(TimerInterrupt(self))
+    }
+
+    /// Start an I2C transaction
+    ///
+    /// Sends the provided `data` and returns the reply.
+    pub fn start_i2c_transaction(&mut self, data: u8, timeout: Duration)
+        -> Result<u8, TargetI2cError>
+    {
+        let address = 0x48;
+
+        self.0.send(&HostToTarget::StartI2cTransaction { address, data })
+            .map_err(|err| TargetI2cError::Send(err))?;
+
+        let mut tmp = Vec::new();
+        let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+            .map_err(|err| TargetI2cError::Receive(err))?;
+
+        match message {
+            TargetToHost::I2cReply(reply) => {
+                Ok(reply)
+            }
+            message => {
+                Err(
+                    TargetI2cError::UnexpectedMessage(
+                        format!("{:?}", message)
+                    )
+                )
+            }
+        }
     }
 }
 
@@ -192,5 +221,13 @@ pub struct TargetStartTimerInterruptError(ConnSendError);
 pub enum TargetUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
+    UnexpectedMessage(String),
+}
+
+
+#[derive(Debug)]
+pub enum TargetI2cError {
+    Send(ConnSendError),
+    Receive(ConnReceiveError),
     UnexpectedMessage(String),
 }

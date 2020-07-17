@@ -12,6 +12,7 @@ use super::{
         AssistantUsartWaitError,
     },
     target::{
+        TargetI2cError,
         TargetPinReadError,
         TargetSetPinHighError,
         TargetSetPinLowError,
@@ -36,6 +37,7 @@ pub enum Error {
     AssistantUsartSend(AssistantUsartSendError),
     AssistantUsartWait(AssistantUsartWaitError),
     NotConfigured(NotConfiguredError),
+    TargetI2c(TargetI2cError),
     TargetPinRead(TargetPinReadError),
     TargetSetPinHigh(TargetSetPinHighError),
     TargetSetPinLow(TargetSetPinLowError),
@@ -78,6 +80,12 @@ impl From<AssistantUsartWaitError> for Error {
 impl From<NotConfiguredError> for Error {
     fn from(err: NotConfiguredError) -> Self {
         Self::NotConfigured(err)
+    }
+}
+
+impl From<TargetI2cError> for Error {
+    fn from(err: TargetI2cError) -> Self {
+        Self::TargetI2c(err)
     }
 }
 
