@@ -27,9 +27,13 @@ use lpc8xx_hal::{
         MRT0,
         MRT1,
     },
-    nb,
+    nb::{
+        self,
+        block,
+    },
     pac::{
         I2C0,
+        SPI0,
         USART0,
         USART1,
     },
@@ -41,6 +45,10 @@ use lpc8xx_hal::{
         PIO1_0,
         PIO1_1,
         PIO1_2,
+    },
+    spi::{
+        self,
+        SPI,
     },
     syscon::{
         IOSC,
@@ -93,6 +101,7 @@ const APP: () = {
         red: GpioPin<PIO1_2, Output>,
 
         i2c: i2c::Slave<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
+        spi: SPI<SPI0, Enabled<spi::Slave>>,
     }
 
     #[init]
@@ -233,6 +242,43 @@ const APP: () = {
             .. i2c::Interrupts::default()
         });
 
+        let (spi0_sck, _) = swm
+            .movable_functions
+            .spi0_sck
+            .assign(p.pins.pio0_16.into_swm_pin(), &mut swm_handle);
+        let (spi0_mosi, _) = swm
+            .movable_functions
+            .spi0_mosi
+            .assign(p.pins.pio0_17.into_swm_pin(), &mut swm_handle);
+        let (spi0_miso, _) = swm
+            .movable_functions
+            .spi0_miso
+            .assign(p.pins.pio0_18.into_swm_pin(), &mut swm_handle);
+        let (spi0_ssel0, _) = swm
+            .movable_functions
+            .spi0_ssel0
+            .assign(p.pins.pio0_19.into_swm_pin(), &mut swm_handle);
+
+        let mut spi = p.SPI0.enable_as_slave(
+            &syscon.iosc,
+            &mut syscon.handle,
+            spi::MODE_0,
+            spi0_sck,
+            spi0_mosi,
+            spi0_miso,
+            spi0_ssel0,
+        );
+        spi.enable_interrupts(spi::Interrupts {
+            rx_ready: true,
+            .. Default::default()
+        });
+        spi.enable_interrupts(spi::Interrupts {
+            rx_ready: true,
+            slave_select_asserted: true,
+            slave_select_deasserted: true,
+            .. Default::default()
+        });
+
         init::LateResources {
             host_rx_int,
             host_rx_idle,
@@ -251,6 +297,7 @@ const APP: () = {
             red,
 
             i2c: i2c.slave,
+            spi,
         }
     }
 
@@ -398,6 +445,27 @@ const APP: () = {
             Err(err) => {
                 panic!("I2C error: {:?}", err);
             }
+        }
+    }
+
+    #[task(binds = SPI0, resources = [spi])]
+    fn spi0(context: spi0::Context) {
+        static mut ACTIVE: bool = false;
+
+        let spi = context.resources.spi;
+
+        if spi.is_slave_select_asserted() {
+            *ACTIVE = true;
+        }
+        if *ACTIVE {
+            if spi.is_ready_to_receive() {
+                let data = spi.receive().unwrap();
+                block!(spi.transmit(data << 1))
+                    .unwrap();
+            }
+        }
+        if spi.is_slave_select_deasserted() {
+            *ACTIVE = false;
         }
     }
 };

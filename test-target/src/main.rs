@@ -30,8 +30,13 @@ use lpc8xx_hal::{
     },
     i2c,
     init_state::Enabled,
+    nb::{
+        self,
+        block,
+    },
     pac::{
         I2C0,
+        SPI0,
         USART0,
         USART1,
     },
@@ -40,9 +45,14 @@ use lpc8xx_hal::{
         PININT0,
     },
     pins::{
+        PIO0_19,
         PIO1_0,
         PIO1_1,
         PIO1_2,
+    },
+    spi::{
+        self,
+        SPI,
     },
     syscon::{
         IOSC,
@@ -87,6 +97,9 @@ const APP: () = {
 
         systick: SYST,
         i2c:     i2c::Master<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
+
+        spi:  SPI<SPI0, Enabled<spi::Master>>,
+        ssel: GpioPin<PIO0_19, Output>,
     }
 
     #[init]
@@ -212,6 +225,32 @@ const APP: () = {
                 &i2c::Clock::new_400khz(),
             );
 
+        let (spi0_sck, _) = swm
+            .movable_functions
+            .spi0_sck
+            .assign(p.pins.pio0_16.into_swm_pin(), &mut swm_handle);
+        let (spi0_mosi, _) = swm
+            .movable_functions
+            .spi0_mosi
+            .assign(p.pins.pio0_17.into_swm_pin(), &mut swm_handle);
+        let (spi0_miso, _) = swm
+            .movable_functions
+            .spi0_miso
+            .assign(p.pins.pio0_18.into_swm_pin(), &mut swm_handle);
+        let ssel = p.pins.pio0_19.into_output_pin(
+            gpio.tokens.pio0_19,
+            Level::High,
+        );
+
+        let spi = p.SPI0.enable_as_master(
+            &spi::Clock::new(&syscon.iosc, 255),
+            &mut syscon.handle,
+            spi::MODE_0,
+            spi0_sck,
+            spi0_mosi,
+            spi0_miso,
+        );
+
         init::LateResources {
             host_rx_int,
             host_rx_idle,
@@ -229,6 +268,9 @@ const APP: () = {
 
             systick,
             i2c: i2c.master,
+
+            spi,
+            ssel,
         }
     }
 
@@ -239,6 +281,8 @@ const APP: () = {
         red,
         systick,
         i2c,
+        spi,
+        ssel,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let usart_rx = cx.resources.usart_rx_idle;
@@ -249,6 +293,8 @@ const APP: () = {
         let red      = cx.resources.red;
         let systick  = cx.resources.systick;
         let i2c      = cx.resources.i2c;
+        let spi      = cx.resources.spi;
+        let ssel     = cx.resources.ssel;
 
         let mut buf = [0; 256];
 
@@ -314,6 +360,42 @@ const APP: () = {
                             host_tx
                                 .send_message(
                                     &TargetToHost::I2cReply(rx_buf[0]),
+                                    &mut buf,
+                                )
+                                .unwrap();
+
+                            Ok(())
+                        }
+                        HostToTarget::StartSpiTransaction { data } => {
+                            rprintln!("SPI: Start transaction");
+                            ssel.set_low();
+
+                            // Clear receive buffer. Otherwise the following
+                            // series of operations won't work as intended.
+                            loop {
+                                if let Err(nb::Error::WouldBlock) = spi.read() {
+                                    break;
+                                }
+                            }
+
+                            rprintln!("SPI: Write");
+                            block!(spi.send(data))
+                                .unwrap();
+                            let _ = block!(spi.read())
+                                .unwrap();
+
+                            rprintln!("SPI: Read");
+                            block!(spi.send(0xff))
+                                .unwrap();
+                            let reply = block!(spi.read())
+                                .unwrap();
+
+                            ssel.set_high();
+                            rprintln!("SPI: Done");
+
+                            host_tx
+                                .send_message(
+                                    &TargetToHost::SpiReply(reply),
                                     &mut buf,
                                 )
                                 .unwrap();
