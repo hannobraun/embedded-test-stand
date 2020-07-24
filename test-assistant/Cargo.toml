@@ -34,11 +34,6 @@ version          = "1.0.2"
 default-features = false
 
 
-[patch."https://github.com/lpc-rs/lpc8xx-hal.git".lpc8xx-hal]
-git    = "https://github.com/braun-embedded/lpc8xx-hal.git"
-branch = "spi-slave"
-
-
 # Without any optimization, the test firmware can't quite keep up with the
 # USART. Let's do some optimization in dev mode, so this works when executed
 # with `cargo run`.
