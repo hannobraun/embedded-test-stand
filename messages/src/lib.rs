@@ -62,7 +62,7 @@ pub enum TargetToHost<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
-    SendUsart(&'r [u8]),
+    SendUsart(UsartTarget, &'r [u8]),
 
     /// Instruct the assistant to change level of the target's input pin
     SetPin(PinState),

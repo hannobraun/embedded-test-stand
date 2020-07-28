@@ -13,6 +13,7 @@ use lpc845_messages::{
     HostToAssistant,
     Pin,
     PinState,
+    UsartTarget,
 };
 
 
@@ -105,7 +106,7 @@ impl Assistant {
     pub fn send_to_target_usart(&mut self, message: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart(message))
+        self.0.send(&HostToAssistant::SendUsart(UsartTarget::Regular, message))
             .map_err(|err| AssistantUsartSendError(err))
     }
 
