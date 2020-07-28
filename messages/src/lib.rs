@@ -11,7 +11,7 @@ use serde::{
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
-    SendUsart(&'r [u8]),
+    SendUsart(UsartTarget, &'r [u8]),
 
     /// Instruct the device to change the electrical level of the pin
     SetPin(PinState),
@@ -88,6 +88,14 @@ pub enum AssistantToHost<'r> {
         /// not be reliable.
         period_ms: Option<u32>,
     }
+}
+
+
+/// Specifies whether a USART transmission concerns DMA or not
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum UsartTarget {
+    Regular,
+    Dma,
 }
 
 

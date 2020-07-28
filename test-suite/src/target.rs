@@ -7,6 +7,7 @@ use lpc845_messages::{
     HostToTarget,
     PinState,
     TargetToHost,
+    UsartTarget,
 };
 
 use host_lib::conn::{
@@ -102,7 +103,7 @@ impl Target {
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(message))
+        self.0.send(&HostToTarget::SendUsart(UsartTarget::Regular, message))
             .map_err(|err| TargetUsartSendError(err))
     }
 
