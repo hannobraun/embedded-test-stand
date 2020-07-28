@@ -138,7 +138,9 @@ impl Target {
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match message {
-                TargetToHost::UsartReceive(data) => {
+                TargetToHost::UsartReceive(target, data)
+                    if target == UsartTarget::Regular =>
+                {
                     buf.extend(data)
                 }
                 message => {

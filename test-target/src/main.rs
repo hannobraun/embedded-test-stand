@@ -314,7 +314,7 @@ const APP: () = {
             usart_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &TargetToHost::UsartReceive(data),
+                        &TargetToHost::UsartReceive(UsartTarget::Regular, data),
                         &mut buf,
                     )
                 })
