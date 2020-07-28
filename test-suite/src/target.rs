@@ -122,6 +122,16 @@ impl Target {
     pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
+        self.wait_for_usart_rx_inner(data, timeout, UsartTarget::Regular)
+    }
+
+    fn wait_for_usart_rx_inner(&mut self,
+        data:            &[u8],
+        timeout:         Duration,
+        expected_target: UsartTarget,
+    )
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
         let mut buf   = Vec::new();
         let     start = Instant::now();
 
@@ -139,7 +149,7 @@ impl Target {
 
             match message {
                 TargetToHost::UsartReceive(target, data)
-                    if target == UsartTarget::Regular =>
+                    if target == expected_target =>
                 {
                     buf.extend(data)
                 }
