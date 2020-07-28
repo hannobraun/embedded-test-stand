@@ -110,6 +110,14 @@ impl Assistant {
             .map_err(|err| AssistantUsartSendError(err))
     }
 
+    /// Instruct assistant to send this message to the target's USART/DMA
+    pub fn send_to_target_usart_dma(&mut self, message: &[u8])
+        -> Result<(), AssistantUsartSendError>
+    {
+        self.0.send(&HostToAssistant::SendUsart(UsartTarget::Dma, message))
+            .map_err(|err| AssistantUsartSendError(err))
+    }
+
     /// Wait to receive the provided data via USART
     ///
     /// Returns the receive buffer, once the data was received. Returns an
