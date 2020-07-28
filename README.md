@@ -67,6 +67,7 @@ Target Pin | Assistant Pin | Note
 -----------------------------------------------------------------------
         12 |            13 | USART: Target RX, Assistant TX
         13 |            12 | USART: Target TX, Assistant RX
+        14 |            15 | USART: Target RX (DMA), Assistant TX
         20 |            20 | GND (common ground for I2C)
         23 |            23 | I2C: SCL (also connect pull-up resistor)
         24 |            24 | I2C: SDA (also connect pull-up resistor)
