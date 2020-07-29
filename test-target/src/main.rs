@@ -111,7 +111,7 @@ const APP: () = {
         spi:  SPI<SPI0, Enabled<spi::Master>>,
         ssel: GpioPin<PIO0_19, Output>,
 
-        dma_tx_channel: Option<dma::Channel<dma::Channel3, Enabled>>,
+        usart_dma_tx_channel: Option<dma::Channel<dma::Channel3, Enabled>>,
         dma_rx_transfer: Option<
             dma::Transfer<
                 Started,
@@ -331,8 +331,8 @@ const APP: () = {
             spi,
             ssel,
 
-            dma_tx_channel:  Some(dma.channels.channel3),
-            dma_rx_transfer: Some(dma_rx_transfer),
+            usart_dma_tx_channel: Some(dma.channels.channel3),
+            dma_rx_transfer:      Some(dma_rx_transfer),
 
             dma_rx_prod,
             dma_rx_cons,
@@ -348,7 +348,7 @@ const APP: () = {
         i2c,
         spi,
         ssel,
-        dma_tx_channel,
+        usart_dma_tx_channel,
         dma_rx_cons,
     ])]
     fn idle(cx: idle::Context) -> ! {
@@ -362,7 +362,7 @@ const APP: () = {
         let i2c      = cx.resources.i2c;
         let spi      = cx.resources.spi;
         let ssel     = cx.resources.ssel;
-        let dma_chan = cx.resources.dma_tx_channel;
+        let dma_chan = cx.resources.usart_dma_tx_channel;
         let dma_cons = cx.resources.dma_rx_cons;
 
         let mut buf = [0; 256];
