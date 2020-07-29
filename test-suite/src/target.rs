@@ -136,9 +136,9 @@ impl Target {
     }
 
     fn wait_for_usart_rx_inner(&mut self,
-        data:            &[u8],
-        timeout:         Duration,
-        expected_target: Mode,
+        data:          &[u8],
+        timeout:       Duration,
+        expected_mode: Mode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
@@ -159,7 +159,7 @@ impl Target {
 
             match message {
                 TargetToHost::UsartReceive(target, data)
-                    if target == expected_target =>
+                    if target == expected_mode =>
                 {
                     buf.extend(data)
                 }
