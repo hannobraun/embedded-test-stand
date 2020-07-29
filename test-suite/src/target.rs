@@ -5,9 +5,9 @@ use std::time::{
 
 use lpc845_messages::{
     HostToTarget,
+    Mode,
     PinState,
     TargetToHost,
-    UsartTarget,
 };
 
 use host_lib::conn::{
@@ -103,7 +103,7 @@ impl Target {
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(UsartTarget::Regular, message))
+        self.0.send(&HostToTarget::SendUsart(Mode::Regular, message))
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -111,7 +111,7 @@ impl Target {
     pub fn send_usart_dma(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(UsartTarget::Dma, message))
+        self.0.send(&HostToTarget::SendUsart(Mode::Dma, message))
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -122,7 +122,7 @@ impl Target {
     pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, UsartTarget::Regular)
+        self.wait_for_usart_rx_inner(data, timeout, Mode::Regular)
     }
 
     /// Wait to receive the provided data via USART/DMA
@@ -132,13 +132,13 @@ impl Target {
     pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, UsartTarget::Dma)
+        self.wait_for_usart_rx_inner(data, timeout, Mode::Dma)
     }
 
     fn wait_for_usart_rx_inner(&mut self,
         data:            &[u8],
         timeout:         Duration,
-        expected_target: UsartTarget,
+        expected_target: Mode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {

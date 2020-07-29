@@ -11,7 +11,7 @@ use serde::{
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
-    SendUsart(UsartTarget, &'r [u8]),
+    SendUsart(Mode, &'r [u8]),
 
     /// Instruct the device to change the electrical level of the pin
     SetPin(PinState),
@@ -42,7 +42,7 @@ pub enum HostToTarget<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
-    UsartReceive(UsartTarget, &'r [u8]),
+    UsartReceive(Mode, &'r [u8]),
 
     /// Notify the host that the level of GPIO input changed
     PinLevelChanged {
@@ -62,7 +62,7 @@ pub enum TargetToHost<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
-    SendUsart(UsartTarget, &'r [u8]),
+    SendUsart(Mode, &'r [u8]),
 
     /// Instruct the assistant to change level of the target's input pin
     SetPin(PinState),
@@ -93,7 +93,7 @@ pub enum AssistantToHost<'r> {
 
 /// Specifies whether a USART transmission concerns DMA or not
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum UsartTarget {
+pub enum Mode {
     Regular,
     Dma,
 }

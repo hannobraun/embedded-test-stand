@@ -82,9 +82,9 @@ use firmware_lib::usart::{
 };
 use lpc845_messages::{
     HostToTarget,
+    Mode,
     PinState,
     TargetToHost,
-    UsartTarget,
 };
 
 
@@ -373,7 +373,7 @@ const APP: () = {
             usart_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &TargetToHost::UsartReceive(UsartTarget::Regular, data),
+                        &TargetToHost::UsartReceive(Mode::Regular, data),
                         &mut buf,
                     )
                 })
@@ -382,7 +382,7 @@ const APP: () = {
             while let Some(b) = dma_cons.dequeue() {
                 host_tx
                     .send_message(
-                        &TargetToHost::UsartReceive(UsartTarget::Dma, &[b]),
+                        &TargetToHost::UsartReceive(Mode::Dma, &[b]),
                         &mut buf,
                     )
                     .unwrap();
@@ -407,10 +407,10 @@ const APP: () = {
                     let result = match message {
                         HostToTarget::SendUsart(target, data) => {
                             match target {
-                                UsartTarget::Regular => {
+                                Mode::Regular => {
                                     usart_tx_local.send_raw(data)
                                 }
-                                UsartTarget::Dma => {
+                                Mode::Dma => {
                                     static mut DMA_BUFFER: [u8; 16] = [0; 16];
 
                                     {
