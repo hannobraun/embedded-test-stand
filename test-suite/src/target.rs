@@ -158,8 +158,8 @@ impl Target {
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match message {
-                TargetToHost::UsartReceive(target, data)
-                    if target == expected_mode =>
+                TargetToHost::UsartReceive(mode, data)
+                    if mode == expected_mode =>
                 {
                     buf.extend(data)
                 }
