@@ -190,6 +190,12 @@ impl Target {
     pub fn start_i2c_transaction(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetI2cError>
     {
+        self.start_i2c_transaction_inner(data, timeout)
+    }
+
+    fn start_i2c_transaction_inner(&mut self, data: u8, timeout: Duration)
+        -> Result<u8, TargetI2cError>
+    {
         let address = 0x48;
 
         self.0.send(&HostToTarget::StartI2cTransaction { address, data })
