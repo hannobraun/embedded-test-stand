@@ -106,7 +106,8 @@ const APP: () = {
         red_int: pinint::Interrupt<PININT0, PIO1_2, Enabled>,
 
         systick: SYST,
-        i2c:     i2c::Master<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
+        i2c:     Option<i2c::Master<I2C0, Enabled<PhantomData<IOSC>>, Enabled>>,
+        i2c_dma: Option<dma::Channel<dma::Channel15, Enabled>>,
 
         spi:  SPI<SPI0, Enabled<spi::Master>>,
         ssel: GpioPin<PIO0_19, Output>,
@@ -326,7 +327,8 @@ const APP: () = {
             red_int,
 
             systick,
-            i2c: i2c.master,
+            i2c:     Some(i2c.master),
+            i2c_dma: Some(dma.channels.channel15),
 
             spi,
             ssel,
@@ -346,6 +348,7 @@ const APP: () = {
         red,
         systick,
         i2c,
+        i2c_dma,
         spi,
         ssel,
         usart_dma_tx_channel,
@@ -360,6 +363,7 @@ const APP: () = {
         let red            = cx.resources.red;
         let systick        = cx.resources.systick;
         let i2c            = cx.resources.i2c;
+        let i2c_dma        = cx.resources.i2c_dma;
         let spi            = cx.resources.spi;
         let ssel           = cx.resources.ssel;
         let usart_dma_chan = cx.resources.usart_dma_tx_channel;
@@ -404,6 +408,8 @@ const APP: () = {
                     let mut usart_tx_local = usart_tx.take().unwrap();
                     let mut usart_dma_chan_local =
                         usart_dma_chan.take().unwrap();
+                    let mut i2c_local = i2c.take().unwrap();
+                    let mut i2c_dma_local = i2c_dma.take().unwrap();
 
                     let result = match message {
                         HostToTarget::SendUsart(target, data) => {
@@ -481,17 +487,71 @@ const APP: () = {
 
                             Ok(())
                         }
-                        HostToTarget::StartI2cTransaction { address, data } => {
+                        HostToTarget::StartI2cTransaction {
+                            mode: Mode::Regular,
+                            address,
+                            data,
+                        } => {
                             rprintln!("I2C: Write");
-                            i2c.write(address, &[data])
+                            i2c_local.write(address, &[data])
                                 .unwrap();
 
                             rprintln!("I2C: Read");
                             let mut rx_buf = [0u8; 1];
-                            i2c.read(address, &mut rx_buf)
+                            i2c_local.read(address, &mut rx_buf)
                                 .unwrap();
 
                             rprintln!("I2C: Done");
+
+                            host_tx
+                                .send_message(
+                                    &TargetToHost::I2cReply(rx_buf[0]),
+                                    &mut buf,
+                                )
+                                .unwrap();
+
+                            Ok(())
+                        }
+                        HostToTarget::StartI2cTransaction {
+                            mode: Mode::Dma,
+                            address,
+                            data,
+                        } => {
+                            static mut TX_BUF: [u8; 1] = [0; 1];
+                            static mut RX_BUF: [u8; 1] = [0; 1];
+
+                            // Sound, as we have exclusive access to these
+                            // statics here.
+                            let tx_buf = unsafe { &mut TX_BUF };
+                            let mut rx_buf = unsafe { &mut RX_BUF[..] };
+
+
+                            tx_buf[0] = data;
+
+                            // Write data to slave
+                            let payload = i2c_local
+                                .write_all(address, tx_buf, i2c_dma_local)
+                                .unwrap()
+                                .start()
+                                .wait()
+                                .unwrap();
+
+                            i2c_dma_local = payload.channel;
+                            i2c_local = payload.dest;
+
+                            rx_buf[0] = 0;
+
+                            // Read data from slave
+                            let payload = i2c_local
+                                .read_all(address, rx_buf, i2c_dma_local)
+                                .unwrap()
+                                .start()
+                                .wait()
+                                .unwrap();
+
+                            i2c_dma_local = payload.channel;
+                            i2c_local = payload.source;
+                            rx_buf = payload.dest;
 
                             host_tx
                                 .send_message(
@@ -542,6 +602,8 @@ const APP: () = {
 
                     *usart_tx = Some(usart_tx_local);
                     *usart_dma_chan = Some(usart_dma_chan_local);
+                    *i2c = Some(i2c_local);
+                    *i2c_dma = Some(i2c_dma_local);
 
                     result
                 })

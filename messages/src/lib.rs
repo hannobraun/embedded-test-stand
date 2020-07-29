@@ -24,6 +24,9 @@ pub enum HostToTarget<'r> {
 
     /// Instruct the target to start an I2C transaction
     StartI2cTransaction {
+        /// Which mode to use for the transaction
+        mode: Mode,
+
         /// The address of the slave
         address: u8,
 
