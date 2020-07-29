@@ -352,18 +352,18 @@ const APP: () = {
         dma_rx_cons,
     ])]
     fn idle(cx: idle::Context) -> ! {
-        let usart_rx = cx.resources.usart_rx_idle;
-        let usart_tx = cx.resources.usart_tx;
-        let host_rx  = cx.resources.host_rx_idle;
-        let host_tx  = cx.resources.host_tx;
-        let green    = cx.resources.green;
-        let red      = cx.resources.red;
-        let systick  = cx.resources.systick;
-        let i2c      = cx.resources.i2c;
-        let spi      = cx.resources.spi;
-        let ssel     = cx.resources.ssel;
-        let dma_chan = cx.resources.usart_dma_tx_channel;
-        let dma_cons = cx.resources.dma_rx_cons;
+        let usart_rx       = cx.resources.usart_rx_idle;
+        let usart_tx       = cx.resources.usart_tx;
+        let host_rx        = cx.resources.host_rx_idle;
+        let host_tx        = cx.resources.host_tx;
+        let green          = cx.resources.green;
+        let red            = cx.resources.red;
+        let systick        = cx.resources.systick;
+        let i2c            = cx.resources.i2c;
+        let spi            = cx.resources.spi;
+        let ssel           = cx.resources.ssel;
+        let usart_dma_chan = cx.resources.usart_dma_tx_channel;
+        let dma_cons       = cx.resources.dma_rx_cons;
 
         let mut buf = [0; 256];
 
@@ -402,7 +402,7 @@ const APP: () = {
                     //    necessitating this little dance with the local
                     //    variables.
                     let mut usart_tx_local = usart_tx.take().unwrap();
-                    let mut dma_chan_local = dma_chan.take().unwrap();
+                    let mut dma_chan_local = usart_dma_chan.take().unwrap();
 
                     let result = match message {
                         HostToTarget::SendUsart(target, data) => {
@@ -540,7 +540,7 @@ const APP: () = {
                     };
 
                     *usart_tx = Some(usart_tx_local);
-                    *dma_chan = Some(dma_chan_local);
+                    *usart_dma_chan = Some(dma_chan_local);
 
                     result
                 })
