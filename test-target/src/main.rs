@@ -402,7 +402,8 @@ const APP: () = {
                     //    necessitating this little dance with the local
                     //    variables.
                     let mut usart_tx_local = usart_tx.take().unwrap();
-                    let mut dma_chan_local = usart_dma_chan.take().unwrap();
+                    let mut usart_dma_chan_local =
+                        usart_dma_chan.take().unwrap();
 
                     let result = match message {
                         HostToTarget::SendUsart(target, data) => {
@@ -436,7 +437,7 @@ const APP: () = {
 
                                         let transfer = usart_tx_local.usart.write_all(
                                             &dma_buffer[..data.len()],
-                                            dma_chan_local,
+                                            usart_dma_chan_local,
                                         );
                                         transfer
                                             .start()
@@ -444,7 +445,7 @@ const APP: () = {
                                             .unwrap()
                                     };
 
-                                    dma_chan_local       = payload.channel;
+                                    usart_dma_chan_local = payload.channel;
                                     usart_tx_local.usart = payload.dest;
 
                                     Ok(())
@@ -540,7 +541,7 @@ const APP: () = {
                     };
 
                     *usart_tx = Some(usart_tx_local);
-                    *usart_dma_chan = Some(dma_chan_local);
+                    *usart_dma_chan = Some(usart_dma_chan_local);
 
                     result
                 })
