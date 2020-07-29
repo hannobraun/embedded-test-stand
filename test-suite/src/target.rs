@@ -193,6 +193,15 @@ impl Target {
         self.start_i2c_transaction_inner(data, timeout, Mode::Regular)
     }
 
+    /// Start an I2C/DMA transaction
+    ///
+    /// Sends the provided `data` and returns the reply.
+    pub fn start_i2c_transaction_dma(&mut self, data: u8, timeout: Duration)
+        -> Result<u8, TargetI2cError>
+    {
+        self.start_i2c_transaction_inner(data, timeout, Mode::Dma)
+    }
+
     fn start_i2c_transaction_inner(&mut self,
         data:    u8,
         timeout: Duration,
