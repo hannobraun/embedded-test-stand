@@ -363,7 +363,7 @@ const APP: () = {
         let spi            = cx.resources.spi;
         let ssel           = cx.resources.ssel;
         let usart_dma_chan = cx.resources.usart_dma_tx_channel;
-        let dma_cons       = cx.resources.dma_rx_cons;
+        let usart_dma_cons = cx.resources.dma_rx_cons;
 
         let mut buf = [0; 256];
 
@@ -379,7 +379,7 @@ const APP: () = {
                 })
                 .expect("Error processing USART data");
 
-            while let Some(b) = dma_cons.dequeue() {
+            while let Some(b) = usart_dma_cons.dequeue() {
                 host_tx
                     .send_message(
                         &TargetToHost::UsartReceive(Mode::Dma, &[b]),
