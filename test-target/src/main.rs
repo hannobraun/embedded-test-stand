@@ -112,7 +112,7 @@ const APP: () = {
         ssel: GpioPin<PIO0_19, Output>,
 
         usart_dma_tx_channel: Option<dma::Channel<dma::Channel3, Enabled>>,
-        dma_rx_transfer: Option<
+        usart_dma_rx_transfer: Option<
             dma::Transfer<
                 Started,
                 dma::Channel4,
@@ -303,10 +303,10 @@ const APP: () = {
 
         let mut dma_rx_channel = dma.channels.channel4;
         dma_rx_channel.enable_interrupts();
-        let mut dma_rx_transfer = usart2.rx
+        let mut usart_dma_rx_transfer = usart2.rx
             .read_all(&mut DMA_BUFFER[..], dma_rx_channel);
-        dma_rx_transfer.set_a_when_complete();
-        let dma_rx_transfer =  dma_rx_transfer.start();
+        usart_dma_rx_transfer.set_a_when_complete();
+        let usart_dma_rx_transfer =  usart_dma_rx_transfer.start();
 
         let (dma_rx_prod, dma_rx_cons) = DMA_QUEUE.split();
 
@@ -331,8 +331,8 @@ const APP: () = {
             spi,
             ssel,
 
-            usart_dma_tx_channel: Some(dma.channels.channel3),
-            dma_rx_transfer:      Some(dma_rx_transfer),
+            usart_dma_tx_channel:  Some(dma.channels.channel3),
+            usart_dma_rx_transfer: Some(usart_dma_rx_transfer),
 
             dma_rx_prod,
             dma_rx_cons,
@@ -616,12 +616,12 @@ const APP: () = {
     #[task(
         binds = DMA0,
         resources = [
-            dma_rx_transfer,
+            usart_dma_rx_transfer,
             dma_rx_prod,
         ]
     )]
     fn dma0(context: dma0::Context) {
-        let transfer = context.resources.dma_rx_transfer;
+        let transfer = context.resources.usart_dma_rx_transfer;
         let queue    = context.resources.dma_rx_prod;
 
         // Process completed transfer.
