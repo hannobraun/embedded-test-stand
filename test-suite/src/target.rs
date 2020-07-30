@@ -238,7 +238,8 @@ impl Target {
     pub fn start_spi_transaction(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetSpiError>
     {
-        self.0.send(&HostToTarget::StartSpiTransaction { data })
+        let mode = Mode::Regular;
+        self.0.send(&HostToTarget::StartSpiTransaction { mode, data })
             .map_err(|err| TargetSpiError::Send(err))?;
 
         let mut tmp = Vec::new();
