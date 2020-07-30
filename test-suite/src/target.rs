@@ -238,7 +238,16 @@ impl Target {
     pub fn start_spi_transaction(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetSpiError>
     {
-        let mode = Mode::Regular;
+        self.start_spi_transaction_inner(data, timeout, Mode::Regular)
+    }
+
+    fn start_spi_transaction_inner(&mut self,
+        data:    u8,
+        timeout: Duration,
+        mode:    Mode,
+    )
+        -> Result<u8, TargetSpiError>
+    {
         self.0.send(&HostToTarget::StartSpiTransaction { mode, data })
             .map_err(|err| TargetSpiError::Send(err))?;
 
