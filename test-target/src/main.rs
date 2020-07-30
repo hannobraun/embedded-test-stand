@@ -300,7 +300,7 @@ const APP: () = {
         );
 
         let spi = p.SPI0.enable_as_master(
-            &spi::Clock::new(&syscon.iosc, 255),
+            &spi::Clock::new(&syscon.iosc, 0x03ff),
             &mut syscon.handle,
             spi::MODE_0,
             spi0_sck,
