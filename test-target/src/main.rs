@@ -13,12 +13,20 @@ extern crate panic_rtt_target;
 
 use core::marker::PhantomData;
 
+use heapless::{
+    consts::U32,
+    spsc,
+};
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
     cortex_m::{
         interrupt,
         peripheral::SYST,
+    },
+    dma::{
+        self,
+        transfer::state::Started,
     },
     gpio::{
         GpioPin,
@@ -39,6 +47,7 @@ use lpc8xx_hal::{
         SPI0,
         USART0,
         USART1,
+        USART2,
     },
     pinint::{
         self,
@@ -75,6 +84,7 @@ use lpc845_messages::{
     HostToTarget,
     PinState,
     TargetToHost,
+    UsartTarget,
 };
 
 
@@ -87,7 +97,7 @@ const APP: () = {
 
         usart_rx_int:  RxInt<'static, USART1>,
         usart_rx_idle: RxIdle<'static>,
-        usart_tx:      Tx<USART1>,
+        usart_tx:      Option<Tx<USART1>>,
 
         green: GpioPin<PIO1_0, Output>,
         blue:  GpioPin<PIO1_1, Output>,
@@ -100,6 +110,19 @@ const APP: () = {
 
         spi:  SPI<SPI0, Enabled<spi::Master>>,
         ssel: GpioPin<PIO0_19, Output>,
+
+        dma_tx_channel: Option<dma::Channel<dma::Channel3, Enabled>>,
+        dma_rx_transfer: Option<
+            dma::Transfer<
+                Started,
+                dma::Channel4,
+                usart::Rx<USART2>,
+                &'static mut [u8],
+            >
+        >,
+
+        dma_rx_prod: spsc::Producer<'static, u8, U32>,
+        dma_rx_cons: spsc::Consumer<'static, u8, U32>,
     }
 
     #[init]
@@ -111,6 +134,10 @@ const APP: () = {
         // that gives us safe access to them.
         static mut HOST:  Usart = Usart::new();
         static mut USART: Usart = Usart::new();
+
+        static mut DMA_QUEUE: spsc::Queue<u8, U32> =
+            spsc::Queue(heapless::i::Queue::new());
+        static mut DMA_BUFFER: [u8; 13] = [0; 13];
 
         rtt_target::rtt_init_print!();
         rprintln!("Starting target.");
@@ -202,6 +229,24 @@ const APP: () = {
         );
         usart.enable_rxrdy();
 
+        // Assign pins to USART2
+        let (u2_rxd, _) = swm.movable_functions.u2_rxd.assign(
+            p.pins.pio0_28.into_swm_pin(),
+            &mut swm_handle,
+        );
+        let (u2_txd, _) = swm.movable_functions.u2_txd.assign(
+            p.pins.pio0_29.into_swm_pin(),
+            &mut swm_handle,
+        );
+
+        // Use USART2 as secondary test subject, for receiving via DMA.
+        let usart2 = p.USART2.enable(
+            &clock_config,
+            &mut syscon.handle,
+            u2_rxd,
+            u2_txd,
+        );
+
         let (host_rx_int,  host_rx_idle,  host_tx)  = HOST.init(host);
         let (usart_rx_int, usart_rx_idle, usart_tx) = USART.init(usart);
 
@@ -251,6 +296,17 @@ const APP: () = {
             spi0_miso,
         );
 
+        let dma = p.DMA.enable(&mut syscon.handle);
+
+        let mut dma_rx_channel = dma.channels.channel4;
+        dma_rx_channel.enable_interrupts();
+        let mut dma_rx_transfer = usart2.rx
+            .read_all(&mut DMA_BUFFER[..], dma_rx_channel);
+        dma_rx_transfer.set_a_when_complete();
+        let dma_rx_transfer =  dma_rx_transfer.start();
+
+        let (dma_rx_prod, dma_rx_cons) = DMA_QUEUE.split();
+
         init::LateResources {
             host_rx_int,
             host_rx_idle,
@@ -258,7 +314,7 @@ const APP: () = {
 
             usart_rx_int,
             usart_rx_idle,
-            usart_tx,
+            usart_tx: Some(usart_tx),
 
             green,
             blue,
@@ -271,6 +327,12 @@ const APP: () = {
 
             spi,
             ssel,
+
+            dma_tx_channel:  Some(dma.channels.channel3),
+            dma_rx_transfer: Some(dma_rx_transfer),
+
+            dma_rx_prod,
+            dma_rx_cons,
         }
     }
 
@@ -283,6 +345,8 @@ const APP: () = {
         i2c,
         spi,
         ssel,
+        dma_tx_channel,
+        dma_rx_cons,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let usart_rx = cx.resources.usart_rx_idle;
@@ -295,6 +359,8 @@ const APP: () = {
         let i2c      = cx.resources.i2c;
         let spi      = cx.resources.spi;
         let ssel     = cx.resources.ssel;
+        let dma_chan = cx.resources.dma_tx_channel;
+        let dma_cons = cx.resources.dma_rx_cons;
 
         let mut buf = [0; 256];
 
@@ -304,17 +370,83 @@ const APP: () = {
             usart_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &TargetToHost::UsartReceive(data),
+                        &TargetToHost::UsartReceive(UsartTarget::Regular, data),
                         &mut buf,
                     )
                 })
                 .expect("Error processing USART data");
 
+            while let Some(b) = dma_cons.dequeue() {
+                host_tx
+                    .send_message(
+                        &TargetToHost::UsartReceive(UsartTarget::Dma, &[b]),
+                        &mut buf,
+                    )
+                    .unwrap();
+            }
+
             host_rx
                 .process_message(|message| {
-                    match message {
-                        HostToTarget::SendUsart(data) => {
-                            usart_tx.send_raw(data)
+                    // We're working around two problems here:
+                    // 1. We only have a mutable reference to resources we need
+                    //    to own. Unfortunately RTIC doesn't allow us to move
+                    //    stuff into `idle`, so we need to use the `take`/
+                    //    `unwrap` trick to actually move them in here.
+                    // 2. Usually we can move things out of variables and back
+                    //    into them. As long as the compiler understands that
+                    //    we've replaced what we moved out, it won't be a
+                    //    problem. The closure prevents that understanding, thus
+                    //    necessitating this little dance with the local
+                    //    variables.
+                    let mut usart_tx_local = usart_tx.take().unwrap();
+                    let mut dma_chan_local = dma_chan.take().unwrap();
+
+                    let result = match message {
+                        HostToTarget::SendUsart(target, data) => {
+                            match target {
+                                UsartTarget::Regular => {
+                                    usart_tx_local.send_raw(data)
+                                }
+                                UsartTarget::Dma => {
+                                    static mut DMA_BUFFER: [u8; 16] = [0; 16];
+
+                                    {
+                                        // This is sound, as we know this
+                                        // closure is only ever executed once at
+                                        // a time, and the mutable reference is
+                                        // dropped at the end of this block.
+                                        let dma_buffer = unsafe {
+                                            &mut DMA_BUFFER
+                                        };
+
+                                        dma_buffer[..data.len()].copy_from_slice(data);
+                                    }
+
+                                    let payload = {
+                                        // Sound, as we know this closure is
+                                        // only ever executed once at a time,
+                                        // and the only other reference has been
+                                        // dropped already.
+                                        let dma_buffer = unsafe {
+                                            &DMA_BUFFER
+                                        };
+
+                                        let transfer = usart_tx_local.usart.write_all(
+                                            &dma_buffer[..data.len()],
+                                            dma_chan_local,
+                                        );
+                                        transfer
+                                            .start()
+                                            .wait()
+                                            .unwrap()
+                                    };
+
+                                    dma_chan_local       = payload.channel;
+                                    usart_tx_local.usart = payload.dest;
+
+                                    Ok(())
+                                }
+                            }
                         }
                         HostToTarget::SetPin(PinState::High) => {
                             Ok(green.set_high())
@@ -402,7 +534,12 @@ const APP: () = {
 
                             Ok(())
                         }
-                    }
+                    };
+
+                    *usart_tx = Some(usart_tx_local);
+                    *dma_chan = Some(dma_chan_local);
+
+                    result
                 })
                 .expect("Error processing host request");
             host_rx.clear_buf();
@@ -471,5 +608,38 @@ const APP: () = {
 
         red_int.clear_rising_edge_flag();
         red_int.clear_falling_edge_flag();
+    }
+
+    #[task(
+        binds = DMA0,
+        resources = [
+            dma_rx_transfer,
+            dma_rx_prod,
+        ]
+    )]
+    fn dma0(context: dma0::Context) {
+        let transfer = context.resources.dma_rx_transfer;
+        let queue    = context.resources.dma_rx_prod;
+
+        // Process completed transfer.
+        let payload = transfer
+            .take()
+            .unwrap()
+            .wait()
+            .unwrap();
+        let channel = payload.channel;
+        let usart   = payload.source;
+        let buffer  = payload.dest;
+
+        // Send received data to idle loop.
+        for &b in buffer.iter() {
+            queue.enqueue(b)
+                .unwrap();
+        }
+
+        // Restart transfer.
+        let mut transfer_ready = usart.read_all(buffer, channel);
+        transfer_ready.set_a_when_complete();
+        *transfer = Some(transfer_ready.start());
     }
 };

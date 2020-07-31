@@ -7,6 +7,7 @@ use lpc845_messages::{
     HostToTarget,
     PinState,
     TargetToHost,
+    UsartTarget,
 };
 
 use host_lib::conn::{
@@ -102,7 +103,15 @@ impl Target {
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(message))
+        self.0.send(&HostToTarget::SendUsart(UsartTarget::Regular, message))
+            .map_err(|err| TargetUsartSendError(err))
+    }
+
+    /// Instruct the target to send this message via USART using DMA
+    pub fn send_usart_dma(&mut self, message: &[u8])
+        -> Result<(), TargetUsartSendError>
+    {
+        self.0.send(&HostToTarget::SendUsart(UsartTarget::Dma, message))
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -111,6 +120,26 @@ impl Target {
     /// Returns the receive buffer, once the data was received. Returns an
     /// error, if it times out before that, or an I/O error occurs.
     pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout, UsartTarget::Regular)
+    }
+
+    /// Wait to receive the provided data via USART/DMA
+    ///
+    /// Returns the receive buffer, once the data was received. Returns an
+    /// error, if it times out before that, or an I/O error occurs.
+    pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout, UsartTarget::Dma)
+    }
+
+    fn wait_for_usart_rx_inner(&mut self,
+        data:            &[u8],
+        timeout:         Duration,
+        expected_target: UsartTarget,
+    )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
         let mut buf   = Vec::new();
@@ -129,7 +158,9 @@ impl Target {
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match message {
-                TargetToHost::UsartReceive(data) => {
+                TargetToHost::UsartReceive(target, data)
+                    if target == expected_target =>
+                {
                     buf.extend(data)
                 }
                 message => {

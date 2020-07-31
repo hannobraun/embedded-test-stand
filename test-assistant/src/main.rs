@@ -14,6 +14,7 @@ extern crate panic_rtt_target;
 use core::marker::PhantomData;
 
 use lpc8xx_hal::{
+    prelude::*,
     Peripherals,
     cortex_m::interrupt,
     gpio::{
@@ -36,6 +37,7 @@ use lpc8xx_hal::{
         SPI0,
         USART0,
         USART1,
+        USART2,
     },
     pinint::{
         PININT0,
@@ -78,6 +80,7 @@ use lpc845_messages::{
     HostToAssistant,
     Pin,
     PinState,
+    UsartTarget,
 };
 
 
@@ -91,6 +94,7 @@ const APP: () = {
         target_rx_int:  RxInt<'static, USART1>,
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
+        target_tx_dma:  usart::Tx<USART2>,
 
         green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0, MRT0>,
         green_idle: pin_interrupt::Idle<'static>,
@@ -214,6 +218,24 @@ const APP: () = {
         );
         target.enable_rxrdy();
 
+        // Assign pins to USART2.
+        let (u2_rxd, _) = swm.movable_functions.u2_rxd.assign(
+            p.pins.pio0_28.into_swm_pin(),
+            &mut swm_handle,
+        );
+        let (u2_txd, _) = swm.movable_functions.u2_txd.assign(
+            p.pins.pio0_29.into_swm_pin(),
+            &mut swm_handle,
+        );
+
+        // Use USART2 as secondary means to communicate with test target.
+        let target2 = p.USART2.enable(
+            &clock_config,
+            &mut syscon.handle,
+            u2_rxd,
+            u2_txd,
+        );
+
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);
         let (target_rx_int, target_rx_idle, target_tx) = TARGET.init(target);
 
@@ -287,6 +309,7 @@ const APP: () = {
             target_rx_int,
             target_rx_idle,
             target_tx,
+            target_tx_dma: target2.tx,
 
             green_int,
             green_idle,
@@ -307,19 +330,21 @@ const APP: () = {
             host_tx,
             target_rx_idle,
             target_tx,
+            target_tx_dma,
             green_idle,
             blue_idle,
             red,
         ]
     )]
     fn idle(cx: idle::Context) -> ! {
-        let host_rx   = cx.resources.host_rx_idle;
-        let host_tx   = cx.resources.host_tx;
-        let target_rx = cx.resources.target_rx_idle;
-        let target_tx = cx.resources.target_tx;
-        let green     = cx.resources.green_idle;
-        let blue      = cx.resources.blue_idle;
-        let red       = cx.resources.red;
+        let host_rx       = cx.resources.host_rx_idle;
+        let host_tx       = cx.resources.host_tx;
+        let target_rx     = cx.resources.target_rx_idle;
+        let target_tx     = cx.resources.target_tx;
+        let target_tx_dma = cx.resources.target_tx_dma;
+        let green         = cx.resources.green_idle;
+        let blue          = cx.resources.blue_idle;
+        let red           = cx.resources.red;
 
         let mut buf = [0; 256];
 
@@ -336,8 +361,17 @@ const APP: () = {
             host_rx
                 .process_message(|message| {
                     match message {
-                        HostToAssistant::SendUsart(data) => {
+                        HostToAssistant::SendUsart(
+                            UsartTarget::Regular,
+                            data,
+                        ) => {
                             target_tx.send_raw(data)
+                        }
+                        HostToAssistant::SendUsart(
+                            UsartTarget::Dma,
+                            data,
+                        ) => {
+                            target_tx_dma.bwrite_all(data)
                         }
                         HostToAssistant::SetPin(level) => {
                             match level {
