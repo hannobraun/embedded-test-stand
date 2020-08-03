@@ -78,9 +78,9 @@ use firmware_lib::{
 use lpc845_messages::{
     AssistantToHost,
     HostToAssistant,
+    Mode,
     Pin,
     PinState,
-    UsartTarget,
 };
 
 
@@ -364,16 +364,10 @@ const APP: () = {
             host_rx
                 .process_message(|message| {
                     match message {
-                        HostToAssistant::SendUsart(
-                            UsartTarget::Regular,
-                            data,
-                        ) => {
+                        HostToAssistant::SendUsart(Mode::Regular, data) => {
                             target_tx.send_raw(data)
                         }
-                        HostToAssistant::SendUsart(
-                            UsartTarget::Dma,
-                            data,
-                        ) => {
+                        HostToAssistant::SendUsart(Mode::Dma, data) => {
                             target_tx_dma.bwrite_all(data)
                         }
                         HostToAssistant::SetPin(level) => {

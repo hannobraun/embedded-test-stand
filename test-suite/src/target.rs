@@ -5,9 +5,9 @@ use std::time::{
 
 use lpc845_messages::{
     HostToTarget,
+    Mode,
     PinState,
     TargetToHost,
-    UsartTarget,
 };
 
 use host_lib::conn::{
@@ -103,7 +103,7 @@ impl Target {
     pub fn send_usart(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(UsartTarget::Regular, message))
+        self.0.send(&HostToTarget::SendUsart(Mode::Regular, message))
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -111,7 +111,7 @@ impl Target {
     pub fn send_usart_dma(&mut self, message: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(UsartTarget::Dma, message))
+        self.0.send(&HostToTarget::SendUsart(Mode::Dma, message))
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -122,7 +122,7 @@ impl Target {
     pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, UsartTarget::Regular)
+        self.wait_for_usart_rx_inner(data, timeout, Mode::Regular)
     }
 
     /// Wait to receive the provided data via USART/DMA
@@ -132,13 +132,13 @@ impl Target {
     pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, UsartTarget::Dma)
+        self.wait_for_usart_rx_inner(data, timeout, Mode::Dma)
     }
 
     fn wait_for_usart_rx_inner(&mut self,
-        data:            &[u8],
-        timeout:         Duration,
-        expected_target: UsartTarget,
+        data:          &[u8],
+        timeout:       Duration,
+        expected_mode: Mode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
@@ -158,8 +158,8 @@ impl Target {
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match message {
-                TargetToHost::UsartReceive(target, data)
-                    if target == expected_target =>
+                TargetToHost::UsartReceive(mode, data)
+                    if mode == expected_mode =>
                 {
                     buf.extend(data)
                 }
@@ -190,9 +190,28 @@ impl Target {
     pub fn start_i2c_transaction(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetI2cError>
     {
+        self.start_i2c_transaction_inner(data, timeout, Mode::Regular)
+    }
+
+    /// Start an I2C/DMA transaction
+    ///
+    /// Sends the provided `data` and returns the reply.
+    pub fn start_i2c_transaction_dma(&mut self, data: u8, timeout: Duration)
+        -> Result<u8, TargetI2cError>
+    {
+        self.start_i2c_transaction_inner(data, timeout, Mode::Dma)
+    }
+
+    fn start_i2c_transaction_inner(&mut self,
+        data:    u8,
+        timeout: Duration,
+        mode:    Mode,
+    )
+        -> Result<u8, TargetI2cError>
+    {
         let address = 0x48;
 
-        self.0.send(&HostToTarget::StartI2cTransaction { address, data })
+        self.0.send(&HostToTarget::StartI2cTransaction { mode, address, data })
             .map_err(|err| TargetI2cError::Send(err))?;
 
         let mut tmp = Vec::new();

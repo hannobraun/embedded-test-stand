@@ -82,9 +82,9 @@ use firmware_lib::usart::{
 };
 use lpc845_messages::{
     HostToTarget,
+    Mode,
     PinState,
     TargetToHost,
-    UsartTarget,
 };
 
 
@@ -106,13 +106,14 @@ const APP: () = {
         red_int: pinint::Interrupt<PININT0, PIO1_2, Enabled>,
 
         systick: SYST,
-        i2c:     i2c::Master<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
+        i2c:     Option<i2c::Master<I2C0, Enabled<PhantomData<IOSC>>, Enabled>>,
+        i2c_dma: Option<dma::Channel<dma::Channel15, Enabled>>,
 
         spi:  SPI<SPI0, Enabled<spi::Master>>,
         ssel: GpioPin<PIO0_19, Output>,
 
-        dma_tx_channel: Option<dma::Channel<dma::Channel3, Enabled>>,
-        dma_rx_transfer: Option<
+        usart_dma_tx_channel: Option<dma::Channel<dma::Channel3, Enabled>>,
+        usart_dma_rx_transfer: Option<
             dma::Transfer<
                 Started,
                 dma::Channel4,
@@ -303,10 +304,10 @@ const APP: () = {
 
         let mut dma_rx_channel = dma.channels.channel4;
         dma_rx_channel.enable_interrupts();
-        let mut dma_rx_transfer = usart2.rx
+        let mut usart_dma_rx_transfer = usart2.rx
             .read_all(&mut DMA_BUFFER[..], dma_rx_channel);
-        dma_rx_transfer.set_a_when_complete();
-        let dma_rx_transfer =  dma_rx_transfer.start();
+        usart_dma_rx_transfer.set_a_when_complete();
+        let usart_dma_rx_transfer =  usart_dma_rx_transfer.start();
 
         let (dma_rx_prod, dma_rx_cons) = DMA_QUEUE.split();
 
@@ -326,13 +327,14 @@ const APP: () = {
             red_int,
 
             systick,
-            i2c: i2c.master,
+            i2c:     Some(i2c.master),
+            i2c_dma: Some(dma.channels.channel15),
 
             spi,
             ssel,
 
-            dma_tx_channel:  Some(dma.channels.channel3),
-            dma_rx_transfer: Some(dma_rx_transfer),
+            usart_dma_tx_channel:  Some(dma.channels.channel3),
+            usart_dma_rx_transfer: Some(usart_dma_rx_transfer),
 
             dma_rx_prod,
             dma_rx_cons,
@@ -346,24 +348,26 @@ const APP: () = {
         red,
         systick,
         i2c,
+        i2c_dma,
         spi,
         ssel,
-        dma_tx_channel,
+        usart_dma_tx_channel,
         dma_rx_cons,
     ])]
     fn idle(cx: idle::Context) -> ! {
-        let usart_rx = cx.resources.usart_rx_idle;
-        let usart_tx = cx.resources.usart_tx;
-        let host_rx  = cx.resources.host_rx_idle;
-        let host_tx  = cx.resources.host_tx;
-        let green    = cx.resources.green;
-        let red      = cx.resources.red;
-        let systick  = cx.resources.systick;
-        let i2c      = cx.resources.i2c;
-        let spi      = cx.resources.spi;
-        let ssel     = cx.resources.ssel;
-        let dma_chan = cx.resources.dma_tx_channel;
-        let dma_cons = cx.resources.dma_rx_cons;
+        let usart_rx       = cx.resources.usart_rx_idle;
+        let usart_tx       = cx.resources.usart_tx;
+        let host_rx        = cx.resources.host_rx_idle;
+        let host_tx        = cx.resources.host_tx;
+        let green          = cx.resources.green;
+        let red            = cx.resources.red;
+        let systick        = cx.resources.systick;
+        let i2c            = cx.resources.i2c;
+        let i2c_dma        = cx.resources.i2c_dma;
+        let spi            = cx.resources.spi;
+        let ssel           = cx.resources.ssel;
+        let usart_dma_chan = cx.resources.usart_dma_tx_channel;
+        let usart_dma_cons = cx.resources.dma_rx_cons;
 
         let mut buf = [0; 256];
 
@@ -373,16 +377,16 @@ const APP: () = {
             usart_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &TargetToHost::UsartReceive(UsartTarget::Regular, data),
+                        &TargetToHost::UsartReceive(Mode::Regular, data),
                         &mut buf,
                     )
                 })
                 .expect("Error processing USART data");
 
-            while let Some(b) = dma_cons.dequeue() {
+            while let Some(b) = usart_dma_cons.dequeue() {
                 host_tx
                     .send_message(
-                        &TargetToHost::UsartReceive(UsartTarget::Dma, &[b]),
+                        &TargetToHost::UsartReceive(Mode::Dma, &[b]),
                         &mut buf,
                     )
                     .unwrap();
@@ -402,15 +406,18 @@ const APP: () = {
                     //    necessitating this little dance with the local
                     //    variables.
                     let mut usart_tx_local = usart_tx.take().unwrap();
-                    let mut dma_chan_local = dma_chan.take().unwrap();
+                    let mut usart_dma_chan_local =
+                        usart_dma_chan.take().unwrap();
+                    let mut i2c_local = i2c.take().unwrap();
+                    let mut i2c_dma_local = i2c_dma.take().unwrap();
 
                     let result = match message {
                         HostToTarget::SendUsart(target, data) => {
                             match target {
-                                UsartTarget::Regular => {
+                                Mode::Regular => {
                                     usart_tx_local.send_raw(data)
                                 }
-                                UsartTarget::Dma => {
+                                Mode::Dma => {
                                     static mut DMA_BUFFER: [u8; 16] = [0; 16];
 
                                     {
@@ -436,7 +443,7 @@ const APP: () = {
 
                                         let transfer = usart_tx_local.usart.write_all(
                                             &dma_buffer[..data.len()],
-                                            dma_chan_local,
+                                            usart_dma_chan_local,
                                         );
                                         transfer
                                             .start()
@@ -444,7 +451,7 @@ const APP: () = {
                                             .unwrap()
                                     };
 
-                                    dma_chan_local       = payload.channel;
+                                    usart_dma_chan_local = payload.channel;
                                     usart_tx_local.usart = payload.dest;
 
                                     Ok(())
@@ -480,17 +487,71 @@ const APP: () = {
 
                             Ok(())
                         }
-                        HostToTarget::StartI2cTransaction { address, data } => {
+                        HostToTarget::StartI2cTransaction {
+                            mode: Mode::Regular,
+                            address,
+                            data,
+                        } => {
                             rprintln!("I2C: Write");
-                            i2c.write(address, &[data])
+                            i2c_local.write(address, &[data])
                                 .unwrap();
 
                             rprintln!("I2C: Read");
                             let mut rx_buf = [0u8; 1];
-                            i2c.read(address, &mut rx_buf)
+                            i2c_local.read(address, &mut rx_buf)
                                 .unwrap();
 
                             rprintln!("I2C: Done");
+
+                            host_tx
+                                .send_message(
+                                    &TargetToHost::I2cReply(rx_buf[0]),
+                                    &mut buf,
+                                )
+                                .unwrap();
+
+                            Ok(())
+                        }
+                        HostToTarget::StartI2cTransaction {
+                            mode: Mode::Dma,
+                            address,
+                            data,
+                        } => {
+                            static mut TX_BUF: [u8; 1] = [0; 1];
+                            static mut RX_BUF: [u8; 1] = [0; 1];
+
+                            // Sound, as we have exclusive access to these
+                            // statics here.
+                            let tx_buf = unsafe { &mut TX_BUF };
+                            let mut rx_buf = unsafe { &mut RX_BUF[..] };
+
+
+                            tx_buf[0] = data;
+
+                            // Write data to slave
+                            let payload = i2c_local
+                                .write_all(address, tx_buf, i2c_dma_local)
+                                .unwrap()
+                                .start()
+                                .wait()
+                                .unwrap();
+
+                            i2c_dma_local = payload.channel;
+                            i2c_local = payload.dest;
+
+                            rx_buf[0] = 0;
+
+                            // Read data from slave
+                            let payload = i2c_local
+                                .read_all(address, rx_buf, i2c_dma_local)
+                                .unwrap()
+                                .start()
+                                .wait()
+                                .unwrap();
+
+                            i2c_dma_local = payload.channel;
+                            i2c_local = payload.source;
+                            rx_buf = payload.dest;
 
                             host_tx
                                 .send_message(
@@ -540,7 +601,9 @@ const APP: () = {
                     };
 
                     *usart_tx = Some(usart_tx_local);
-                    *dma_chan = Some(dma_chan_local);
+                    *usart_dma_chan = Some(usart_dma_chan_local);
+                    *i2c = Some(i2c_local);
+                    *i2c_dma = Some(i2c_dma_local);
 
                     result
                 })
@@ -616,12 +679,12 @@ const APP: () = {
     #[task(
         binds = DMA0,
         resources = [
-            dma_rx_transfer,
+            usart_dma_rx_transfer,
             dma_rx_prod,
         ]
     )]
     fn dma0(context: dma0::Context) {
-        let transfer = context.resources.dma_rx_transfer;
+        let transfer = context.resources.usart_dma_rx_transfer;
         let queue    = context.resources.dma_rx_prod;
 
         // Process completed transfer.
