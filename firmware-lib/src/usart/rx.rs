@@ -7,7 +7,10 @@ use heapless::{
 };
 use lpc8xx_hal::{
     prelude::*,
-    usart,
+    usart::{
+        self,
+        state::Enabled,
+    },
 };
 use serde::Deserialize;
 
@@ -20,7 +23,7 @@ use super::QueueCap;
 ///
 /// [`Usart::init`]: ../struct.Usart.html#method.init
 pub struct RxInt<'r, I> {
-    pub usart: usart::Rx<I>,
+    pub usart: usart::Rx<I, Enabled<u8>>,
     pub queue: spsc::Producer<'r, u8, QueueCap>,
 }
 

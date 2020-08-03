@@ -3,7 +3,10 @@
 
 use lpc8xx_hal::{
     prelude::*,
-    usart,
+    usart::{
+        self,
+        state::Enabled,
+    },
 };
 use serde::Serialize;
 use void::{
@@ -16,7 +19,7 @@ use void::{
 ///
 /// Provides some convenience methods on top of the wrapped transmitter.
 pub struct Tx<I> {
-    pub usart: usart::Tx<I>,
+    pub usart: usart::Tx<I, Enabled<u8>>,
 }
 
 impl<I> Tx<I>
