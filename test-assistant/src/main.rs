@@ -94,7 +94,7 @@ const APP: () = {
         target_rx_int:  RxInt<'static, USART1>,
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
-        target_tx_dma:  usart::Tx<USART2>,
+        target_tx_dma:  usart::Tx<USART2, usart::state::Enabled<u8>>,
 
         green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0, MRT0>,
         green_idle: pin_interrupt::Idle<'static>,
@@ -196,6 +196,7 @@ const APP: () = {
             &mut syscon.handle,
             u0_rxd,
             u0_txd,
+            usart::Settings::default(),
         );
         host.enable_rxrdy();
 
@@ -215,6 +216,7 @@ const APP: () = {
             &mut syscon.handle,
             u1_rxd,
             u1_txd,
+            usart::Settings::default(),
         );
         target.enable_rxrdy();
 
@@ -234,6 +236,7 @@ const APP: () = {
             &mut syscon.handle,
             u2_rxd,
             u2_txd,
+            usart::Settings::default(),
         );
 
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);

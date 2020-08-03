@@ -116,7 +116,7 @@ const APP: () = {
             dma::Transfer<
                 Started,
                 dma::Channel4,
-                usart::Rx<USART2>,
+                usart::Rx<USART2, usart::state::Enabled<u8>>,
                 &'static mut [u8],
             >
         >,
@@ -207,6 +207,7 @@ const APP: () = {
             &mut syscon.handle,
             u0_rxd,
             u0_txd,
+            usart::Settings::default(),
         );
         host.enable_rxrdy();
 
@@ -226,6 +227,7 @@ const APP: () = {
             &mut syscon.handle,
             u1_rxd,
             u1_txd,
+            usart::Settings::default(),
         );
         usart.enable_rxrdy();
 
@@ -245,6 +247,7 @@ const APP: () = {
             &mut syscon.handle,
             u2_rxd,
             u2_txd,
+            usart::Settings::default(),
         );
 
         let (host_rx_int,  host_rx_idle,  host_tx)  = HOST.init(host);

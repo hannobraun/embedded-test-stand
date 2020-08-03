@@ -19,7 +19,10 @@ use heapless::{
     consts::U256,
     spsc,
 };
-use lpc8xx_hal::USART;
+use lpc8xx_hal::{
+    USART,
+    usart::state::Enabled,
+};
 
 
 /// Interrupt-enabled USART wrapper
@@ -55,7 +58,9 @@ impl Usart {
     /// [`RxInt`]: rx/struct.RxInt.html
     /// [`RxIdle`]: rx/struct.RxIdle.html
     /// [`Tx`]: tx/struct.Tx.html
-    pub fn init<I>(&mut self, usart: USART<I>) -> (RxInt<I>, RxIdle, Tx<I>) {
+    pub fn init<I>(&mut self, usart: USART<I, Enabled<u8>>)
+        -> (RxInt<I>, RxIdle, Tx<I>)
+    {
         let (prod, cons) = self.queue.split();
 
         let rx_int = RxInt {
