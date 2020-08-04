@@ -71,7 +71,7 @@ pub enum HostToAssistant<'r> {
     SendUsart(Mode, &'r [u8]),
 
     /// Instruct the assistant to change level of the target's input pin
-    SetPin(PinState),
+    SetPin(OutputPin, PinState),
 }
 
 /// A message from the test assistant to the test suite on the host
@@ -111,6 +111,12 @@ pub enum InputPin {
     Blue,
     Green,
     Rts,
+}
+
+/// Represents one of the pins that the assistant can set
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum OutputPin {
+    Red,
 }
 
 

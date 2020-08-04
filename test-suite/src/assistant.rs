@@ -13,6 +13,7 @@ use lpc845_messages::{
     HostToAssistant,
     InputPin,
     Mode,
+    OutputPin,
     PinState,
 };
 
@@ -23,13 +24,13 @@ pub struct Assistant(pub(crate) Conn);
 impl Assistant {
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0.send(&HostToAssistant::SetPin(PinState::High))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, PinState::High))
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to set the target's input pin low
     pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0.send(&HostToAssistant::SetPin(PinState::Low))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, PinState::Low))
             .map_err(|err| AssistantSetPinLowError(err))
     }
 

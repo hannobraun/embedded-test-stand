@@ -83,6 +83,7 @@ use lpc845_messages::{
     HostToAssistant,
     InputPin,
     Mode,
+    OutputPin,
     PinState,
 };
 
@@ -400,7 +401,7 @@ const APP: () = {
                         HostToAssistant::SendUsart(Mode::Dma, data) => {
                             target_tx_dma.bwrite_all(data)
                         }
-                        HostToAssistant::SetPin(level) => {
+                        HostToAssistant::SetPin(OutputPin::Red, level) => {
                             match level {
                                 PinState::High => {
                                     red.set_high();
