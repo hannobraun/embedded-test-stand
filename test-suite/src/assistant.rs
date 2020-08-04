@@ -34,6 +34,18 @@ impl Assistant {
             .map_err(|err| AssistantSetPinLowError(err))
     }
 
+    /// Instruct the assistant to disable CTS
+    pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, PinState::High))
+            .map_err(|err| AssistantSetPinHighError(err))
+    }
+
+    /// Instruct the assistant to enable CTS
+    pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, PinState::Low))
+            .map_err(|err| AssistantSetPinLowError(err))
+    }
+
     /// Indicates whether the GPIO pin on the test target is set high
     ///
     /// Uses `pin_state` internally.
