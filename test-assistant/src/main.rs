@@ -81,8 +81,8 @@ use firmware_lib::{
 use lpc845_messages::{
     AssistantToHost,
     HostToAssistant,
+    InputPin,
     Mode,
-    Pin,
     PinState,
 };
 
@@ -416,9 +416,9 @@ const APP: () = {
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
-            handle_timer_interrupts(green, Pin::Green, host_tx, &mut buf);
-            handle_timer_interrupts(blue,  Pin::Blue,  host_tx, &mut buf);
-            handle_timer_interrupts(rts,   Pin::Rts,   host_tx, &mut buf);
+            handle_timer_interrupts(green, InputPin::Green, host_tx, &mut buf);
+            handle_timer_interrupts(blue,  InputPin::Blue,  host_tx, &mut buf);
+            handle_timer_interrupts(rts,   InputPin::Rts,   host_tx, &mut buf);
 
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
@@ -540,7 +540,7 @@ const APP: () = {
 
 fn handle_timer_interrupts<U>(
     int:     &mut pin_interrupt::Idle,
-    pin:     Pin,
+    pin:     InputPin,
     host_tx: &mut Tx<U>,
     buf:     &mut [u8],
 )

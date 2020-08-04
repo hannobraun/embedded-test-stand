@@ -11,8 +11,8 @@ use host_lib::conn::{
 use lpc845_messages::{
     AssistantToHost,
     HostToAssistant,
+    InputPin,
     Mode,
-    Pin,
     PinState,
 };
 
@@ -37,7 +37,10 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
+        let pin_state = self.pin_state(
+            InputPin::Green,
+            Duration::from_millis(10),
+        )?;
         Ok(pin_state.0 == PinState::High)
     }
 
@@ -45,7 +48,10 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
+        let pin_state = self.pin_state(
+            InputPin::Green,
+            Duration::from_millis(10),
+        )?;
         Ok(pin_state.0 == PinState::Low)
     }
 
@@ -53,7 +59,7 @@ impl Assistant {
     ///
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, expected_pin: Pin, timeout: Duration)
+    pub fn pin_state(&mut self, expected_pin: InputPin, timeout: Duration)
         -> Result<(PinState, Option<u32>), AssistantPinReadError>
     {
         let mut buf   = Vec::new();
@@ -104,7 +110,10 @@ impl Assistant {
 
     /// Wait for RTS signal to be enabled
     pub fn wait_for_rts(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Rts, Duration::from_millis(10))?;
+        let pin_state = self.pin_state(
+            InputPin::Rts,
+            Duration::from_millis(10),
+        )?;
         Ok(pin_state.0 == PinState::Low)
     }
 
@@ -178,10 +187,13 @@ impl Assistant {
 
         let mut measurement: Option<GpioPeriodMeasurement> = None;
 
-        let (mut state, _) = self.pin_state(Pin::Blue, timeout)?;
+        let (mut state, _) = self.pin_state(InputPin::Blue, timeout)?;
 
         for _ in 0 .. samples {
-            let (new_state, period_ms) = self.pin_state(Pin::Blue, timeout)?;
+            let (new_state, period_ms) = self.pin_state(
+                InputPin::Blue,
+                timeout,
+            )?;
             print!("{:?}, {:?}\n", new_state, period_ms);
 
             if new_state == state {

@@ -83,7 +83,7 @@ pub enum AssistantToHost<'r> {
     /// Notify the host that the level of a pin has changed
     PinLevelChanged {
         /// The pin whose level has changed
-        pin: Pin,
+        pin: InputPin,
 
         /// The new level of the pin
         level: PinState,
@@ -107,7 +107,7 @@ pub enum Mode {
 
 /// Represents one of the pins that the assistant is monitoring
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum Pin {
+pub enum InputPin {
     Blue,
     Green,
     Rts,
