@@ -94,7 +94,11 @@ const APP: () = {
         target_rx_int:  RxInt<'static, USART1>,
         target_rx_idle: RxIdle<'static>,
         target_tx:      Tx<USART1>,
-        target_tx_dma:  usart::Tx<USART2, usart::state::Enabled<u8>>,
+        target_tx_dma:  usart::Tx<
+            USART2,
+            usart::state::Enabled<u8>,
+            usart::state::NoThrottle,
+        >,
 
         green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0, MRT0>,
         green_idle: pin_interrupt::Idle<'static>,
