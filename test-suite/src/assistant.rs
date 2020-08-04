@@ -102,6 +102,12 @@ impl Assistant {
         }
     }
 
+    /// Wait for RTS signal to be enabled
+    pub fn wait_for_rts(&mut self) -> Result<bool, AssistantPinReadError> {
+        let pin_state = self.pin_state(Pin::Rts, Duration::from_millis(10))?;
+        Ok(pin_state.0 == PinState::Low)
+    }
+
     /// Instruct assistant to send this message to the target via USART
     pub fn send_to_target_usart(&mut self, message: &[u8])
         -> Result<(), AssistantUsartSendError>
