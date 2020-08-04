@@ -46,6 +46,7 @@ use lpc8xx_hal::{
         PININT2,
     },
     pins::{
+        PIO0_8,
         PIO0_9,
         PIO1_0,
         PIO1_1,
@@ -112,6 +113,7 @@ const APP: () = {
         blue_int:  pin_interrupt::Int<'static, PININT1, PIO1_1, MRT1>,
         blue_idle: pin_interrupt::Idle<'static>,
 
+        cts: GpioPin<PIO0_8, Output>,
         red: GpioPin<PIO1_2, Output>,
 
         i2c: i2c::Slave<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
@@ -169,6 +171,11 @@ const APP: () = {
         let red = p.pins.pio1_2.into_output_pin(
             gpio.tokens.pio1_2,
             gpio::Level::High,
+        );
+
+        let cts = p.pins.pio0_8.into_output_pin(
+            gpio.tokens.pio0_8,
+            gpio::Level::Low,
         );
 
         // Configure the clock for USART0, using the Fractional Rate Generator
@@ -350,6 +357,7 @@ const APP: () = {
             blue_idle,
 
             red,
+            cts,
 
             i2c: i2c.slave,
             spi,
@@ -367,6 +375,7 @@ const APP: () = {
             blue_idle,
             target_rts_idle,
             red,
+            cts,
         ]
     )]
     fn idle(cx: idle::Context) -> ! {
@@ -379,6 +388,7 @@ const APP: () = {
         let blue          = cx.resources.blue_idle;
         let rts           = cx.resources.target_rts_idle;
         let red           = cx.resources.red;
+        let cts           = cx.resources.cts;
 
         let mut buf = [0; 256];
 
@@ -410,6 +420,22 @@ const APP: () = {
                                     red.set_low();
                                 }
                             }
+                            Ok(())
+                        }
+                        HostToAssistant::SetPin(
+                            OutputPin::Cts,
+                            PinState::High,
+                        ) => {
+                            rprintln!("Setting CTS HIGH");
+                            cts.set_high();
+                            Ok(())
+                        }
+                        HostToAssistant::SetPin(
+                            OutputPin::Cts,
+                            PinState::Low,
+                        ) => {
+                            rprintln!("Setting CTS LOW");
+                            cts.set_low();
                             Ok(())
                         }
                     }
