@@ -27,6 +27,7 @@ use lpc8xx_hal::{
     mrt::{
         MRT0,
         MRT1,
+        MRT2,
     },
     nb::{
         self,
@@ -42,8 +43,10 @@ use lpc8xx_hal::{
     pinint::{
         PININT0,
         PININT1,
+        PININT2,
     },
     pins::{
+        PIO0_9,
         PIO1_0,
         PIO1_1,
         PIO1_2,
@@ -91,14 +94,16 @@ const APP: () = {
         host_rx_idle: RxIdle<'static>,
         host_tx:      Tx<USART0>,
 
-        target_rx_int:  RxInt<'static, USART1>,
-        target_rx_idle: RxIdle<'static>,
-        target_tx:      Tx<USART1>,
-        target_tx_dma:  usart::Tx<
+        target_rx_int:   RxInt<'static, USART1>,
+        target_rx_idle:  RxIdle<'static>,
+        target_tx:       Tx<USART1>,
+        target_tx_dma:   usart::Tx<
             USART2,
             usart::state::Enabled<u8>,
             usart::state::NoThrottle,
         >,
+        target_rts_int:  pin_interrupt::Int<'static, PININT2, PIO0_9, MRT2>,
+        target_rts_idle: pin_interrupt::Idle<'static>,
 
         green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0, MRT0>,
         green_idle: pin_interrupt::Idle<'static>,
@@ -124,6 +129,7 @@ const APP: () = {
 
         static mut GREEN: PinInterrupt = PinInterrupt::new();
         static mut BLUE:  PinInterrupt = PinInterrupt::new();
+        static mut RTS:   PinInterrupt = PinInterrupt::new();
 
         rtt_target::rtt_init_print!();
         rprintln!("Starting assistant.");
@@ -230,6 +236,16 @@ const APP: () = {
             .. usart::Interrupts::default()
         });
 
+        // Configure interrupt for RTS pin
+        let _rts = p.pins.pio0_9.into_input_pin(gpio.tokens.pio0_9);
+        let mut rts_int = pinint
+            .interrupts
+            .pinint2
+            .select::<PIO0_9>(&mut syscon.handle);
+        rts_int.enable_rising_edge();
+        rts_int.enable_falling_edge();
+        let (rts_int, rts_idle) = RTS.init(rts_int, timers.mrt2);
+
         // Assign pins to USART2.
         let (u2_rxd, _) = swm.movable_functions.u2_rxd.assign(
             p.pins.pio0_28.into_swm_pin(),
@@ -322,7 +338,9 @@ const APP: () = {
             target_rx_int,
             target_rx_idle,
             target_tx,
-            target_tx_dma: target2.tx,
+            target_tx_dma:   target2.tx,
+            target_rts_int:  rts_int,
+            target_rts_idle: rts_idle,
 
             green_int,
             green_idle,
@@ -346,6 +364,7 @@ const APP: () = {
             target_tx_dma,
             green_idle,
             blue_idle,
+            target_rts_idle,
             red,
         ]
     )]
@@ -357,6 +376,7 @@ const APP: () = {
         let target_tx_dma = cx.resources.target_tx_dma;
         let green         = cx.resources.green_idle;
         let blue          = cx.resources.blue_idle;
+        let rts           = cx.resources.target_rts_idle;
         let red           = cx.resources.red;
 
         let mut buf = [0; 256];
@@ -398,6 +418,7 @@ const APP: () = {
 
             handle_timer_interrupts(green, Pin::Green, host_tx, &mut buf);
             handle_timer_interrupts(blue,  Pin::Blue,  host_tx, &mut buf);
+            handle_timer_interrupts(rts,   Pin::Rts,   host_tx, &mut buf);
 
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
@@ -448,6 +469,11 @@ const APP: () = {
     #[task(binds = PIN_INT1, resources = [blue_int])]
     fn pinint1(context: pinint1::Context) {
         context.resources.blue_int.handle_interrupt();
+    }
+
+    #[task(binds = PIN_INT2, resources = [target_rts_int])]
+    fn pinint2(context: pinint2::Context) {
+        context.resources.target_rts_int.handle_interrupt();
     }
 
     #[task(binds = I2C0, resources = [i2c])]

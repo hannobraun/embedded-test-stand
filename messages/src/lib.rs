@@ -110,6 +110,7 @@ pub enum Mode {
 pub enum Pin {
     Blue,
     Green,
+    Rts,
 }
 
 
