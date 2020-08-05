@@ -391,7 +391,10 @@ const APP: () = {
             usart_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &TargetToHost::UsartReceive(Mode::Regular, data),
+                        &TargetToHost::UsartReceive {
+                            mode: Mode::Regular,
+                            data,
+                        },
                         &mut buf,
                     )
                 })
@@ -400,7 +403,10 @@ const APP: () = {
             while let Some(b) = usart_dma_cons.dequeue() {
                 host_tx
                     .send_message(
-                        &TargetToHost::UsartReceive(Mode::Dma, &[b]),
+                        &TargetToHost::UsartReceive {
+                            mode: Mode::Dma,
+                            data: &[b],
+                        },
                         &mut buf,
                     )
                     .unwrap();

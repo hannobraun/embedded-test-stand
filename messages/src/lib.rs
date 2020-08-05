@@ -51,7 +51,10 @@ pub enum HostToTarget<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
-    UsartReceive(Mode, &'r [u8]),
+    UsartReceive {
+        mode: Mode,
+        data: &'r [u8],
+    },
 
     /// Notify the host that the level of GPIO input changed
     PinLevelChanged {
