@@ -106,7 +106,7 @@ pub enum AssistantToHost<'r> {
 }
 
 
-/// Specifies whether a USART transmission concerns DMA or not
+/// Specifies whether a transmission uses DMA or not
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum DmaMode {
     Regular,
