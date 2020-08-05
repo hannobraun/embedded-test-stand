@@ -238,7 +238,26 @@ impl Target {
     pub fn start_spi_transaction(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetSpiError>
     {
-        self.0.send(&HostToTarget::StartSpiTransaction { data })
+        self.start_spi_transaction_inner(data, timeout, Mode::Regular)
+    }
+
+    /// Start an SPI/DMA transaction
+    ///
+    /// Sends the provided `data` and returns the reply.
+    pub fn start_spi_transaction_dma(&mut self, data: u8, timeout: Duration)
+        -> Result<u8, TargetSpiError>
+    {
+        self.start_spi_transaction_inner(data, timeout, Mode::Dma)
+    }
+
+    fn start_spi_transaction_inner(&mut self,
+        data:    u8,
+        timeout: Duration,
+        mode:    Mode,
+    )
+        -> Result<u8, TargetSpiError>
+    {
+        self.0.send(&HostToTarget::StartSpiTransaction { mode, data })
             .map_err(|err| TargetSpiError::Send(err))?;
 
         let mut tmp = Vec::new();

@@ -36,6 +36,9 @@ pub enum HostToTarget<'r> {
 
     /// Instruct the target to start an SPI transaction
     StartSpiTransaction {
+        /// Which mode to use for the transaction
+        mode: Mode,
+
         /// The data to send to the slave
         data: u8,
     },

@@ -109,8 +109,10 @@ const APP: () = {
         i2c:     Option<i2c::Master<I2C0, Enabled<PhantomData<IOSC>>, Enabled>>,
         i2c_dma: Option<dma::Channel<dma::Channel15, Enabled>>,
 
-        spi:  SPI<SPI0, Enabled<spi::Master>>,
-        ssel: GpioPin<PIO0_19, Output>,
+        spi:        Option<SPI<SPI0, Enabled<spi::Master>>>,
+        ssel:       GpioPin<PIO0_19, Output>,
+        spi_rx_dma: Option<dma::Channel<dma::Channel10, Enabled>>,
+        spi_tx_dma: Option<dma::Channel<dma::Channel11, Enabled>>,
 
         usart_dma_tx_channel: Option<dma::Channel<dma::Channel3, Enabled>>,
         usart_dma_rx_transfer: Option<
@@ -298,7 +300,7 @@ const APP: () = {
         );
 
         let spi = p.SPI0.enable_as_master(
-            &spi::Clock::new(&syscon.iosc, 255),
+            &spi::Clock::new(&syscon.iosc, 0x03ff),
             &mut syscon.handle,
             spi::MODE_0,
             spi0_sck,
@@ -336,8 +338,10 @@ const APP: () = {
             i2c:     Some(i2c.master),
             i2c_dma: Some(dma.channels.channel15),
 
-            spi,
+            spi: Some(spi),
             ssel,
+            spi_rx_dma: Some(dma.channels.channel10),
+            spi_tx_dma: Some(dma.channels.channel11),
 
             usart_dma_tx_channel:  Some(dma.channels.channel3),
             usart_dma_rx_transfer: Some(usart_dma_rx_transfer),
@@ -357,6 +361,8 @@ const APP: () = {
         i2c_dma,
         spi,
         ssel,
+        spi_rx_dma,
+        spi_tx_dma,
         usart_dma_tx_channel,
         dma_rx_cons,
     ])]
@@ -372,6 +378,8 @@ const APP: () = {
         let i2c_dma        = cx.resources.i2c_dma;
         let spi            = cx.resources.spi;
         let ssel           = cx.resources.ssel;
+        let spi_rx_dma     = cx.resources.spi_rx_dma;
+        let spi_tx_dma     = cx.resources.spi_tx_dma;
         let usart_dma_chan = cx.resources.usart_dma_tx_channel;
         let usart_dma_cons = cx.resources.dma_rx_cons;
 
@@ -416,6 +424,9 @@ const APP: () = {
                         usart_dma_chan.take().unwrap();
                     let mut i2c_local = i2c.take().unwrap();
                     let mut i2c_dma_local = i2c_dma.take().unwrap();
+                    let mut spi_local = spi.take().unwrap();
+                    let mut spi_rx_dma_local = spi_rx_dma.take().unwrap();
+                    let mut spi_tx_dma_local = spi_tx_dma.take().unwrap();
 
                     let result = match message {
                         HostToTarget::SendUsart(target, data) => {
@@ -568,28 +579,33 @@ const APP: () = {
 
                             Ok(())
                         }
-                        HostToTarget::StartSpiTransaction { data } => {
+                        HostToTarget::StartSpiTransaction {
+                            mode: Mode::Regular,
+                            data,
+                        } => {
                             rprintln!("SPI: Start transaction");
                             ssel.set_low();
 
                             // Clear receive buffer. Otherwise the following
                             // series of operations won't work as intended.
                             loop {
-                                if let Err(nb::Error::WouldBlock) = spi.read() {
+                                if let Err(nb::Error::WouldBlock) =
+                                    spi_local.read()
+                                {
                                     break;
                                 }
                             }
 
                             rprintln!("SPI: Write");
-                            block!(spi.send(data))
+                            block!(spi_local.send(data))
                                 .unwrap();
-                            let _ = block!(spi.read())
+                            let _ = block!(spi_local.read())
                                 .unwrap();
 
                             rprintln!("SPI: Read");
-                            block!(spi.send(0xff))
+                            block!(spi_local.send(0xff))
                                 .unwrap();
-                            let reply = block!(spi.read())
+                            let reply = block!(spi_local.read())
                                 .unwrap();
 
                             ssel.set_high();
@@ -604,12 +620,59 @@ const APP: () = {
 
                             Ok(())
                         }
+                        HostToTarget::StartSpiTransaction {
+                            mode: Mode::Dma,
+                            data,
+                        } => {
+                            static mut SPI_BUF: [u8; 2] = [0; 2];
+
+                            // Sound, as we have exclusive access to the static
+                            // here.
+                            let mut spi_buf = unsafe { &mut SPI_BUF[..] };
+
+                            rprintln!("SPI/DMA: Start transaction");
+                            ssel.set_low();
+
+                            spi_buf[0] = data;
+                            let payload = spi_local
+                                .transfer_all(
+                                    spi_buf,
+                                    spi_rx_dma_local,
+                                    spi_tx_dma_local,
+                                )
+                                .start()
+                                .wait();
+
+                            ssel.set_high();
+
+                            spi_local        = payload.0;
+                            spi_buf          = payload.1;
+                            spi_rx_dma_local = payload.2;
+                            spi_tx_dma_local = payload.3;
+
+                            rprintln!(
+                                "SPI/DMA: Transaction ended ({})",
+                                spi_buf[1],
+                            );
+
+                            host_tx
+                                .send_message(
+                                    &TargetToHost::SpiReply(spi_buf[1]),
+                                    &mut buf,
+                                )
+                                .unwrap();
+
+                            Ok(())
+                        }
                     };
 
                     *usart_tx = Some(usart_tx_local);
                     *usart_dma_chan = Some(usart_dma_chan_local);
                     *i2c = Some(i2c_local);
                     *i2c_dma = Some(i2c_dma_local);
+                    *spi = Some(spi_local);
+                    *spi_rx_dma = Some(spi_rx_dma_local);
+                    *spi_tx_dma = Some(spi_tx_dma_local);
 
                     result
                 })

@@ -24,3 +24,16 @@ fn it_should_start_a_transaction() -> Result {
 
     Ok(())
 }
+
+#[test]
+fn it_should_start_a_transaction_using_dma() -> Result {
+    let mut test_stand = TestStand::new()?;
+
+    let data = 0x22;
+    let timeout = Duration::from_millis(50);
+    let reply = test_stand.target.start_spi_transaction_dma(data, timeout)?;
+
+    assert_eq!(reply, data << 1);
+
+    Ok(())
+}
