@@ -100,18 +100,18 @@ impl Target {
     }
 
     /// Instruct the target to send this message via USART
-    pub fn send_usart(&mut self, message: &[u8])
+    pub fn send_usart(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(Mode::Regular, message))
+        self.0.send(&HostToTarget::SendUsart { mode: Mode::Regular, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
     /// Instruct the target to send this message via USART using DMA
-    pub fn send_usart_dma(&mut self, message: &[u8])
+    pub fn send_usart_dma(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(Mode::Dma, message))
+        self.0.send(&HostToTarget::SendUsart { mode: Mode::Dma, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 

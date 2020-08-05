@@ -429,10 +429,16 @@ const APP: () = {
                     let mut spi_tx_dma_local = spi_tx_dma.take().unwrap();
 
                     let result = match message {
-                        HostToTarget::SendUsart(Mode::Regular, data) => {
+                        HostToTarget::SendUsart {
+                            mode: Mode::Regular,
+                            data,
+                        } => {
                             usart_tx_local.send_raw(data)
                         }
-                        HostToTarget::SendUsart(Mode::Dma, data) => {
+                        HostToTarget::SendUsart {
+                            mode: Mode::Dma,
+                            data,
+                        } => {
                             static mut DMA_BUFFER: [u8; 16] = [0; 16];
 
                             {

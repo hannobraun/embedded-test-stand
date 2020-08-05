@@ -11,7 +11,10 @@ use serde::{
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
-    SendUsart(Mode, &'r [u8]),
+    SendUsart {
+        mode: Mode,
+        data: &'r [u8],
+    },
 
     /// Instruct the device to change the electrical level of the pin
     SetPin(PinState),
