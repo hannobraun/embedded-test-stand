@@ -10,9 +10,9 @@ use host_lib::conn::{
 };
 use lpc845_messages::{
     AssistantToHost,
+    DmaMode,
     HostToAssistant,
     InputPin,
-    Mode,
     OutputPin,
     PinState,
 };
@@ -134,7 +134,8 @@ impl Assistant {
     pub fn send_to_target_usart(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart { mode: Mode::Regular, data })
+        self.0
+            .send(&HostToAssistant::SendUsart { mode: DmaMode::Regular, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
@@ -142,7 +143,7 @@ impl Assistant {
     pub fn send_to_target_usart_dma(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart { mode: Mode::Dma, data })
+        self.0.send(&HostToAssistant::SendUsart { mode: DmaMode::Dma, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 

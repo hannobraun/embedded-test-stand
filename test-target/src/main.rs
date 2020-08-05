@@ -81,8 +81,8 @@ use firmware_lib::usart::{
     Usart,
 };
 use lpc845_messages::{
+    DmaMode,
     HostToTarget,
-    Mode,
     PinState,
     TargetToHost,
 };
@@ -392,7 +392,7 @@ const APP: () = {
                 .process_raw(|data| {
                     host_tx.send_message(
                         &TargetToHost::UsartReceive {
-                            mode: Mode::Regular,
+                            mode: DmaMode::Regular,
                             data,
                         },
                         &mut buf,
@@ -404,7 +404,7 @@ const APP: () = {
                 host_tx
                     .send_message(
                         &TargetToHost::UsartReceive {
-                            mode: Mode::Dma,
+                            mode: DmaMode::Dma,
                             data: &[b],
                         },
                         &mut buf,
@@ -436,13 +436,13 @@ const APP: () = {
 
                     let result = match message {
                         HostToTarget::SendUsart {
-                            mode: Mode::Regular,
+                            mode: DmaMode::Regular,
                             data,
                         } => {
                             usart_tx_local.send_raw(data)
                         }
                         HostToTarget::SendUsart {
-                            mode: Mode::Dma,
+                            mode: DmaMode::Dma,
                             data,
                         } => {
                             static mut DMA_BUFFER: [u8; 16] = [0; 16];
@@ -512,7 +512,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartI2cTransaction {
-                            mode: Mode::Regular,
+                            mode: DmaMode::Regular,
                             address,
                             data,
                         } => {
@@ -537,7 +537,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartI2cTransaction {
-                            mode: Mode::Dma,
+                            mode: DmaMode::Dma,
                             address,
                             data,
                         } => {
@@ -587,7 +587,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartSpiTransaction {
-                            mode: Mode::Regular,
+                            mode: DmaMode::Regular,
                             data,
                         } => {
                             rprintln!("SPI: Start transaction");
@@ -628,7 +628,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartSpiTransaction {
-                            mode: Mode::Dma,
+                            mode: DmaMode::Dma,
                             data,
                         } => {
                             static mut SPI_BUF: [u8; 2] = [0; 2];

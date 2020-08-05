@@ -12,7 +12,7 @@ use serde::{
 pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
     SendUsart {
-        mode: Mode,
+        mode: DmaMode,
         data: &'r [u8],
     },
 
@@ -28,7 +28,7 @@ pub enum HostToTarget<'r> {
     /// Instruct the target to start an I2C transaction
     StartI2cTransaction {
         /// Which mode to use for the transaction
-        mode: Mode,
+        mode: DmaMode,
 
         /// The address of the slave
         address: u8,
@@ -40,7 +40,7 @@ pub enum HostToTarget<'r> {
     /// Instruct the target to start an SPI transaction
     StartSpiTransaction {
         /// Which mode to use for the transaction
-        mode: Mode,
+        mode: DmaMode,
 
         /// The data to send to the slave
         data: u8,
@@ -52,7 +52,7 @@ pub enum HostToTarget<'r> {
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
     UsartReceive {
-        mode: Mode,
+        mode: DmaMode,
         data: &'r [u8],
     },
 
@@ -75,7 +75,7 @@ pub enum TargetToHost<'r> {
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
     SendUsart {
-        mode: Mode,
+        mode: DmaMode,
         data: &'r [u8],
     },
 
@@ -108,7 +108,7 @@ pub enum AssistantToHost<'r> {
 
 /// Specifies whether a USART transmission concerns DMA or not
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum Mode {
+pub enum DmaMode {
     Regular,
     Dma,
 }
