@@ -429,51 +429,46 @@ const APP: () = {
                     let mut spi_tx_dma_local = spi_tx_dma.take().unwrap();
 
                     let result = match message {
-                        HostToTarget::SendUsart(target, data) => {
-                            match target {
-                                Mode::Regular => {
-                                    usart_tx_local.send_raw(data)
-                                }
-                                Mode::Dma => {
-                                    static mut DMA_BUFFER: [u8; 16] = [0; 16];
+                        HostToTarget::SendUsart(Mode::Regular, data) => {
+                            usart_tx_local.send_raw(data)
+                        }
+                        HostToTarget::SendUsart(Mode::Dma, data) => {
+                            static mut DMA_BUFFER: [u8; 16] = [0; 16];
 
-                                    {
-                                        // This is sound, as we know this
-                                        // closure is only ever executed once at
-                                        // a time, and the mutable reference is
-                                        // dropped at the end of this block.
-                                        let dma_buffer = unsafe {
-                                            &mut DMA_BUFFER
-                                        };
+                            {
+                                // This is sound, as we know this closure is
+                                // only ever executed once at a time, and the
+                                // mutable reference is dropped at the end of
+                                // this block.
+                                let dma_buffer = unsafe {
+                                    &mut DMA_BUFFER
+                                };
 
-                                        dma_buffer[..data.len()].copy_from_slice(data);
-                                    }
-
-                                    let payload = {
-                                        // Sound, as we know this closure is
-                                        // only ever executed once at a time,
-                                        // and the only other reference has been
-                                        // dropped already.
-                                        let dma_buffer = unsafe {
-                                            &DMA_BUFFER
-                                        };
-
-                                        let transfer = usart_tx_local.usart.write_all(
-                                            &dma_buffer[..data.len()],
-                                            usart_dma_chan_local,
-                                        );
-                                        transfer
-                                            .start()
-                                            .wait()
-                                            .unwrap()
-                                    };
-
-                                    usart_dma_chan_local = payload.channel;
-                                    usart_tx_local.usart = payload.dest;
-
-                                    Ok(())
-                                }
+                                dma_buffer[..data.len()].copy_from_slice(data);
                             }
+
+                            let payload = {
+                                // Sound, as we know this closure is only ever
+                                // executed once at a time, and the only other
+                                // reference has been dropped already.
+                                let dma_buffer = unsafe {
+                                    &DMA_BUFFER
+                                };
+
+                                let transfer = usart_tx_local.usart.write_all(
+                                    &dma_buffer[..data.len()],
+                                    usart_dma_chan_local,
+                                );
+                                transfer
+                                    .start()
+                                    .wait()
+                                    .unwrap()
+                            };
+
+                            usart_dma_chan_local = payload.channel;
+                            usart_tx_local.usart = payload.dest;
+
+                            Ok(())
                         }
                         HostToTarget::SetPin(PinState::High) => {
                             Ok(green.set_high())
