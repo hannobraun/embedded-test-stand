@@ -210,7 +210,10 @@ const APP: () = {
             u0_txd,
             usart::Settings::default(),
         );
-        host.enable_rxrdy();
+        host.enable_interrupts(usart::Interrupts {
+            RXRDY: true,
+            .. usart::Interrupts::default()
+        });
 
         // Assign pins to USART1.
         let (u1_rxd, _) = swm.movable_functions.u1_rxd.assign(
@@ -230,7 +233,10 @@ const APP: () = {
             u1_txd,
             usart::Settings::default(),
         );
-        usart.enable_rxrdy();
+        usart.enable_interrupts(usart::Interrupts {
+            RXRDY: true,
+            .. usart::Interrupts::default()
+        });
 
         // Assign pins to USART2
         let (u2_rxd, _) = swm.movable_functions.u2_rxd.assign(
