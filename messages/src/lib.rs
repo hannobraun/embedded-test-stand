@@ -12,7 +12,7 @@ use serde::{
 pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
     SendUsart {
-        mode: DmaMode,
+        mode: UsartMode,
         data: &'r [u8],
     },
 
@@ -111,6 +111,14 @@ pub enum AssistantToHost<'r> {
 pub enum DmaMode {
     Regular,
     Dma,
+}
+
+/// Specifies which mode a USART transmission uses
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum UsartMode {
+    Regular,
+    Dma,
+    FlowControl,
 }
 
 

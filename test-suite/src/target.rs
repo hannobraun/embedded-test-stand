@@ -8,6 +8,7 @@ use lpc845_messages::{
     HostToTarget,
     PinState,
     TargetToHost,
+    UsartMode,
 };
 
 use host_lib::conn::{
@@ -103,7 +104,7 @@ impl Target {
     pub fn send_usart(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: DmaMode::Regular, data })
+        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Regular, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -111,7 +112,7 @@ impl Target {
     pub fn send_usart_dma(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: DmaMode::Dma, data })
+        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
