@@ -131,18 +131,18 @@ impl Assistant {
     }
 
     /// Instruct assistant to send this message to the target via USART
-    pub fn send_to_target_usart(&mut self, message: &[u8])
+    pub fn send_to_target_usart(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart(Mode::Regular, message))
+        self.0.send(&HostToAssistant::SendUsart { mode: Mode::Regular, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
     /// Instruct assistant to send this message to the target's USART/DMA
-    pub fn send_to_target_usart_dma(&mut self, message: &[u8])
+    pub fn send_to_target_usart_dma(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart(Mode::Dma, message))
+        self.0.send(&HostToAssistant::SendUsart { mode: Mode::Dma, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 

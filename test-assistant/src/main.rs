@@ -405,10 +405,16 @@ const APP: () = {
             host_rx
                 .process_message(|message| {
                     match message {
-                        HostToAssistant::SendUsart(Mode::Regular, data) => {
+                        HostToAssistant::SendUsart {
+                            mode: Mode::Regular,
+                            data,
+                        } => {
                             target_tx.send_raw(data)
                         }
-                        HostToAssistant::SendUsart(Mode::Dma, data) => {
+                        HostToAssistant::SendUsart {
+                            mode: Mode::Dma,
+                            data,
+                        } => {
                             target_tx_dma.bwrite_all(data)
                         }
                         HostToAssistant::SetPin(OutputPin::Red, level) => {
