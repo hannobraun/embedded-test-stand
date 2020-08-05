@@ -242,6 +242,34 @@ impl Assistant {
         // `Some`.
         Ok(measurement.unwrap())
     }
+
+    /// Expect to hear nothing from the target within the given timeout period
+    pub fn expect_nothing_from_target(&mut self, timeout: Duration)
+        -> Result<(), AssistantExpectNothingError>
+    {
+        loop {
+            let mut tmp = Vec::new();
+            let message = self.0.receive::<AssistantToHost>(timeout, &mut tmp);
+
+            match message {
+                Ok(message) => {
+                    return Err(
+                        AssistantExpectNothingError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
+                Err(err) if err.is_timeout() => {
+                    break;
+                }
+                Err(err) => {
+                    return Err(AssistantExpectNothingError::Receive(err));
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 
@@ -272,5 +300,11 @@ pub struct AssistantUsartSendError(ConnSendError);
 pub enum AssistantUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
+    UnexpectedMessage(String),
+}
+
+#[derive(Debug)]
+pub enum AssistantExpectNothingError {
+    Receive(ConnReceiveError),
     UnexpectedMessage(String),
 }

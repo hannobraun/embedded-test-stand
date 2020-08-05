@@ -5,6 +5,7 @@ use host_lib::test_stand::NotConfiguredError;
 
 use super::{
     assistant::{
+        AssistantExpectNothingError,
         AssistantPinReadError,
         AssistantSetPinHighError,
         AssistantSetPinLowError,
@@ -32,6 +33,7 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 /// Error type specific to this test suite
 #[derive(Debug)]
 pub enum Error {
+    AssistantExpectNothing(AssistantExpectNothingError),
     AssistantPinRead(AssistantPinReadError),
     AssistantSetPinHigh(AssistantSetPinHighError),
     AssistantSetPinLow(AssistantSetPinLowError),
@@ -47,6 +49,12 @@ pub enum Error {
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
+}
+
+impl From<AssistantExpectNothingError> for Error {
+    fn from(err: AssistantExpectNothingError) -> Self {
+        Self::AssistantExpectNothing(err)
+    }
 }
 
 impl From<AssistantPinReadError> for Error {
