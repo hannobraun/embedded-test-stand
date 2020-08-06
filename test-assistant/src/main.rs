@@ -399,7 +399,7 @@ const APP: () = {
             target_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &AssistantToHost::UsartReceive(data),
+                        &AssistantToHost::UsartReceive { data },
                         &mut buf,
                     )
                 })

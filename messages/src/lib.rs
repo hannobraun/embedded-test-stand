@@ -87,7 +87,9 @@ pub enum HostToAssistant<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum AssistantToHost<'r> {
     /// Notify the host that data has been received from the target via USART
-    UsartReceive(&'r [u8]),
+    UsartReceive {
+        data: &'r [u8],
+    },
 
     /// Notify the host that the level of a pin has changed
     PinLevelChanged {
