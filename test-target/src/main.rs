@@ -73,7 +73,10 @@ use lpc8xx_hal::{
         IOSC,
         frg,
     },
-    usart,
+    usart::{
+        self,
+        state::AsyncMode,
+    },
 };
 use rtt_target::rprintln;
 
@@ -98,13 +101,13 @@ use lpc845_messages::{
 #[rtic::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
-        host_rx_int:  RxInt<'static, USART0>,
+        host_rx_int:  RxInt<'static, USART0, AsyncMode>,
         host_rx_idle: RxIdle<'static>,
-        host_tx:      Tx<USART0>,
+        host_tx:      Tx<USART0, AsyncMode>,
 
-        usart_rx_int:  RxInt<'static, USART1>,
+        usart_rx_int:  RxInt<'static, USART1, AsyncMode>,
         usart_rx_idle: RxIdle<'static>,
-        usart_tx:      Option<Tx<USART1>>,
+        usart_tx:      Option<Tx<USART1, AsyncMode>>,
         usart_cts:     Option<swm::Function<U1_CTS, Assigned<PIO0_8>>>,
 
         green: GpioPin<PIO1_0, Output>,
@@ -127,7 +130,7 @@ const APP: () = {
             dma::Transfer<
                 Started,
                 dma::Channel4,
-                usart::Rx<USART2, usart::state::Enabled<u8>>,
+                usart::Rx<USART2, usart::state::Enabled<u8, AsyncMode>>,
                 &'static mut [u8],
             >
         >,
@@ -213,7 +216,7 @@ const APP: () = {
         );
 
         // Use USART0 to communicate with the test suite
-        let mut host = p.USART0.enable(
+        let mut host = p.USART0.enable_async(
             &clock_config,
             &mut syscon.handle,
             u0_rxd,
@@ -240,7 +243,7 @@ const APP: () = {
         );
 
         // Use USART1 as the test subject.
-        let mut usart = p.USART1.enable(
+        let mut usart = p.USART1.enable_async(
             &clock_config,
             &mut syscon.handle,
             u1_rxd,
@@ -263,7 +266,7 @@ const APP: () = {
         );
 
         // Use USART2 as secondary test subject, for receiving via DMA.
-        let usart2 = p.USART2.enable(
+        let usart2 = p.USART2.enable_async(
             &clock_config,
             &mut syscon.handle,
             u2_rxd,

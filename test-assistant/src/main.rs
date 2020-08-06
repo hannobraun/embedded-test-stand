@@ -60,7 +60,10 @@ use lpc8xx_hal::{
         IOSC,
         frg,
     },
-    usart,
+    usart::{
+        self,
+        state::AsyncMode,
+    },
 };
 use rtt_target::rprintln;
 
@@ -92,16 +95,16 @@ use lpc845_messages::{
 #[rtic::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
-        host_rx_int:  RxInt<'static, USART0>,
+        host_rx_int:  RxInt<'static, USART0, AsyncMode>,
         host_rx_idle: RxIdle<'static>,
-        host_tx:      Tx<USART0>,
+        host_tx:      Tx<USART0, AsyncMode>,
 
-        target_rx_int:   RxInt<'static, USART1>,
+        target_rx_int:   RxInt<'static, USART1, AsyncMode>,
         target_rx_idle:  RxIdle<'static>,
-        target_tx:       Tx<USART1>,
+        target_tx:       Tx<USART1, AsyncMode>,
         target_tx_dma:   usart::Tx<
             USART2,
-            usart::state::Enabled<u8>,
+            usart::state::Enabled<u8, AsyncMode>,
             usart::state::NoThrottle,
         >,
         target_rts_int:  pin_interrupt::Int<'static, PININT2, PIO0_9, MRT2>,
@@ -209,7 +212,7 @@ const APP: () = {
         );
 
         // Use USART0 to communicate with the test suite
-        let mut host = p.USART0.enable(
+        let mut host = p.USART0.enable_async(
             &clock_config,
             &mut syscon.handle,
             u0_rxd,
@@ -232,7 +235,7 @@ const APP: () = {
         );
 
         // Use USART1 to communicate with the test target
-        let mut target = p.USART1.enable(
+        let mut target = p.USART1.enable_async(
             &clock_config,
             &mut syscon.handle,
             u1_rxd,
@@ -265,7 +268,7 @@ const APP: () = {
         );
 
         // Use USART2 as secondary means to communicate with test target.
-        let target2 = p.USART2.enable(
+        let target2 = p.USART2.enable_async(
             &clock_config,
             &mut syscon.handle,
             u2_rxd,
@@ -574,7 +577,7 @@ const APP: () = {
 fn handle_timer_interrupts<U>(
     int:     &mut pin_interrupt::Idle,
     pin:     InputPin,
-    host_tx: &mut Tx<U>,
+    host_tx: &mut Tx<U, AsyncMode>,
     buf:     &mut [u8],
 )
     where
