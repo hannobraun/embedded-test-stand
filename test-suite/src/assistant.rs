@@ -170,7 +170,7 @@ impl Assistant {
                 .map_err(|err| AssistantUsartWaitError::Receive(err))?;
 
             match message {
-                AssistantToHost::UsartReceive { data } => {
+                AssistantToHost::UsartReceive { data, .. } => {
                     buf.extend(data)
                 }
                 _ => {

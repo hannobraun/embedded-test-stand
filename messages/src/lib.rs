@@ -88,6 +88,7 @@ pub enum HostToAssistant<'r> {
 pub enum AssistantToHost<'r> {
     /// Notify the host that data has been received from the target via USART
     UsartReceive {
+        mode: UsartMode,
         data: &'r [u8],
     },
 

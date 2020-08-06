@@ -89,6 +89,7 @@ use lpc845_messages::{
     InputPin,
     OutputPin,
     PinState,
+    UsartMode,
 };
 
 
@@ -399,7 +400,10 @@ const APP: () = {
             target_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &AssistantToHost::UsartReceive { data },
+                        &AssistantToHost::UsartReceive {
+                            mode: UsartMode::Regular,
+                            data,
+                        },
                         &mut buf,
                     )
                 })
