@@ -15,6 +15,7 @@ use lpc845_messages::{
     InputPin,
     OutputPin,
     PinState,
+    UsartMode,
 };
 
 
@@ -154,6 +155,16 @@ impl Assistant {
     pub fn receive_from_target_usart(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, AssistantUsartWaitError>
     {
+        self.receive_from_target_usart_inner(data, timeout, UsartMode::Regular)
+    }
+
+    pub fn receive_from_target_usart_inner(&mut self,
+        data:          &[u8],
+        timeout:       Duration,
+        expected_mode: UsartMode,
+    )
+        -> Result<Vec<u8>, AssistantUsartWaitError>
+    {
         let mut buf   = Vec::new();
         let     start = Instant::now();
 
@@ -170,7 +181,9 @@ impl Assistant {
                 .map_err(|err| AssistantUsartWaitError::Receive(err))?;
 
             match message {
-                AssistantToHost::UsartReceive { data, .. } => {
+                AssistantToHost::UsartReceive { mode, data }
+                    if mode == expected_mode
+                => {
                     buf.extend(data)
                 }
                 _ => {
