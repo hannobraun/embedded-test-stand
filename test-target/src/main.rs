@@ -48,6 +48,7 @@ use lpc8xx_hal::{
         USART0,
         USART1,
         USART2,
+        USART3,
     },
     pinint::{
         self,
@@ -75,7 +76,10 @@ use lpc8xx_hal::{
     },
     usart::{
         self,
-        state::AsyncMode,
+        state::{
+            AsyncMode,
+            SyncMode,
+        },
     },
 };
 use rtt_target::rprintln;
@@ -109,6 +113,10 @@ const APP: () = {
         usart_rx_idle: RxIdle<'static>,
         usart_tx:      Option<Tx<USART1, AsyncMode>>,
         usart_cts:     Option<swm::Function<U1_CTS, Assigned<PIO0_8>>>,
+
+        usart_sync_rx_int:  RxInt<'static, USART3, SyncMode>,
+        usart_sync_rx_idle: RxIdle<'static>,
+        usart_sync_tx:      Tx<USART3, SyncMode>,
 
         green: GpioPin<PIO1_0, Output>,
         blue:  GpioPin<PIO1_1, Output>,
@@ -146,8 +154,9 @@ const APP: () = {
         // here. RTFM knows this too, and by putting these statics right here,
         // at the beginning of the method, we're opting into some RTFM magic
         // that gives us safe access to them.
-        static mut HOST:  Usart = Usart::new();
-        static mut USART: Usart = Usart::new();
+        static mut HOST:       Usart = Usart::new();
+        static mut USART:      Usart = Usart::new();
+        static mut USART_SYNC: Usart = Usart::new();
 
         static mut DMA_QUEUE: spsc::Queue<u8, U32> =
             spsc::Queue(heapless::i::Queue::new());
@@ -255,6 +264,34 @@ const APP: () = {
             .. usart::Interrupts::default()
         });
 
+        // Assign pins to USART3.
+        let (u3_rxd, _) = swm.movable_functions.u3_rxd.assign(
+            p.pins.pio0_13.into_swm_pin(),
+            &mut swm_handle,
+        );
+        let (u3_txd, _) = swm.movable_functions.u3_txd.assign(
+            p.pins.pio0_14.into_swm_pin(),
+            &mut swm_handle,
+        );
+        let (u3_sclk, _) = swm.movable_functions.u3_sclk.assign(
+            p.pins.pio0_15.into_swm_pin(),
+            &mut swm_handle,
+        );
+
+        // Use USART3 as secondary test subject for sync mode.
+        let mut usart_sync = p.USART3.enable_sync_as_master(
+            &usart::Clock::new(&syscon.iosc, 0x03ff, 16),
+            &mut syscon.handle,
+            u3_rxd,
+            u3_txd,
+            u3_sclk,
+            usart::Settings::default(),
+        );
+        usart_sync.enable_interrupts(usart::Interrupts {
+            RXRDY: true,
+            .. usart::Interrupts::default()
+        });
+
         // Assign pins to USART2
         let (u2_rxd, _) = swm.movable_functions.u2_rxd.assign(
             p.pins.pio0_28.into_swm_pin(),
@@ -265,7 +302,7 @@ const APP: () = {
             &mut swm_handle,
         );
 
-        // Use USART2 as secondary test subject, for receiving via DMA.
+        // Use USART2 as tertiary test subject, for receiving via DMA.
         let usart2 = p.USART2.enable_async(
             &clock_config,
             &mut syscon.handle,
@@ -276,6 +313,8 @@ const APP: () = {
 
         let (host_rx_int,  host_rx_idle,  host_tx)  = HOST.init(host);
         let (usart_rx_int, usart_rx_idle, usart_tx) = USART.init(usart);
+        let (usart_sync_rx_int, usart_sync_rx_idle, usart_sync_tx) =
+            USART_SYNC.init(usart_sync);
 
         let (i2c0_sda, _) = swm
             .fixed_functions
@@ -344,6 +383,10 @@ const APP: () = {
             usart_tx:  Some(usart_tx),
             usart_cts: Some(u1_cts),
 
+            usart_sync_rx_int,
+            usart_sync_rx_idle,
+            usart_sync_tx,
+
             green,
             blue,
             red,
@@ -370,6 +413,7 @@ const APP: () = {
     #[idle(resources = [
         host_rx_idle, host_tx,
         usart_rx_idle, usart_tx, usart_cts,
+        usart_sync_tx,
         green,
         red,
         systick,
@@ -386,6 +430,7 @@ const APP: () = {
         let usart_rx       = cx.resources.usart_rx_idle;
         let usart_tx       = cx.resources.usart_tx;
         let usart_cts      = cx.resources.usart_cts;
+        let usart_sync_tx  = cx.resources.usart_sync_tx;
         let host_rx        = cx.resources.host_rx_idle;
         let host_tx        = cx.resources.host_tx;
         let green          = cx.resources.green;
@@ -523,6 +568,12 @@ const APP: () = {
                             usart_tx_local.usart = usart;
 
                             Ok(())
+                        }
+                        HostToTarget::SendUsart {
+                            mode: UsartMode::Sync,
+                            data,
+                        } => {
+                            usart_sync_tx.send_raw(data)
                         }
                         HostToTarget::SetPin(PinState::High) => {
                             Ok(green.set_high())

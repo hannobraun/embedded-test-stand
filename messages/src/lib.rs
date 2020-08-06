@@ -122,6 +122,7 @@ pub enum UsartMode {
     Regular,
     Dma,
     FlowControl,
+    Sync,
 }
 
 
