@@ -117,6 +117,14 @@ impl Target {
     }
 
     /// Instruct the target to send this message via USART using DMA
+    pub fn send_usart_sync(&mut self, data: &[u8])
+        -> Result<(), TargetUsartSendError>
+    {
+        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Sync, data })
+            .map_err(|err| TargetUsartSendError(err))
+    }
+
+    /// Instruct the target to send this message via USART using DMA
     pub fn send_usart_with_flow_control(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
