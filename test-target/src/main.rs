@@ -412,7 +412,7 @@ const APP: () = {
 
     #[idle(resources = [
         host_rx_idle, host_tx,
-        usart_rx_idle, usart_tx, usart_cts,
+        usart_rx_int, usart_rx_idle, usart_tx, usart_cts,
         usart_sync_rx_idle, usart_sync_tx,
         green,
         red,
@@ -445,6 +445,8 @@ const APP: () = {
         let spi_tx_dma     = cx.resources.spi_tx_dma;
         let usart_dma_chan = cx.resources.usart_dma_tx_channel;
         let usart_dma_cons = cx.resources.dma_rx_cons;
+
+        let mut usart_rx_int = cx.resources.usart_rx_int;
 
         let mut buf = [0; 256];
 
@@ -586,6 +588,15 @@ const APP: () = {
                             data,
                         } => {
                             usart_sync_tx.send_raw(data)
+                        }
+                        HostToTarget::WaitForAddress(address) => {
+                            usart_rx_int.lock(|rx| {
+                                rx.usart.start_address_detection(address);
+                                block!(rx.usart.read())
+                                    .unwrap();
+                                rx.usart.stop_address_detection();
+                            });
+                            Ok(())
                         }
                         HostToTarget::SetPin(PinState::High) => {
                             Ok(green.set_high())
