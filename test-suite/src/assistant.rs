@@ -150,6 +150,14 @@ impl Assistant {
             .map_err(|err| AssistantUsartSendError(err))
     }
 
+    /// Instruct assistant to send this message to the target's sync USART
+    pub fn send_to_target_usart_sync(&mut self, data: &[u8])
+        -> Result<(), AssistantUsartSendError>
+    {
+        self.0.send(&HostToAssistant::SendUsart { mode: UsartMode::Sync, data })
+            .map_err(|err| AssistantUsartSendError(err))
+    }
+
     /// Wait to receive the provided data via USART
     ///
     /// Returns the receive buffer, once the data was received. Returns an
