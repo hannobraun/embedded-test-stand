@@ -75,7 +75,7 @@ pub enum TargetToHost<'r> {
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
     SendUsart {
-        mode: DmaMode,
+        mode: UsartMode,
         data: &'r [u8],
     },
 

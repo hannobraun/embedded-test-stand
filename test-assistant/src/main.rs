@@ -88,7 +88,6 @@ use firmware_lib::{
 };
 use lpc845_messages::{
     AssistantToHost,
-    DmaMode,
     HostToAssistant,
     InputPin,
     OutputPin,
@@ -419,6 +418,7 @@ const APP: () = {
             target_tx,
             target_tx_dma,
             target_sync_rx_idle,
+            target_sync_tx,
             green_idle,
             blue_idle,
             target_rts_idle,
@@ -433,6 +433,7 @@ const APP: () = {
         let target_tx      = cx.resources.target_tx;
         let target_tx_dma  = cx.resources.target_tx_dma;
         let target_sync_rx = cx.resources.target_sync_rx_idle;
+        let target_sync_tx = cx.resources.target_sync_tx;
         let green          = cx.resources.green_idle;
         let blue           = cx.resources.blue_idle;
         let rts            = cx.resources.target_rts_idle;
@@ -469,16 +470,28 @@ const APP: () = {
                 .process_message(|message| {
                     match message {
                         HostToAssistant::SendUsart {
-                            mode: DmaMode::Regular,
+                            mode: UsartMode::Regular,
                             data,
                         } => {
                             target_tx.send_raw(data)
                         }
                         HostToAssistant::SendUsart {
-                            mode: DmaMode::Dma,
+                            mode: UsartMode::Dma,
                             data,
                         } => {
                             target_tx_dma.bwrite_all(data)
+                        }
+                        HostToAssistant::SendUsart {
+                            mode: UsartMode::FlowControl,
+                            data: _,
+                        } => {
+                            Ok(())
+                        }
+                        HostToAssistant::SendUsart {
+                            mode: UsartMode::Sync,
+                            data,
+                        } => {
+                            target_sync_tx.send_raw(data)
                         }
                         HostToAssistant::SetPin(OutputPin::Red, level) => {
                             match level {
