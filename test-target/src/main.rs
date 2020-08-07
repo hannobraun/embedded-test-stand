@@ -54,6 +54,7 @@ use lpc8xx_hal::{
         PININT0,
     },
     pins::{
+        PIO0_8,
         PIO0_19,
         PIO1_0,
         PIO1_1,
@@ -62,6 +63,11 @@ use lpc8xx_hal::{
     spi::{
         self,
         SPI,
+    },
+    swm::{
+        self,
+        U1_CTS,
+        state::Assigned,
     },
     syscon::{
         IOSC,
@@ -81,10 +87,11 @@ use firmware_lib::usart::{
     Usart,
 };
 use lpc845_messages::{
+    DmaMode,
     HostToTarget,
-    Mode,
     PinState,
     TargetToHost,
+    UsartMode,
 };
 
 
@@ -98,6 +105,7 @@ const APP: () = {
         usart_rx_int:  RxInt<'static, USART1>,
         usart_rx_idle: RxIdle<'static>,
         usart_tx:      Option<Tx<USART1>>,
+        usart_cts:     Option<swm::Function<U1_CTS, Assigned<PIO0_8>>>,
 
         green: GpioPin<PIO1_0, Output>,
         blue:  GpioPin<PIO1_1, Output>,
@@ -226,6 +234,10 @@ const APP: () = {
             p.pins.pio0_27.into_swm_pin(),
             &mut swm_handle,
         );
+        let (u1_cts, _) = swm.movable_functions.u1_cts.assign(
+            p.pins.pio0_8.into_swm_pin(),
+            &mut swm_handle,
+        );
 
         // Use USART1 as the test subject.
         let mut usart = p.USART1.enable(
@@ -300,7 +312,7 @@ const APP: () = {
         );
 
         let spi = p.SPI0.enable_as_master(
-            &spi::Clock::new(&syscon.iosc, 0x03ff),
+            &spi::Clock::new(&syscon.iosc, 0x0fff),
             &mut syscon.handle,
             spi::MODE_0,
             spi0_sck,
@@ -326,7 +338,8 @@ const APP: () = {
 
             usart_rx_int,
             usart_rx_idle,
-            usart_tx: Some(usart_tx),
+            usart_tx:  Some(usart_tx),
+            usart_cts: Some(u1_cts),
 
             green,
             blue,
@@ -353,7 +366,7 @@ const APP: () = {
 
     #[idle(resources = [
         host_rx_idle, host_tx,
-        usart_rx_idle, usart_tx,
+        usart_rx_idle, usart_tx, usart_cts,
         green,
         red,
         systick,
@@ -369,6 +382,7 @@ const APP: () = {
     fn idle(cx: idle::Context) -> ! {
         let usart_rx       = cx.resources.usart_rx_idle;
         let usart_tx       = cx.resources.usart_tx;
+        let usart_cts      = cx.resources.usart_cts;
         let host_rx        = cx.resources.host_rx_idle;
         let host_tx        = cx.resources.host_tx;
         let green          = cx.resources.green;
@@ -391,7 +405,10 @@ const APP: () = {
             usart_rx
                 .process_raw(|data| {
                     host_tx.send_message(
-                        &TargetToHost::UsartReceive(Mode::Regular, data),
+                        &TargetToHost::UsartReceive {
+                            mode: DmaMode::Regular,
+                            data,
+                        },
                         &mut buf,
                     )
                 })
@@ -400,7 +417,10 @@ const APP: () = {
             while let Some(b) = usart_dma_cons.dequeue() {
                 host_tx
                     .send_message(
-                        &TargetToHost::UsartReceive(Mode::Dma, &[b]),
+                        &TargetToHost::UsartReceive {
+                            mode: DmaMode::Dma,
+                            data: &[b],
+                        },
                         &mut buf,
                     )
                     .unwrap();
@@ -420,6 +440,7 @@ const APP: () = {
                     //    necessitating this little dance with the local
                     //    variables.
                     let mut usart_tx_local = usart_tx.take().unwrap();
+                    let mut usart_cts_local = usart_cts.take().unwrap();
                     let mut usart_dma_chan_local =
                         usart_dma_chan.take().unwrap();
                     let mut i2c_local = i2c.take().unwrap();
@@ -429,51 +450,76 @@ const APP: () = {
                     let mut spi_tx_dma_local = spi_tx_dma.take().unwrap();
 
                     let result = match message {
-                        HostToTarget::SendUsart(target, data) => {
-                            match target {
-                                Mode::Regular => {
-                                    usart_tx_local.send_raw(data)
-                                }
-                                Mode::Dma => {
-                                    static mut DMA_BUFFER: [u8; 16] = [0; 16];
+                        HostToTarget::SendUsart {
+                            mode: UsartMode::Regular,
+                            data,
+                        } => {
+                            usart_tx_local.send_raw(data)
+                        }
+                        HostToTarget::SendUsart {
+                            mode: UsartMode::Dma,
+                            data,
+                        } => {
+                            static mut DMA_BUFFER: [u8; 16] = [0; 16];
 
-                                    {
-                                        // This is sound, as we know this
-                                        // closure is only ever executed once at
-                                        // a time, and the mutable reference is
-                                        // dropped at the end of this block.
-                                        let dma_buffer = unsafe {
-                                            &mut DMA_BUFFER
-                                        };
+                            {
+                                // This is sound, as we know this closure is
+                                // only ever executed once at a time, and the
+                                // mutable reference is dropped at the end of
+                                // this block.
+                                let dma_buffer = unsafe {
+                                    &mut DMA_BUFFER
+                                };
 
-                                        dma_buffer[..data.len()].copy_from_slice(data);
-                                    }
-
-                                    let payload = {
-                                        // Sound, as we know this closure is
-                                        // only ever executed once at a time,
-                                        // and the only other reference has been
-                                        // dropped already.
-                                        let dma_buffer = unsafe {
-                                            &DMA_BUFFER
-                                        };
-
-                                        let transfer = usart_tx_local.usart.write_all(
-                                            &dma_buffer[..data.len()],
-                                            usart_dma_chan_local,
-                                        );
-                                        transfer
-                                            .start()
-                                            .wait()
-                                            .unwrap()
-                                    };
-
-                                    usart_dma_chan_local = payload.channel;
-                                    usart_tx_local.usart = payload.dest;
-
-                                    Ok(())
-                                }
+                                dma_buffer[..data.len()].copy_from_slice(data);
                             }
+
+                            let payload = {
+                                // Sound, as we know this closure is only ever
+                                // executed once at a time, and the only other
+                                // reference has been dropped already.
+                                let dma_buffer = unsafe {
+                                    &DMA_BUFFER
+                                };
+
+                                let transfer = usart_tx_local.usart.write_all(
+                                    &dma_buffer[..data.len()],
+                                    usart_dma_chan_local,
+                                );
+                                transfer
+                                    .start()
+                                    .wait()
+                                    .unwrap()
+                            };
+
+                            usart_dma_chan_local = payload.channel;
+                            usart_tx_local.usart = payload.dest;
+
+                            Ok(())
+                        }
+                        HostToTarget::SendUsart {
+                            mode: UsartMode::FlowControl,
+                            data,
+                        } => {
+                            rprintln!("USART: Sending with flow control");
+
+                            rprintln!("USART: Enable CTS throttling");
+                            let usart = usart_tx_local.usart;
+                            let mut usart = usart.enable_cts_throttling(
+                                usart_cts_local,
+                            );
+
+                            rprintln!("USART: Writing data");
+                            usart.bwrite_all(data)
+                                .unwrap();
+
+                            rprintln!("USART: Disable CTS throttling");
+                            let (usart, cts) = usart
+                                .disable_cts_throttling();
+                            usart_cts_local = cts;
+                            usart_tx_local.usart = usart;
+
+                            Ok(())
                         }
                         HostToTarget::SetPin(PinState::High) => {
                             Ok(green.set_high())
@@ -505,7 +551,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartI2cTransaction {
-                            mode: Mode::Regular,
+                            mode: DmaMode::Regular,
                             address,
                             data,
                         } => {
@@ -530,7 +576,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartI2cTransaction {
-                            mode: Mode::Dma,
+                            mode: DmaMode::Dma,
                             address,
                             data,
                         } => {
@@ -580,7 +626,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartSpiTransaction {
-                            mode: Mode::Regular,
+                            mode: DmaMode::Regular,
                             data,
                         } => {
                             rprintln!("SPI: Start transaction");
@@ -621,7 +667,7 @@ const APP: () = {
                             Ok(())
                         }
                         HostToTarget::StartSpiTransaction {
-                            mode: Mode::Dma,
+                            mode: DmaMode::Dma,
                             data,
                         } => {
                             static mut SPI_BUF: [u8; 2] = [0; 2];
@@ -667,6 +713,7 @@ const APP: () = {
                     };
 
                     *usart_tx = Some(usart_tx_local);
+                    *usart_cts = Some(usart_cts_local);
                     *usart_dma_chan = Some(usart_dma_chan_local);
                     *i2c = Some(i2c_local);
                     *i2c_dma = Some(i2c_dma_local);

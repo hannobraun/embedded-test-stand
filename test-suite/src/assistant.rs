@@ -10,9 +10,10 @@ use host_lib::conn::{
 };
 use lpc845_messages::{
     AssistantToHost,
+    DmaMode,
     HostToAssistant,
-    Mode,
-    Pin,
+    InputPin,
+    OutputPin,
     PinState,
 };
 
@@ -23,13 +24,25 @@ pub struct Assistant(pub(crate) Conn);
 impl Assistant {
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0.send(&HostToAssistant::SetPin(PinState::High))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, PinState::High))
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to set the target's input pin low
     pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0.send(&HostToAssistant::SetPin(PinState::Low))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, PinState::Low))
+            .map_err(|err| AssistantSetPinLowError(err))
+    }
+
+    /// Instruct the assistant to disable CTS
+    pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, PinState::High))
+            .map_err(|err| AssistantSetPinHighError(err))
+    }
+
+    /// Instruct the assistant to enable CTS
+    pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, PinState::Low))
             .map_err(|err| AssistantSetPinLowError(err))
     }
 
@@ -37,7 +50,10 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
+        let pin_state = self.pin_state(
+            InputPin::Green,
+            Duration::from_millis(10),
+        )?;
         Ok(pin_state.0 == PinState::High)
     }
 
@@ -45,7 +61,10 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(Pin::Green, Duration::from_millis(10))?;
+        let pin_state = self.pin_state(
+            InputPin::Green,
+            Duration::from_millis(10),
+        )?;
         Ok(pin_state.0 == PinState::Low)
     }
 
@@ -53,7 +72,7 @@ impl Assistant {
     ///
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, expected_pin: Pin, timeout: Duration)
+    pub fn pin_state(&mut self, expected_pin: InputPin, timeout: Duration)
         -> Result<(PinState, Option<u32>), AssistantPinReadError>
     {
         let mut buf   = Vec::new();
@@ -102,19 +121,29 @@ impl Assistant {
         }
     }
 
+    /// Wait for RTS signal to be enabled
+    pub fn wait_for_rts(&mut self) -> Result<bool, AssistantPinReadError> {
+        let pin_state = self.pin_state(
+            InputPin::Rts,
+            Duration::from_millis(10),
+        )?;
+        Ok(pin_state.0 == PinState::Low)
+    }
+
     /// Instruct assistant to send this message to the target via USART
-    pub fn send_to_target_usart(&mut self, message: &[u8])
+    pub fn send_to_target_usart(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart(Mode::Regular, message))
+        self.0
+            .send(&HostToAssistant::SendUsart { mode: DmaMode::Regular, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
     /// Instruct assistant to send this message to the target's USART/DMA
-    pub fn send_to_target_usart_dma(&mut self, message: &[u8])
+    pub fn send_to_target_usart_dma(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart(Mode::Dma, message))
+        self.0.send(&HostToAssistant::SendUsart { mode: DmaMode::Dma, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
@@ -172,10 +201,13 @@ impl Assistant {
 
         let mut measurement: Option<GpioPeriodMeasurement> = None;
 
-        let (mut state, _) = self.pin_state(Pin::Blue, timeout)?;
+        let (mut state, _) = self.pin_state(InputPin::Blue, timeout)?;
 
         for _ in 0 .. samples {
-            let (new_state, period_ms) = self.pin_state(Pin::Blue, timeout)?;
+            let (new_state, period_ms) = self.pin_state(
+                InputPin::Blue,
+                timeout,
+            )?;
             print!("{:?}, {:?}\n", new_state, period_ms);
 
             if new_state == state {
@@ -210,6 +242,34 @@ impl Assistant {
         // `Some`.
         Ok(measurement.unwrap())
     }
+
+    /// Expect to hear nothing from the target within the given timeout period
+    pub fn expect_nothing_from_target(&mut self, timeout: Duration)
+        -> Result<(), AssistantExpectNothingError>
+    {
+        loop {
+            let mut tmp = Vec::new();
+            let message = self.0.receive::<AssistantToHost>(timeout, &mut tmp);
+
+            match message {
+                Ok(message) => {
+                    return Err(
+                        AssistantExpectNothingError::UnexpectedMessage(
+                            format!("{:?}", message)
+                        )
+                    );
+                }
+                Err(err) if err.is_timeout() => {
+                    break;
+                }
+                Err(err) => {
+                    return Err(AssistantExpectNothingError::Receive(err));
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 
@@ -240,5 +300,11 @@ pub struct AssistantUsartSendError(ConnSendError);
 pub enum AssistantUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
+    UnexpectedMessage(String),
+}
+
+#[derive(Debug)]
+pub enum AssistantExpectNothingError {
+    Receive(ConnReceiveError),
     UnexpectedMessage(String),
 }

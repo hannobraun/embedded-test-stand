@@ -4,10 +4,11 @@ use std::time::{
 };
 
 use lpc845_messages::{
+    DmaMode,
     HostToTarget,
-    Mode,
     PinState,
     TargetToHost,
+    UsartMode,
 };
 
 use host_lib::conn::{
@@ -100,18 +101,30 @@ impl Target {
     }
 
     /// Instruct the target to send this message via USART
-    pub fn send_usart(&mut self, message: &[u8])
+    pub fn send_usart(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(Mode::Regular, message))
+        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Regular, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
     /// Instruct the target to send this message via USART using DMA
-    pub fn send_usart_dma(&mut self, message: &[u8])
+    pub fn send_usart_dma(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart(Mode::Dma, message))
+        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
+            .map_err(|err| TargetUsartSendError(err))
+    }
+
+    /// Instruct the target to send this message via USART using DMA
+    pub fn send_usart_with_flow_control(&mut self, data: &[u8])
+        -> Result<(), TargetUsartSendError>
+    {
+        self.0
+            .send(&HostToTarget::SendUsart {
+                mode: UsartMode::FlowControl,
+                data,
+            })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -122,7 +135,7 @@ impl Target {
     pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, Mode::Regular)
+        self.wait_for_usart_rx_inner(data, timeout, DmaMode::Regular)
     }
 
     /// Wait to receive the provided data via USART/DMA
@@ -132,13 +145,13 @@ impl Target {
     pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, Mode::Dma)
+        self.wait_for_usart_rx_inner(data, timeout, DmaMode::Dma)
     }
 
     fn wait_for_usart_rx_inner(&mut self,
         data:          &[u8],
         timeout:       Duration,
-        expected_mode: Mode,
+        expected_mode: DmaMode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
@@ -158,7 +171,7 @@ impl Target {
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match message {
-                TargetToHost::UsartReceive(mode, data)
+                TargetToHost::UsartReceive { mode, data }
                     if mode == expected_mode =>
                 {
                     buf.extend(data)
@@ -190,7 +203,7 @@ impl Target {
     pub fn start_i2c_transaction(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetI2cError>
     {
-        self.start_i2c_transaction_inner(data, timeout, Mode::Regular)
+        self.start_i2c_transaction_inner(data, timeout, DmaMode::Regular)
     }
 
     /// Start an I2C/DMA transaction
@@ -199,13 +212,13 @@ impl Target {
     pub fn start_i2c_transaction_dma(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetI2cError>
     {
-        self.start_i2c_transaction_inner(data, timeout, Mode::Dma)
+        self.start_i2c_transaction_inner(data, timeout, DmaMode::Dma)
     }
 
     fn start_i2c_transaction_inner(&mut self,
         data:    u8,
         timeout: Duration,
-        mode:    Mode,
+        mode:    DmaMode,
     )
         -> Result<u8, TargetI2cError>
     {
@@ -238,7 +251,7 @@ impl Target {
     pub fn start_spi_transaction(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetSpiError>
     {
-        self.start_spi_transaction_inner(data, timeout, Mode::Regular)
+        self.start_spi_transaction_inner(data, timeout, DmaMode::Regular)
     }
 
     /// Start an SPI/DMA transaction
@@ -247,13 +260,13 @@ impl Target {
     pub fn start_spi_transaction_dma(&mut self, data: u8, timeout: Duration)
         -> Result<u8, TargetSpiError>
     {
-        self.start_spi_transaction_inner(data, timeout, Mode::Dma)
+        self.start_spi_transaction_inner(data, timeout, DmaMode::Dma)
     }
 
     fn start_spi_transaction_inner(&mut self,
         data:    u8,
         timeout: Duration,
-        mode:    Mode,
+        mode:    DmaMode,
     )
         -> Result<u8, TargetSpiError>
     {

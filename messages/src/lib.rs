@@ -11,7 +11,10 @@ use serde::{
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
-    SendUsart(Mode, &'r [u8]),
+    SendUsart {
+        mode: UsartMode,
+        data: &'r [u8],
+    },
 
     /// Instruct the device to change the electrical level of the pin
     SetPin(PinState),
@@ -25,7 +28,7 @@ pub enum HostToTarget<'r> {
     /// Instruct the target to start an I2C transaction
     StartI2cTransaction {
         /// Which mode to use for the transaction
-        mode: Mode,
+        mode: DmaMode,
 
         /// The address of the slave
         address: u8,
@@ -37,7 +40,7 @@ pub enum HostToTarget<'r> {
     /// Instruct the target to start an SPI transaction
     StartSpiTransaction {
         /// Which mode to use for the transaction
-        mode: Mode,
+        mode: DmaMode,
 
         /// The data to send to the slave
         data: u8,
@@ -48,7 +51,10 @@ pub enum HostToTarget<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
-    UsartReceive(Mode, &'r [u8]),
+    UsartReceive {
+        mode: DmaMode,
+        data: &'r [u8],
+    },
 
     /// Notify the host that the level of GPIO input changed
     PinLevelChanged {
@@ -68,10 +74,13 @@ pub enum TargetToHost<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
-    SendUsart(Mode, &'r [u8]),
+    SendUsart {
+        mode: DmaMode,
+        data: &'r [u8],
+    },
 
     /// Instruct the assistant to change level of the target's input pin
-    SetPin(PinState),
+    SetPin(OutputPin, PinState),
 }
 
 /// A message from the test assistant to the test suite on the host
@@ -83,7 +92,7 @@ pub enum AssistantToHost<'r> {
     /// Notify the host that the level of a pin has changed
     PinLevelChanged {
         /// The pin whose level has changed
-        pin: Pin,
+        pin: InputPin,
 
         /// The new level of the pin
         level: PinState,
@@ -97,19 +106,35 @@ pub enum AssistantToHost<'r> {
 }
 
 
-/// Specifies whether a USART transmission concerns DMA or not
+/// Specifies whether a transmission uses DMA or not
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum Mode {
+pub enum DmaMode {
     Regular,
     Dma,
+}
+
+/// Specifies which mode a USART transmission uses
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum UsartMode {
+    Regular,
+    Dma,
+    FlowControl,
 }
 
 
 /// Represents one of the pins that the assistant is monitoring
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum Pin {
+pub enum InputPin {
     Blue,
     Green,
+    Rts,
+}
+
+/// Represents one of the pins that the assistant can set
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum OutputPin {
+    Cts,
+    Red,
 }
 
 
