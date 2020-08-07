@@ -120,3 +120,31 @@ fn it_should_receive_in_sync_mode() -> Result {
     assert_eq!(received, message);
     Ok(())
 }
+
+#[test]
+fn it_should_ignore_received_data_until_an_address_is_matched() -> Result {
+    let mut test_stand = TestStand::new()?;
+
+    let address = b'X';
+    let message = b"Hello, world!";
+
+    test_stand.target.wait_for_address(address)?;
+
+    // Send data that the receiver shouldn't pass on, trying to trick it in
+    // various ways.
+    test_stand.assistant.send_to_target_usart(b"111")?;
+    test_stand.assistant.send_to_target_usart(&[address])?; // MSB not set
+    test_stand.assistant.send_to_target_usart(b"222")?;
+    test_stand.assistant.send_to_target_usart(&[b'Y' | 0x80])?; // wrong address
+    test_stand.assistant.send_to_target_usart(b"333")?;
+
+    // Now send the address, plus the data that should actually arrive.
+    test_stand.assistant.send_to_target_usart(&[address | 0x80])?;
+    test_stand.assistant.send_to_target_usart(message)?;
+
+    let timeout = Duration::from_millis(50);
+    let received = test_stand.target.wait_for_usart_rx(message, timeout)?;
+
+    assert_eq!(received, message);
+    Ok(())
+}
