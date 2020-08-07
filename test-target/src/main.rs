@@ -454,7 +454,7 @@ const APP: () = {
                 .process_raw(|data| {
                     host_tx.send_message(
                         &TargetToHost::UsartReceive {
-                            mode: DmaMode::Regular,
+                            mode: UsartMode::Regular,
                             data,
                         },
                         &mut buf,
@@ -466,7 +466,7 @@ const APP: () = {
                 host_tx
                     .send_message(
                         &TargetToHost::UsartReceive {
-                            mode: DmaMode::Dma,
+                            mode: UsartMode::Dma,
                             data: &[b],
                         },
                         &mut buf,

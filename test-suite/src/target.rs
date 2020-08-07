@@ -143,7 +143,7 @@ impl Target {
     pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, DmaMode::Regular)
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Regular)
     }
 
     /// Wait to receive the provided data via USART/DMA
@@ -153,13 +153,13 @@ impl Target {
     pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, DmaMode::Dma)
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Dma)
     }
 
     fn wait_for_usart_rx_inner(&mut self,
         data:          &[u8],
         timeout:       Duration,
-        expected_mode: DmaMode,
+        expected_mode: UsartMode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {

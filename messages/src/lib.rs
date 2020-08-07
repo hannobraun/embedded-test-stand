@@ -52,7 +52,7 @@ pub enum HostToTarget<'r> {
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
     UsartReceive {
-        mode: DmaMode,
+        mode: UsartMode,
         data: &'r [u8],
     },
 
