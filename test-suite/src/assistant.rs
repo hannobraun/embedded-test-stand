@@ -158,6 +158,19 @@ impl Assistant {
         self.receive_from_target_usart_inner(data, timeout, UsartMode::Regular)
     }
 
+    /// Wait to receive the provided data via USART in synchronous mode
+    ///
+    /// Returns the receive buffer, once the data was received. Returns an
+    /// error, if it times out before that, or an I/O error occurs.
+    pub fn receive_from_target_usart_sync(&mut self,
+        data:    &[u8],
+        timeout: Duration,
+    )
+        -> Result<Vec<u8>, AssistantUsartWaitError>
+    {
+        self.receive_from_target_usart_inner(data, timeout, UsartMode::Sync)
+    }
+
     pub fn receive_from_target_usart_inner(&mut self,
         data:          &[u8],
         timeout:       Duration,
