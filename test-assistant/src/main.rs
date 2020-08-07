@@ -39,6 +39,7 @@ use lpc8xx_hal::{
         USART0,
         USART1,
         USART2,
+        USART3,
     },
     pinint::{
         PININT0,
@@ -62,7 +63,10 @@ use lpc8xx_hal::{
     },
     usart::{
         self,
-        state::AsyncMode,
+        state::{
+            AsyncMode,
+            SyncMode,
+        },
     },
 };
 use rtt_target::rprintln;
@@ -111,6 +115,10 @@ const APP: () = {
         target_rts_int:  pin_interrupt::Int<'static, PININT2, PIO0_9, MRT2>,
         target_rts_idle: pin_interrupt::Idle<'static>,
 
+        target_sync_rx_int:  RxInt<'static, USART3, SyncMode>,
+        target_sync_rx_idle: RxIdle<'static>,
+        target_sync_tx:      Tx<USART3, SyncMode>,
+
         green_int:  pin_interrupt::Int<'static, PININT0, PIO1_0, MRT0>,
         green_idle: pin_interrupt::Idle<'static>,
 
@@ -131,8 +139,9 @@ const APP: () = {
         // here. RTFM knows this too, and by putting these statics right here,
         // at the beginning of the method, we're opting into some RTFM magic
         // that gives us safe access to them.
-        static mut HOST:   Usart = Usart::new();
-        static mut TARGET: Usart = Usart::new();
+        static mut HOST:        Usart = Usart::new();
+        static mut TARGET:      Usart = Usart::new();
+        static mut TARGET_SYNC: Usart = Usart::new();
 
         static mut GREEN: PinInterrupt = PinInterrupt::new();
         static mut BLUE:  PinInterrupt = PinInterrupt::new();
@@ -277,8 +286,38 @@ const APP: () = {
             usart::Settings::default(),
         );
 
+        // Assign pins to USART3.
+        let (u3_rxd, _) = swm.movable_functions.u3_rxd.assign(
+            p.pins.pio0_13.into_swm_pin(),
+            &mut swm_handle,
+        );
+        let (u3_txd, _) = swm.movable_functions.u3_txd.assign(
+            p.pins.pio0_14.into_swm_pin(),
+            &mut swm_handle,
+        );
+        let (u3_sclk, _) = swm.movable_functions.u3_sclk.assign(
+            p.pins.pio0_15.into_swm_pin(),
+            &mut swm_handle,
+        );
+
+        // Use USART3 as tertiary means to communicate with the test target.
+        let mut target_sync = p.USART3.enable_sync_as_slave(
+            &syscon.iosc,
+            &mut syscon.handle,
+            u3_rxd,
+            u3_txd,
+            u3_sclk,
+            usart::Settings::default(),
+        );
+        target_sync.enable_interrupts(usart::Interrupts {
+            RXRDY: true,
+            .. usart::Interrupts::default()
+        });
+
         let (host_rx_int,   host_rx_idle,   host_tx)   = HOST.init(host);
         let (target_rx_int, target_rx_idle, target_tx) = TARGET.init(target);
+        let (target_sync_rx_int, target_sync_rx_idle, target_sync_tx) =
+            TARGET_SYNC.init(target_sync);
 
         let (green_int, green_idle) = GREEN.init(green_int, timers.mrt0);
         let (blue_int,  blue_idle)  = BLUE.init(blue_int, timers.mrt1);
@@ -354,6 +393,10 @@ const APP: () = {
             target_rts_int:  rts_int,
             target_rts_idle: rts_idle,
 
+            target_sync_rx_int,
+            target_sync_rx_idle,
+            target_sync_tx,
+
             green_int,
             green_idle,
 
@@ -375,6 +418,7 @@ const APP: () = {
             target_rx_idle,
             target_tx,
             target_tx_dma,
+            target_sync_rx_idle,
             green_idle,
             blue_idle,
             target_rts_idle,
@@ -383,16 +427,17 @@ const APP: () = {
         ]
     )]
     fn idle(cx: idle::Context) -> ! {
-        let host_rx       = cx.resources.host_rx_idle;
-        let host_tx       = cx.resources.host_tx;
-        let target_rx     = cx.resources.target_rx_idle;
-        let target_tx     = cx.resources.target_tx;
-        let target_tx_dma = cx.resources.target_tx_dma;
-        let green         = cx.resources.green_idle;
-        let blue          = cx.resources.blue_idle;
-        let rts           = cx.resources.target_rts_idle;
-        let red           = cx.resources.red;
-        let cts           = cx.resources.cts;
+        let host_rx        = cx.resources.host_rx_idle;
+        let host_tx        = cx.resources.host_tx;
+        let target_rx      = cx.resources.target_rx_idle;
+        let target_tx      = cx.resources.target_tx;
+        let target_tx_dma  = cx.resources.target_tx_dma;
+        let target_sync_rx = cx.resources.target_sync_rx_idle;
+        let green          = cx.resources.green_idle;
+        let blue           = cx.resources.blue_idle;
+        let rts            = cx.resources.target_rts_idle;
+        let red            = cx.resources.red;
+        let cts            = cx.resources.cts;
 
         let mut buf = [0; 256];
 
@@ -402,6 +447,17 @@ const APP: () = {
                     host_tx.send_message(
                         &AssistantToHost::UsartReceive {
                             mode: UsartMode::Regular,
+                            data,
+                        },
+                        &mut buf,
+                    )
+                })
+                .expect("Error processing USART data");
+            target_sync_rx
+                .process_raw(|data| {
+                    host_tx.send_message(
+                        &AssistantToHost::UsartReceive {
+                            mode: UsartMode::Sync,
                             data,
                         },
                         &mut buf,
@@ -499,6 +555,12 @@ const APP: () = {
     fn usart1(cx: usart1::Context) {
         cx.resources.target_rx_int.receive()
             .expect("Error receiving from USART1");
+    }
+
+    #[task(binds = PIN_INT6_USART3, resources = [target_sync_rx_int])]
+    fn usart3(cx: usart3::Context) {
+        cx.resources.target_sync_rx_int.receive()
+            .expect("Error receiving from USART3");
     }
 
     #[task(binds = PIN_INT0, resources = [green_int])]
