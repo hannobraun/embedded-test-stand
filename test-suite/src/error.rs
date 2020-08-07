@@ -21,6 +21,7 @@ use super::{
         TargetStartTimerInterruptError,
         TargetUsartSendError,
         TargetUsartWaitError,
+        TargetWaitForAddressError,
     },
     test_stand::TestStandInitError,
 };
@@ -48,6 +49,7 @@ pub enum Error {
     TargetStartTimerInterrupt(TargetStartTimerInterruptError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
+    TargetWaitForAddress(TargetWaitForAddressError),
     TestStandInit(TestStandInitError),
 }
 
@@ -138,6 +140,12 @@ impl From<TargetSetPinLowError> for Error {
 impl From<TargetUsartWaitError> for Error {
     fn from(err: TargetUsartWaitError) -> Self {
         Self::TargetUsartWait(err)
+    }
+}
+
+impl From<TargetWaitForAddressError> for Error {
+    fn from(err: TargetWaitForAddressError) -> Self {
+        Self::TargetWaitForAddress(err)
     }
 }
 
