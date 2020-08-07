@@ -413,7 +413,7 @@ const APP: () = {
     #[idle(resources = [
         host_rx_idle, host_tx,
         usart_rx_idle, usart_tx, usart_cts,
-        usart_sync_tx,
+        usart_sync_rx_idle, usart_sync_tx,
         green,
         red,
         systick,
@@ -430,6 +430,7 @@ const APP: () = {
         let usart_rx       = cx.resources.usart_rx_idle;
         let usart_tx       = cx.resources.usart_tx;
         let usart_cts      = cx.resources.usart_cts;
+        let usart_sync_rx  = cx.resources.usart_sync_rx_idle;
         let usart_sync_tx  = cx.resources.usart_sync_tx;
         let host_rx        = cx.resources.host_rx_idle;
         let host_tx        = cx.resources.host_tx;
@@ -461,6 +462,17 @@ const APP: () = {
                     )
                 })
                 .expect("Error processing USART data");
+            usart_sync_rx
+                .process_raw(|data| {
+                    host_tx.send_message(
+                        &TargetToHost::UsartReceive {
+                            mode: UsartMode::Sync,
+                            data,
+                        },
+                        &mut buf,
+                    )
+                })
+                .expect("Error processing USART data (sync)");
 
             while let Some(b) = usart_dma_cons.dequeue() {
                 host_tx
@@ -831,6 +843,12 @@ const APP: () = {
     fn usart1(cx: usart1::Context) {
         cx.resources.usart_rx_int.receive()
             .expect("Error receiving from USART1");
+    }
+
+    #[task(binds = PIN_INT6_USART3, resources = [usart_sync_rx_int])]
+    fn usart3(cx: usart3::Context) {
+        cx.resources.usart_sync_rx_int.receive()
+            .expect("Error receiving from USART3");
     }
 
     #[task(binds = SysTick, resources = [blue])]
