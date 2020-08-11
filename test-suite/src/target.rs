@@ -117,6 +117,14 @@ impl Target {
     }
 
     /// Instruct the target to send this message via USART using DMA
+    pub fn send_usart_sync(&mut self, data: &[u8])
+        -> Result<(), TargetUsartSendError>
+    {
+        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Sync, data })
+            .map_err(|err| TargetUsartSendError(err))
+    }
+
+    /// Instruct the target to send this message via USART using DMA
     pub fn send_usart_with_flow_control(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
@@ -135,7 +143,7 @@ impl Target {
     pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, DmaMode::Regular)
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Regular)
     }
 
     /// Wait to receive the provided data via USART/DMA
@@ -145,13 +153,23 @@ impl Target {
     pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
-        self.wait_for_usart_rx_inner(data, timeout, DmaMode::Dma)
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Dma)
+    }
+
+    /// Wait to receive the provided data via synchronous USART
+    ///
+    /// Returns the receive buffer, once the data was received. Returns an
+    /// error, if it times out before that, or an I/O error occurs.
+    pub fn wait_for_usart_rx_sync(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Sync)
     }
 
     fn wait_for_usart_rx_inner(&mut self,
         data:          &[u8],
         timeout:       Duration,
-        expected_mode: DmaMode,
+        expected_mode: UsartMode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {

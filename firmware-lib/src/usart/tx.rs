@@ -21,11 +21,11 @@ use void::{
 /// Wraps a USART transmitter
 ///
 /// Provides some convenience methods on top of the wrapped transmitter.
-pub struct Tx<I> {
-    pub usart: usart::Tx<I, Enabled<u8>, NoThrottle>,
+pub struct Tx<I, Mode> {
+    pub usart: usart::Tx<I, Enabled<u8, Mode>, NoThrottle>,
 }
 
-impl<I> Tx<I>
+impl<I, Mode> Tx<I, Mode>
     where I: usart::Instance
 {
     /// Sends raw data through the wrapped USART instance

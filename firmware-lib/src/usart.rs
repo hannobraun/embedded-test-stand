@@ -58,8 +58,8 @@ impl Usart {
     /// [`RxInt`]: rx/struct.RxInt.html
     /// [`RxIdle`]: rx/struct.RxIdle.html
     /// [`Tx`]: tx/struct.Tx.html
-    pub fn init<I>(&mut self, usart: USART<I, Enabled<u8>>)
-        -> (RxInt<I>, RxIdle, Tx<I>)
+    pub fn init<I, Mode>(&mut self, usart: USART<I, Enabled<u8, Mode>>)
+        -> (RxInt<I, Mode>, RxIdle, Tx<I, Mode>)
     {
         let (prod, cons) = self.queue.split();
 

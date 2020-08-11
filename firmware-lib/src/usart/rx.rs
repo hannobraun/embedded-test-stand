@@ -22,12 +22,12 @@ use super::QueueCap;
 /// You can get an instance of this struct by calling [`Usart::init`].
 ///
 /// [`Usart::init`]: ../struct.Usart.html#method.init
-pub struct RxInt<'r, I> {
-    pub usart: usart::Rx<I, Enabled<u8>>,
+pub struct RxInt<'r, I, Mode> {
+    pub usart: usart::Rx<I, Enabled<u8, Mode>>,
     pub queue: spsc::Producer<'r, u8, QueueCap>,
 }
 
-impl<I> RxInt<'_, I>
+impl<I, Mode> RxInt<'_, I, Mode>
     where
         I: usart::Instance,
 {

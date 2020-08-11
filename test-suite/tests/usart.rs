@@ -91,3 +91,32 @@ fn it_should_send_using_flow_control() -> Result {
     assert_eq!(received, message);
     Ok(())
 }
+
+#[test]
+fn it_should_send_in_sync_mode() -> Result {
+    let mut test_stand = TestStand::new()?;
+
+    let message = b"Hello, world!";
+    test_stand.target.send_usart_sync(message)?;
+
+    let timeout  = Duration::from_millis(50);
+    let received = test_stand.assistant
+        .receive_from_target_usart_sync(message, timeout)?;
+
+    assert_eq!(received, message);
+    Ok(())
+}
+
+#[test]
+fn it_should_receive_in_sync_mode() -> Result {
+    let mut test_stand = TestStand::new()?;
+
+    let message = b"Hello, world!";
+    test_stand.assistant.send_to_target_usart_sync(message)?;
+
+    let timeout  = Duration::from_millis(50);
+    let received = test_stand.target.wait_for_usart_rx_sync(message, timeout)?;
+
+    assert_eq!(received, message);
+    Ok(())
+}

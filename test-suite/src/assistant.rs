@@ -10,11 +10,11 @@ use host_lib::conn::{
 };
 use lpc845_messages::{
     AssistantToHost,
-    DmaMode,
     HostToAssistant,
     InputPin,
     OutputPin,
     PinState,
+    UsartMode,
 };
 
 
@@ -135,7 +135,10 @@ impl Assistant {
         -> Result<(), AssistantUsartSendError>
     {
         self.0
-            .send(&HostToAssistant::SendUsart { mode: DmaMode::Regular, data })
+            .send(&HostToAssistant::SendUsart {
+                mode: UsartMode::Regular,
+                data,
+            })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
@@ -143,7 +146,15 @@ impl Assistant {
     pub fn send_to_target_usart_dma(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart { mode: DmaMode::Dma, data })
+        self.0.send(&HostToAssistant::SendUsart { mode: UsartMode::Dma, data })
+            .map_err(|err| AssistantUsartSendError(err))
+    }
+
+    /// Instruct assistant to send this message to the target's sync USART
+    pub fn send_to_target_usart_sync(&mut self, data: &[u8])
+        -> Result<(), AssistantUsartSendError>
+    {
+        self.0.send(&HostToAssistant::SendUsart { mode: UsartMode::Sync, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
@@ -152,6 +163,29 @@ impl Assistant {
     /// Returns the receive buffer, once the data was received. Returns an
     /// error, if it times out before that, or an I/O error occurs.
     pub fn receive_from_target_usart(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, AssistantUsartWaitError>
+    {
+        self.receive_from_target_usart_inner(data, timeout, UsartMode::Regular)
+    }
+
+    /// Wait to receive the provided data via USART in synchronous mode
+    ///
+    /// Returns the receive buffer, once the data was received. Returns an
+    /// error, if it times out before that, or an I/O error occurs.
+    pub fn receive_from_target_usart_sync(&mut self,
+        data:    &[u8],
+        timeout: Duration,
+    )
+        -> Result<Vec<u8>, AssistantUsartWaitError>
+    {
+        self.receive_from_target_usart_inner(data, timeout, UsartMode::Sync)
+    }
+
+    pub fn receive_from_target_usart_inner(&mut self,
+        data:          &[u8],
+        timeout:       Duration,
+        expected_mode: UsartMode,
+    )
         -> Result<Vec<u8>, AssistantUsartWaitError>
     {
         let mut buf   = Vec::new();
@@ -170,7 +204,9 @@ impl Assistant {
                 .map_err(|err| AssistantUsartWaitError::Receive(err))?;
 
             match message {
-                AssistantToHost::UsartReceive(data) => {
+                AssistantToHost::UsartReceive { mode, data }
+                    if mode == expected_mode
+                => {
                     buf.extend(data)
                 }
                 _ => {

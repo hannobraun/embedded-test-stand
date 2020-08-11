@@ -52,7 +52,7 @@ pub enum HostToTarget<'r> {
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
     UsartReceive {
-        mode: DmaMode,
+        mode: UsartMode,
         data: &'r [u8],
     },
 
@@ -75,7 +75,7 @@ pub enum TargetToHost<'r> {
 pub enum HostToAssistant<'r> {
     /// Instruct the assistant to send data to the target via USART
     SendUsart {
-        mode: DmaMode,
+        mode: UsartMode,
         data: &'r [u8],
     },
 
@@ -87,7 +87,10 @@ pub enum HostToAssistant<'r> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum AssistantToHost<'r> {
     /// Notify the host that data has been received from the target via USART
-    UsartReceive(&'r [u8]),
+    UsartReceive {
+        mode: UsartMode,
+        data: &'r [u8],
+    },
 
     /// Notify the host that the level of a pin has changed
     PinLevelChanged {
@@ -119,6 +122,7 @@ pub enum UsartMode {
     Regular,
     Dma,
     FlowControl,
+    Sync,
 }
 
 
