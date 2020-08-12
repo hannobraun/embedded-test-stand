@@ -65,6 +65,10 @@ In addition, you need to connect the following pins of the target and the assist
 
 Target Pin | Assistant Pin | Note
 -----------------------------------------------------------------------
+         1 |             1 | SPI: SCK
+         2 |             2 | SPI: MOSI
+         3 |             3 | SPI: MISO
+         4 |             4 | SPI: SSEL
         12 |            13 | USART: Target RX, Assistant TX
         13 |            12 | USART: Target TX, Assistant RX
         14 |            15 | USART: Target RX (DMA), Assistant TX
