@@ -16,6 +16,9 @@ pub enum HostToTarget<'r> {
         data: &'r [u8],
     },
 
+    /// Instruct the target to ignore USART data until address is matched
+    WaitForAddress(u8),
+
     /// Instruct the device to change the electrical level of the pin
     SetPin(PinState),
 

@@ -205,6 +205,14 @@ impl Target {
         }
     }
 
+    /// Enable address matching
+    pub fn wait_for_address(&mut self, address: u8)
+        -> Result<(), TargetWaitForAddressError>
+    {
+        self.0.send(&HostToTarget::WaitForAddress(address))
+            .map_err(|err| TargetWaitForAddressError(err))
+    }
+
     /// Start a timer interrupt with the given period in milliseconds
     pub fn start_timer_interrupt(&mut self, period_ms: u32)
         -> Result<TimerInterrupt, TargetStartTimerInterruptError>
@@ -350,6 +358,9 @@ pub enum TargetUsartWaitError {
     Timeout,
     UnexpectedMessage(String),
 }
+
+#[derive(Debug)]
+pub struct TargetWaitForAddressError(ConnSendError);
 
 #[derive(Debug)]
 pub enum TargetI2cError {
