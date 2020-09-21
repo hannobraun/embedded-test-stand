@@ -19,16 +19,20 @@ use lpc845_messages::{
 
 
 /// The connection to the test assistant
-pub struct Assistant(Conn);
+pub struct Assistant {
+    conn: Conn,
+}
 
 impl Assistant {
     pub(crate) fn new(conn: Conn) -> Self {
-        Self(conn)
+        Self {
+            conn,
+        }
     }
 
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0
+        self.conn
             .send(&HostToAssistant::SetPin(
                 pin::SetLevel {
                     pin: OutputPin::Red,
@@ -40,7 +44,7 @@ impl Assistant {
 
     /// Instruct the assistant to set the target's input pin low
     pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0
+        self.conn
             .send(&HostToAssistant::SetPin(
                 pin::SetLevel {
                     pin: OutputPin::Red,
@@ -52,7 +56,7 @@ impl Assistant {
 
     /// Instruct the assistant to disable CTS
     pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0
+        self.conn
             .send(&HostToAssistant::SetPin(
                 pin::SetLevel {
                     pin: OutputPin::Cts,
@@ -64,7 +68,7 @@ impl Assistant {
 
     /// Instruct the assistant to enable CTS
     pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0
+        self.conn
             .send(&HostToAssistant::SetPin(
                 pin::SetLevel {
                     pin: OutputPin::Cts,
@@ -113,7 +117,8 @@ impl Assistant {
                 break;
             }
 
-            let message = self.0.receive::<AssistantToHost>(timeout, &mut buf);
+            let message = self.conn
+                .receive::<AssistantToHost>(timeout, &mut buf);
             let message = match message {
                 Ok(message) => {
                     message
@@ -164,7 +169,7 @@ impl Assistant {
     pub fn send_to_target_usart(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0
+        self.conn
             .send(&HostToAssistant::SendUsart {
                 mode: UsartMode::Regular,
                 data,
@@ -176,7 +181,8 @@ impl Assistant {
     pub fn send_to_target_usart_dma(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart { mode: UsartMode::Dma, data })
+        self.conn
+            .send(&HostToAssistant::SendUsart { mode: UsartMode::Dma, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
@@ -184,7 +190,8 @@ impl Assistant {
     pub fn send_to_target_usart_sync(&mut self, data: &[u8])
         -> Result<(), AssistantUsartSendError>
     {
-        self.0.send(&HostToAssistant::SendUsart { mode: UsartMode::Sync, data })
+        self.conn
+            .send(&HostToAssistant::SendUsart { mode: UsartMode::Sync, data })
             .map_err(|err| AssistantUsartSendError(err))
     }
 
@@ -230,7 +237,8 @@ impl Assistant {
             }
 
             let mut tmp = Vec::new();
-            let message = self.0.receive::<AssistantToHost>(timeout, &mut tmp)
+            let message = self.conn
+                .receive::<AssistantToHost>(timeout, &mut tmp)
                 .map_err(|err| AssistantUsartWaitError::Receive(err))?;
 
             match message {
@@ -315,7 +323,8 @@ impl Assistant {
     {
         loop {
             let mut tmp = Vec::new();
-            let message = self.0.receive::<AssistantToHost>(timeout, &mut tmp);
+            let message = self.conn
+                .receive::<AssistantToHost>(timeout, &mut tmp);
 
             match message {
                 Ok(message) => {

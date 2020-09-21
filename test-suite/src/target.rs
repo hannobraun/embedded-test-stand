@@ -19,16 +19,20 @@ use host_lib::conn::{
 
 
 /// The connection to the test target
-pub struct Target(Conn);
+pub struct Target {
+    conn: Conn,
+}
 
 impl Target {
     pub(crate) fn new(conn: Conn) -> Self {
-        Self(conn)
+        Self {
+            conn,
+        }
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
-        self.0
+        self.conn
             .send(&HostToTarget::SetPin(
                 pin::SetLevel {
                     pin: (),
@@ -40,7 +44,7 @@ impl Target {
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
-        self.0
+        self.conn
             .send(&HostToTarget::SetPin(
                 pin::SetLevel {
                     pin: (),
@@ -83,7 +87,8 @@ impl Target {
                 break;
             }
 
-            let message = self.0.receive::<TargetToHost>(timeout, &mut buf);
+            let message = self.conn
+                .receive::<TargetToHost>(timeout, &mut buf);
             let message = match message {
                 Ok(message) => {
                     message
@@ -125,7 +130,8 @@ impl Target {
     pub fn send_usart(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Regular, data })
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Regular, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -133,7 +139,8 @@ impl Target {
     pub fn send_usart_dma(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -141,7 +148,8 @@ impl Target {
     pub fn send_usart_sync(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Sync, data })
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Sync, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -149,7 +157,7 @@ impl Target {
     pub fn send_usart_with_flow_control(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0
+        self.conn
             .send(&HostToTarget::SendUsart {
                 mode: UsartMode::FlowControl,
                 data,
@@ -206,7 +214,8 @@ impl Target {
             }
 
             let mut tmp = Vec::new();
-            let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+            let message = self.conn
+                .receive::<TargetToHost>(timeout, &mut tmp)
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match message {
@@ -230,7 +239,8 @@ impl Target {
     pub fn wait_for_address(&mut self, address: u8)
         -> Result<(), TargetWaitForAddressError>
     {
-        self.0.send(&HostToTarget::WaitForAddress(address))
+        self.conn
+            .send(&HostToTarget::WaitForAddress(address))
             .map_err(|err| TargetWaitForAddressError(err))
     }
 
@@ -238,7 +248,8 @@ impl Target {
     pub fn start_timer_interrupt(&mut self, period_ms: u32)
         -> Result<TimerInterrupt, TargetStartTimerInterruptError>
     {
-        self.0.send(&HostToTarget::StartTimerInterrupt { period_ms })
+        self.conn
+            .send(&HostToTarget::StartTimerInterrupt { period_ms })
             .map_err(|err| TargetStartTimerInterruptError(err))?;
 
         Ok(TimerInterrupt(self))
@@ -271,11 +282,13 @@ impl Target {
     {
         let address = 0x48;
 
-        self.0.send(&HostToTarget::StartI2cTransaction { mode, address, data })
+        self.conn
+            .send(&HostToTarget::StartI2cTransaction { mode, address, data })
             .map_err(|err| TargetI2cError::Send(err))?;
 
         let mut tmp = Vec::new();
-        let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+        let message = self.conn
+            .receive::<TargetToHost>(timeout, &mut tmp)
             .map_err(|err| TargetI2cError::Receive(err))?;
 
         match message {
@@ -317,11 +330,11 @@ impl Target {
     )
         -> Result<u8, TargetSpiError>
     {
-        self.0.send(&HostToTarget::StartSpiTransaction { mode, data })
+        self.conn.send(&HostToTarget::StartSpiTransaction { mode, data })
             .map_err(|err| TargetSpiError::Send(err))?;
 
         let mut tmp = Vec::new();
-        let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+        let message = self.conn.receive::<TargetToHost>(timeout, &mut tmp)
             .map_err(|err| TargetSpiError::Receive(err))?;
 
         match message {
@@ -347,7 +360,7 @@ pub struct TimerInterrupt<'r>(&'r mut Target);
 
 impl Drop for TimerInterrupt<'_> {
     fn drop(&mut self) {
-        (self.0).0.send(&HostToTarget::StopTimerInterrupt)
+        (self.0).conn.send(&HostToTarget::StopTimerInterrupt)
             .unwrap()
     }
 }
