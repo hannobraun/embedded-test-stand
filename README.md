@@ -40,6 +40,7 @@ At the time of writing, there are 6 Cargo packages in this repository. It's a bi
 
 These are the crates that are independent of the LPC845 test suite. If you want to use this test stand for your own project, these are the crates you want to use:
 
+- `protocol`: Building blocks that can be used to build a protocol for communication between the host and the nodes of a test stand.
 - `firmware-lib`: Library for firmware running on the target or assistant.
 - `host-lib`: Library for test suites running on the host.
 
