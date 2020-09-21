@@ -22,6 +22,10 @@ use lpc845_messages::{
 pub struct Assistant(pub(crate) Conn);
 
 impl Assistant {
+    pub(crate) fn new(conn: Conn) -> Self {
+        Self(conn)
+    }
+
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
         self.0

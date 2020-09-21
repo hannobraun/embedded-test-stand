@@ -22,6 +22,10 @@ use host_lib::conn::{
 pub struct Target(pub(crate) Conn);
 
 impl Target {
+    pub(crate) fn new(conn: Conn) -> Self {
+        Self(conn)
+    }
+
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
         self.0
