@@ -19,7 +19,7 @@ use lpc845_messages::{
 
 
 /// The connection to the test assistant
-pub struct Assistant(pub(crate) Conn);
+pub struct Assistant(Conn);
 
 impl Assistant {
     pub(crate) fn new(conn: Conn) -> Self {

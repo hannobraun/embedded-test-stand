@@ -19,7 +19,7 @@ use host_lib::conn::{
 
 
 /// The connection to the test target
-pub struct Target(pub(crate) Conn);
+pub struct Target(Conn);
 
 impl Target {
     pub(crate) fn new(conn: Conn) -> Self {
