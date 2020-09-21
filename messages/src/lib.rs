@@ -53,6 +53,13 @@ pub enum HostToTarget<'r> {
     },
 }
 
+impl From<pin::SetLevel<()>> for HostToTarget<'_> {
+    fn from(set_level: pin::SetLevel<()>) -> Self {
+        Self::SetPin(set_level)
+    }
+}
+
+
 /// An message from the target to the test suite on the host
 #[derive(Debug, Deserialize, Serialize)]
 pub enum TargetToHost<'r> {
@@ -85,6 +92,13 @@ pub enum HostToAssistant<'r> {
     /// Instruct the assistant to change level of the target's input pin
     SetPin(pin::SetLevel<OutputPin>),
 }
+
+impl From<pin::SetLevel<OutputPin>> for HostToAssistant<'_> {
+    fn from(set_level: pin::SetLevel<OutputPin>) -> Self {
+        Self::SetPin(set_level)
+    }
+}
+
 
 /// A message from the test assistant to the test suite on the host
 #[derive(Debug, Deserialize, Serialize)]

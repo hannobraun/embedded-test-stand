@@ -4,6 +4,7 @@
 pub mod config;
 pub mod conn;
 pub mod error;
+pub mod pins;
 pub mod test_stand;
 
 

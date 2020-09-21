@@ -11,46 +11,49 @@ use lpc845_messages::{
     pin,
 };
 
-use host_lib::conn::{
-    Conn,
-    ConnReceiveError,
-    ConnSendError,
+use host_lib::{
+    conn::{
+        Conn,
+        ConnReceiveError,
+        ConnSendError,
+    },
+    pins::Pins,
 };
 
 
 /// The connection to the test target
 pub struct Target {
     conn: Conn,
+    pins: Pins,
 }
 
 impl Target {
     pub(crate) fn new(conn: Conn) -> Self {
         Self {
             conn,
+            pins: Pins::new(),
         }
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
-        self.conn
-            .send(&HostToTarget::SetPin(
-                pin::SetLevel {
-                    pin: (),
-                    level: pin::Level::High,
-                }
-            ))
+        self.pins
+            .set_level::<_, HostToTarget>(
+                (),
+                pin::Level::High,
+                &mut self.conn,
+            )
             .map_err(|err| TargetSetPinHighError(err))
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
-        self.conn
-            .send(&HostToTarget::SetPin(
-                pin::SetLevel {
-                    pin: (),
-                    level: pin::Level::Low,
-                }
-            ))
+        self.pins
+            .set_level::<_, HostToTarget>(
+                (),
+                pin::Level::Low,
+                &mut self.conn,
+            )
             .map_err(|err| TargetSetPinLowError(err))
     }
 

@@ -3,10 +3,13 @@ use std::time::{
     Instant,
 };
 
-use host_lib::conn::{
-    Conn,
-    ConnReceiveError,
-    ConnSendError,
+use host_lib::{
+    conn::{
+        Conn,
+        ConnReceiveError,
+        ConnSendError,
+    },
+    pins::Pins,
 };
 use lpc845_messages::{
     AssistantToHost,
@@ -21,60 +24,58 @@ use lpc845_messages::{
 /// The connection to the test assistant
 pub struct Assistant {
     conn: Conn,
+    pins: Pins,
 }
 
 impl Assistant {
     pub(crate) fn new(conn: Conn) -> Self {
         Self {
             conn,
+            pins: Pins::new(),
         }
     }
 
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.conn
-            .send(&HostToAssistant::SetPin(
-                pin::SetLevel {
-                    pin: OutputPin::Red,
-                    level: pin::Level::High,
-                }
-            ))
+        self.pins
+            .set_level::<_, HostToAssistant>(
+                OutputPin::Red,
+                pin::Level::High,
+                &mut self.conn,
+            )
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to set the target's input pin low
     pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.conn
-            .send(&HostToAssistant::SetPin(
-                pin::SetLevel {
-                    pin: OutputPin::Red,
-                    level: pin::Level::Low,
-                }
-            ))
+        self.pins
+            .set_level::<_, HostToAssistant>(
+                OutputPin::Red,
+                pin::Level::Low,
+                &mut self.conn,
+            )
             .map_err(|err| AssistantSetPinLowError(err))
     }
 
     /// Instruct the assistant to disable CTS
     pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.conn
-            .send(&HostToAssistant::SetPin(
-                pin::SetLevel {
-                    pin: OutputPin::Cts,
-                    level: pin::Level::High,
-                }
-            ))
+        self.pins
+            .set_level::<_, HostToAssistant>(
+                OutputPin::Cts,
+                pin::Level::High,
+                &mut self.conn,
+            )
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to enable CTS
     pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.conn
-            .send(&HostToAssistant::SetPin(
-                pin::SetLevel {
-                    pin: OutputPin::Cts,
-                    level: pin::Level::Low,
-                }
-            ))
+        self.pins
+            .set_level::<_, HostToAssistant>(
+                OutputPin::Cts,
+                pin::Level::Low,
+                &mut self.conn,
+            )
             .map_err(|err| AssistantSetPinLowError(err))
     }
 
