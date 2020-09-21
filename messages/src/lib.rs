@@ -63,10 +63,7 @@ pub enum TargetToHost<'r> {
     },
 
     /// Notify the host that the level of GPIO input changed
-    PinLevelChanged {
-        /// The new level of the pin
-        level: pin::Level,
-    },
+    PinLevelChanged(pin::LevelChanged<()>),
 
     /// Notify the host that the I2C transaction completed
     I2cReply(u8),
@@ -99,19 +96,7 @@ pub enum AssistantToHost<'r> {
     },
 
     /// Notify the host that the level of a pin has changed
-    PinLevelChanged {
-        /// The pin whose level has changed
-        pin: InputPin,
-
-        /// The new level of the pin
-        level: pin::Level,
-
-        /// The period since the last change of this pin in ms, if available
-        ///
-        /// If the time since the last change has been too long, this value will
-        /// not be reliable.
-        period_ms: Option<u32>,
-    }
+    PinLevelChanged(pin::LevelChanged<InputPin>),
 }
 
 

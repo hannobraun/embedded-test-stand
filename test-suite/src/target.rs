@@ -93,7 +93,12 @@ impl Target {
             };
 
             match message {
-                TargetToHost::PinLevelChanged { level } => {
+                TargetToHost::PinLevelChanged(
+                    pin::LevelChanged {
+                        level,
+                        ..
+                    }
+                ) => {
                     pin_state = Some(level);
                 }
                 message => {

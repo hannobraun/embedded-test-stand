@@ -828,7 +828,13 @@ const APP: () = {
 
                     host_tx
                         .send_message(
-                            &TargetToHost::PinLevelChanged { level },
+                            &TargetToHost::PinLevelChanged(
+                                pin::LevelChanged {
+                                    pin: (),
+                                    level,
+                                    period_ms: None,
+                                },
+                            ),
                             &mut buf,
                         )
                         .unwrap();

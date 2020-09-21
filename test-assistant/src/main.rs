@@ -682,11 +682,13 @@ fn handle_timer_interrupts<U>(
                 let period_ms = period.map(|value| value / 12_000);
                 host_tx
                     .send_message(
-                        &AssistantToHost::PinLevelChanged {
-                            pin,
-                            level,
-                            period_ms,
-                        },
+                        &AssistantToHost::PinLevelChanged(
+                            pin::LevelChanged {
+                                pin,
+                                level,
+                                period_ms,
+                            },
+                        ),
                         buf,
                     )
                     .unwrap();

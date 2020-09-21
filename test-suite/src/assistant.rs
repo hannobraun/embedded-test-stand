@@ -123,7 +123,9 @@ impl Assistant {
             };
 
             match message {
-                AssistantToHost::PinLevelChanged { pin, level, period_ms }
+                AssistantToHost::PinLevelChanged(pin::LevelChanged {
+                    pin, level, period_ms
+                })
                     if pin == expected_pin
                 => {
                     pin_state = Some((level, period_ms));
