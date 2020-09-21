@@ -26,6 +26,8 @@ This section explains some concepts, which should make the structure of this rep
 
 **Test assistant**: Additional hardware (likely a microcontroller development board) that assists the test suite in orchestrating the tests, and gathering information about the test target's behavior.
 
+**Test node**: The umbrella term that can refer to either the test target or the test assistant.
+
 
 ## Structure
 
