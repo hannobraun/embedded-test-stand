@@ -1,7 +1,7 @@
 #![no_std]
 
 
-pub mod pin;
+pub use protocol::pin;
 
 
 use serde::{
