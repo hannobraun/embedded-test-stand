@@ -1,6 +1,11 @@
 #![no_std]
 
 
+pub mod pin;
+
+pub use self::pin::PinState;
+
+
 use serde::{
     Deserialize,
     Serialize,
@@ -142,12 +147,4 @@ pub enum InputPin {
 pub enum OutputPin {
     Cts,
     Red,
-}
-
-
-/// Represents the electrical level of a pin
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum PinState {
-    High,
-    Low,
 }
