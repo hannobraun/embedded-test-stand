@@ -493,7 +493,12 @@ const APP: () = {
                         } => {
                             target_sync_tx.send_raw(data)
                         }
-                        HostToAssistant::SetPin(OutputPin::Red, level) => {
+                        HostToAssistant::SetPin(
+                            pin::SetLevel {
+                                pin: OutputPin::Red,
+                                level,
+                            }
+                        ) => {
                             match level {
                                 pin::Level::High => {
                                     red.set_high();
@@ -505,16 +510,20 @@ const APP: () = {
                             Ok(())
                         }
                         HostToAssistant::SetPin(
-                            OutputPin::Cts,
-                            pin::Level::High,
+                            pin::SetLevel {
+                                pin: OutputPin::Cts,
+                                level: pin::Level::High,
+                            }
                         ) => {
                             rprintln!("Setting CTS HIGH");
                             cts.set_high();
                             Ok(())
                         }
                         HostToAssistant::SetPin(
-                            OutputPin::Cts,
-                            pin::Level::Low,
+                            pin::SetLevel {
+                                pin: OutputPin::Cts,
+                                level: pin::Level::Low,
+                            }
                         ) => {
                             rprintln!("Setting CTS LOW");
                             cts.set_low();

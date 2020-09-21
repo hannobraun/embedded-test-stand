@@ -23,7 +23,7 @@ pub enum HostToTarget<'r> {
     WaitForAddress(u8),
 
     /// Instruct the device to change the electrical level of the pin
-    SetPin(pin::Level),
+    SetPin(pin::SetLevel<()>),
 
     /// Instruct the target to start the timer interrupt
     StartTimerInterrupt { period_ms: u32 },
@@ -86,7 +86,7 @@ pub enum HostToAssistant<'r> {
     },
 
     /// Instruct the assistant to change level of the target's input pin
-    SetPin(OutputPin, pin::Level),
+    SetPin(pin::SetLevel<OutputPin>),
 }
 
 /// A message from the test assistant to the test suite on the host

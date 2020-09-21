@@ -24,25 +24,49 @@ pub struct Assistant(pub(crate) Conn);
 impl Assistant {
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, pin::Level::High))
+        self.0
+            .send(&HostToAssistant::SetPin(
+                pin::SetLevel {
+                    pin: OutputPin::Red,
+                    level: pin::Level::High,
+                }
+            ))
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to set the target's input pin low
     pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, pin::Level::Low))
+        self.0
+            .send(&HostToAssistant::SetPin(
+                pin::SetLevel {
+                    pin: OutputPin::Red,
+                    level: pin::Level::Low,
+                }
+            ))
             .map_err(|err| AssistantSetPinLowError(err))
     }
 
     /// Instruct the assistant to disable CTS
     pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, pin::Level::High))
+        self.0
+            .send(&HostToAssistant::SetPin(
+                pin::SetLevel {
+                    pin: OutputPin::Cts,
+                    level: pin::Level::High,
+                }
+            ))
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to enable CTS
     pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, pin::Level::Low))
+        self.0
+            .send(&HostToAssistant::SetPin(
+                pin::SetLevel {
+                    pin: OutputPin::Cts,
+                    level: pin::Level::Low,
+                }
+            ))
             .map_err(|err| AssistantSetPinLowError(err))
     }
 

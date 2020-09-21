@@ -598,10 +598,14 @@ const APP: () = {
                             });
                             Ok(())
                         }
-                        HostToTarget::SetPin(pin::Level::High) => {
+                        HostToTarget::SetPin(
+                            pin::SetLevel { level: pin::Level::High, .. }
+                        ) => {
                             Ok(green.set_high())
                         }
-                        HostToTarget::SetPin(pin::Level::Low) => {
+                        HostToTarget::SetPin(
+                            pin::SetLevel { level: pin::Level::Low, .. }
+                        ) => {
                             Ok(green.set_low())
                         }
                         HostToTarget::StartTimerInterrupt { period_ms } => {

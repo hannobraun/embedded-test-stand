@@ -24,13 +24,25 @@ pub struct Target(pub(crate) Conn);
 impl Target {
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
-        self.0.send(&HostToTarget::SetPin(pin::Level::High))
+        self.0
+            .send(&HostToTarget::SetPin(
+                pin::SetLevel {
+                    pin: (),
+                    level: pin::Level::High,
+                }
+            ))
             .map_err(|err| TargetSetPinHighError(err))
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
-        self.0.send(&HostToTarget::SetPin(pin::Level::Low))
+        self.0
+            .send(&HostToTarget::SetPin(
+                pin::SetLevel {
+                    pin: (),
+                    level: pin::Level::Low,
+                }
+            ))
             .map_err(|err| TargetSetPinLowError(err))
     }
 
