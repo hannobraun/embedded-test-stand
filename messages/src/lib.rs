@@ -3,8 +3,6 @@
 
 pub mod pin;
 
-pub use self::pin::PinState;
-
 
 use serde::{
     Deserialize,
@@ -25,7 +23,7 @@ pub enum HostToTarget<'r> {
     WaitForAddress(u8),
 
     /// Instruct the device to change the electrical level of the pin
-    SetPin(PinState),
+    SetPin(pin::Level),
 
     /// Instruct the target to start the timer interrupt
     StartTimerInterrupt { period_ms: u32 },
@@ -67,7 +65,7 @@ pub enum TargetToHost<'r> {
     /// Notify the host that the level of GPIO input changed
     PinLevelChanged {
         /// The new level of the pin
-        level: PinState,
+        level: pin::Level,
     },
 
     /// Notify the host that the I2C transaction completed
@@ -88,7 +86,7 @@ pub enum HostToAssistant<'r> {
     },
 
     /// Instruct the assistant to change level of the target's input pin
-    SetPin(OutputPin, PinState),
+    SetPin(OutputPin, pin::Level),
 }
 
 /// A message from the test assistant to the test suite on the host
@@ -106,7 +104,7 @@ pub enum AssistantToHost<'r> {
         pin: InputPin,
 
         /// The new level of the pin
-        level: PinState,
+        level: pin::Level,
 
         /// The period since the last change of this pin in ms, if available
         ///

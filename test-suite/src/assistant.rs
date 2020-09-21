@@ -13,8 +13,8 @@ use lpc845_messages::{
     HostToAssistant,
     InputPin,
     OutputPin,
-    PinState,
     UsartMode,
+    pin,
 };
 
 
@@ -24,25 +24,25 @@ pub struct Assistant(pub(crate) Conn);
 impl Assistant {
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, PinState::High))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, pin::Level::High))
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to set the target's input pin low
     pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, PinState::Low))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Red, pin::Level::Low))
             .map_err(|err| AssistantSetPinLowError(err))
     }
 
     /// Instruct the assistant to disable CTS
     pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, PinState::High))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, pin::Level::High))
             .map_err(|err| AssistantSetPinHighError(err))
     }
 
     /// Instruct the assistant to enable CTS
     pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, PinState::Low))
+        self.0.send(&HostToAssistant::SetPin(OutputPin::Cts, pin::Level::Low))
             .map_err(|err| AssistantSetPinLowError(err))
     }
 
@@ -54,7 +54,7 @@ impl Assistant {
             InputPin::Green,
             Duration::from_millis(10),
         )?;
-        Ok(pin_state.0 == PinState::High)
+        Ok(pin_state.0 == pin::Level::High)
     }
 
     /// Indicates whether the GPIO pin on the test target is set low
@@ -65,7 +65,7 @@ impl Assistant {
             InputPin::Green,
             Duration::from_millis(10),
         )?;
-        Ok(pin_state.0 == PinState::Low)
+        Ok(pin_state.0 == pin::Level::Low)
     }
 
     /// Receives pin state messages to determine current state of pin
@@ -73,7 +73,7 @@ impl Assistant {
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
     pub fn pin_state(&mut self, expected_pin: InputPin, timeout: Duration)
-        -> Result<(PinState, Option<u32>), AssistantPinReadError>
+        -> Result<(pin::Level, Option<u32>), AssistantPinReadError>
     {
         let mut buf   = Vec::new();
         let     start = Instant::now();
@@ -127,7 +127,7 @@ impl Assistant {
             InputPin::Rts,
             Duration::from_millis(10),
         )?;
-        Ok(pin_state.0 == PinState::Low)
+        Ok(pin_state.0 == pin::Level::Low)
     }
 
     /// Instruct assistant to send this message to the target via USART

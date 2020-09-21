@@ -12,7 +12,7 @@ use serde::{
 
 /// Represents the electrical level of a pin
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum PinState {
+pub enum Level {
     High,
     Low,
 }

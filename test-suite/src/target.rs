@@ -6,9 +6,9 @@ use std::time::{
 use lpc845_messages::{
     DmaMode,
     HostToTarget,
-    PinState,
     TargetToHost,
     UsartMode,
+    pin,
 };
 
 use host_lib::conn::{
@@ -24,13 +24,13 @@ pub struct Target(pub(crate) Conn);
 impl Target {
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
-        self.0.send(&HostToTarget::SetPin(PinState::High))
+        self.0.send(&HostToTarget::SetPin(pin::Level::High))
             .map_err(|err| TargetSetPinHighError(err))
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
-        self.0.send(&HostToTarget::SetPin(PinState::Low))
+        self.0.send(&HostToTarget::SetPin(pin::Level::Low))
             .map_err(|err| TargetSetPinLowError(err))
     }
 
@@ -39,7 +39,7 @@ impl Target {
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, TargetPinReadError> {
         let pin_state = self.pin_state(Duration::from_millis(10))?;
-        Ok(pin_state == PinState::High)
+        Ok(pin_state == pin::Level::High)
     }
 
     /// Indicates whether the input pin is set low
@@ -47,7 +47,7 @@ impl Target {
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, TargetPinReadError> {
         let pin_state = self.pin_state(Duration::from_millis(10))?;
-        Ok(pin_state == PinState::Low)
+        Ok(pin_state == pin::Level::Low)
     }
 
     /// Receives pin state messages to determine current state of pin
@@ -55,7 +55,7 @@ impl Target {
     /// Will wait for pin state messages for a short amount of time. The most
     /// recent one will be used to determine the pin state.
     pub fn pin_state(&mut self, timeout: Duration)
-        -> Result<PinState, TargetPinReadError>
+        -> Result<pin::Level, TargetPinReadError>
     {
         let mut buf   = Vec::new();
         let     start = Instant::now();

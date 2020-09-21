@@ -96,9 +96,9 @@ use firmware_lib::usart::{
 use lpc845_messages::{
     DmaMode,
     HostToTarget,
-    PinState,
     TargetToHost,
     UsartMode,
+    pin,
 };
 
 
@@ -598,10 +598,10 @@ const APP: () = {
                             });
                             Ok(())
                         }
-                        HostToTarget::SetPin(PinState::High) => {
+                        HostToTarget::SetPin(pin::Level::High) => {
                             Ok(green.set_high())
                         }
-                        HostToTarget::SetPin(PinState::Low) => {
+                        HostToTarget::SetPin(pin::Level::Low) => {
                             Ok(green.set_low())
                         }
                         HostToTarget::StartTimerInterrupt { period_ms } => {
@@ -818,8 +818,8 @@ const APP: () = {
                 let input_is_high = red.is_high();
                 if input_is_high != input_was_high {
                     let level = match input_is_high {
-                        true  => PinState::High,
-                        false => PinState::Low,
+                        true  => pin::Level::High,
+                        false => pin::Level::Low,
                     };
 
                     host_tx
