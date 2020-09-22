@@ -17,7 +17,10 @@ use host_lib::{
         ConnReceiveError,
         ConnSendError,
     },
-    pins::Pins,
+    pins::{
+        Pins,
+        ReadLevelError,
+    },
 };
 
 
@@ -61,72 +64,24 @@ impl Target {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pin_state(Duration::from_millis(10))?;
-        Ok(pin_state == pin::Level::High)
+        let pin_state = self.pins.read_level::<_, TargetToHost>(
+            (),
+            Duration::from_millis(10),
+            &mut self.conn,
+        )?;
+        Ok(pin_state.0 == pin::Level::High)
     }
 
     /// Indicates whether the input pin is set low
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pin_state(Duration::from_millis(10))?;
-        Ok(pin_state == pin::Level::Low)
-    }
-
-    /// Receives pin state messages to determine current state of pin
-    ///
-    /// Will wait for pin state messages for a short amount of time. The most
-    /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, timeout: Duration)
-        -> Result<pin::Level, TargetPinReadError>
-    {
-        let mut buf   = Vec::new();
-        let     start = Instant::now();
-
-        let mut pin_state = None;
-
-        loop {
-            if start.elapsed() > timeout {
-                break;
-            }
-
-            let message = self.conn
-                .receive::<TargetToHost>(timeout, &mut buf);
-            let message = match message {
-                Ok(message) => {
-                    message
-                }
-                Err(err) if err.is_timeout() => {
-                    break;
-                }
-                Err(err) => {
-                    return Err(TargetPinReadError::Receive(err));
-                }
-            };
-
-            match message {
-                TargetToHost::PinLevelChanged(
-                    pin::LevelChanged {
-                        level,
-                        ..
-                    }
-                ) => {
-                    pin_state = Some(level);
-                }
-                message => {
-                    return Err(
-                        TargetPinReadError::UnexpectedMessage(
-                            format!("{:?}", message)
-                        )
-                    );
-                }
-            }
-        }
-
-        match pin_state {
-            Some(pin_state) => Ok(pin_state),
-            None            => Err(TargetPinReadError::Timeout),
-        }
+        let pin_state = self.pins.read_level::<_, TargetToHost>(
+            (),
+            Duration::from_millis(10),
+            &mut self.conn,
+        )?;
+        Ok(pin_state.0 == pin::Level::Low)
     }
 
     /// Instruct the target to send this message via USART
@@ -376,10 +331,12 @@ pub struct TargetSetPinHighError(ConnSendError);
 pub struct TargetSetPinLowError(ConnSendError);
 
 #[derive(Debug)]
-pub enum TargetPinReadError {
-    Receive(ConnReceiveError),
-    Timeout,
-    UnexpectedMessage(String),
+pub struct TargetPinReadError(ReadLevelError);
+
+impl From<ReadLevelError> for TargetPinReadError {
+    fn from(err: ReadLevelError) -> Self {
+        Self(err)
+    }
 }
 
 

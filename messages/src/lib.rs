@@ -4,6 +4,8 @@
 pub use protocol::pin;
 
 
+use core::convert::TryFrom;
+
 use serde::{
     Deserialize,
     Serialize,
@@ -79,6 +81,21 @@ pub enum TargetToHost<'r> {
     SpiReply(u8),
 }
 
+impl<'r> TryFrom<TargetToHost<'r>> for pin::LevelChanged<()> {
+    type Error = TargetToHost<'r>;
+
+    fn try_from(value: TargetToHost<'r>) -> Result<Self, Self::Error> {
+        match value {
+            TargetToHost::PinLevelChanged(pin_level_changed) => {
+                Ok(pin_level_changed)
+            }
+            _ => {
+                Err(value)
+            }
+        }
+    }
+}
+
 
 /// A message from the test suite on the host to the test assistant
 #[derive(Debug, Deserialize, Serialize)]
@@ -111,6 +128,21 @@ pub enum AssistantToHost<'r> {
 
     /// Notify the host that the level of a pin has changed
     PinLevelChanged(pin::LevelChanged<InputPin>),
+}
+
+impl<'r> TryFrom<AssistantToHost<'r>> for pin::LevelChanged<InputPin> {
+    type Error = AssistantToHost<'r>;
+
+    fn try_from(value: AssistantToHost<'r>) -> Result<Self, Self::Error> {
+        match value {
+            AssistantToHost::PinLevelChanged(pin_level_changed) => {
+                Ok(pin_level_changed)
+            }
+            _ => {
+                Err(value)
+            }
+        }
+    }
 }
 
 

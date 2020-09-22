@@ -9,7 +9,10 @@ use host_lib::{
         ConnReceiveError,
         ConnSendError,
     },
-    pins::Pins,
+    pins::{
+        Pins,
+        ReadLevelError,
+    },
 };
 use lpc845_messages::{
     AssistantToHost,
@@ -83,9 +86,10 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(
+        let pin_state = self.pins.read_level::<_, AssistantToHost>(
             InputPin::Green,
             Duration::from_millis(10),
+            &mut self.conn,
         )?;
         Ok(pin_state.0 == pin::Level::High)
     }
@@ -94,74 +98,20 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(
+        let pin_state = self.pins.read_level::<_, AssistantToHost>(
             InputPin::Green,
             Duration::from_millis(10),
+            &mut self.conn,
         )?;
         Ok(pin_state.0 == pin::Level::Low)
     }
 
-    /// Receives pin state messages to determine current state of pin
-    ///
-    /// Will wait for pin state messages for a short amount of time. The most
-    /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, expected_pin: InputPin, timeout: Duration)
-        -> Result<(pin::Level, Option<u32>), AssistantPinReadError>
-    {
-        let mut buf   = Vec::new();
-        let     start = Instant::now();
-
-        let mut pin_state = None;
-
-        loop {
-            if start.elapsed() > timeout {
-                break;
-            }
-
-            let message = self.conn
-                .receive::<AssistantToHost>(timeout, &mut buf);
-            let message = match message {
-                Ok(message) => {
-                    message
-                }
-                Err(err) if err.is_timeout() => {
-                    break;
-                }
-                Err(err) => {
-                    return Err(AssistantPinReadError::Receive(err));
-                }
-            };
-
-            match message {
-                AssistantToHost::PinLevelChanged(pin::LevelChanged {
-                    pin, level, period_ms
-                })
-                    if pin == expected_pin
-                => {
-                    pin_state = Some((level, period_ms));
-                }
-
-                _ => {
-                    return Err(
-                        AssistantPinReadError::UnexpectedMessage(
-                            format!("{:?}", message)
-                        )
-                    );
-                }
-            }
-        }
-
-        match pin_state {
-            Some(pin_state) => Ok(pin_state),
-            None            => Err(AssistantPinReadError::Timeout),
-        }
-    }
-
     /// Wait for RTS signal to be enabled
     pub fn wait_for_rts(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pin_state(
+        let pin_state = self.pins.read_level::<_, AssistantToHost>(
             InputPin::Rts,
             Duration::from_millis(10),
+            &mut self.conn,
         )?;
         Ok(pin_state.0 == pin::Level::Low)
     }
@@ -276,13 +226,19 @@ impl Assistant {
 
         let mut measurement: Option<GpioPeriodMeasurement> = None;
 
-        let (mut state, _) = self.pin_state(InputPin::Blue, timeout)?;
+        let (mut state, _) = self.pins.read_level::<_, AssistantToHost>(
+            InputPin::Blue,
+            timeout,
+            &mut self.conn,
+        )?;
 
         for _ in 0 .. samples {
-            let (new_state, period_ms) = self.pin_state(
-                InputPin::Blue,
-                timeout,
-            )?;
+            let (new_state, period_ms) = self.pins
+                .read_level::<_, AssistantToHost>(
+                    InputPin::Blue,
+                    timeout,
+                    &mut self.conn,
+                )?;
             print!("{:?}, {:?}\n", new_state, period_ms);
 
             if new_state == state {
@@ -363,10 +319,12 @@ pub struct AssistantSetPinHighError(ConnSendError);
 pub struct AssistantSetPinLowError(ConnSendError);
 
 #[derive(Debug)]
-pub enum AssistantPinReadError {
-    Receive(ConnReceiveError),
-    UnexpectedMessage(String),
-    Timeout,
+pub struct AssistantPinReadError(ReadLevelError);
+
+impl From<ReadLevelError> for AssistantPinReadError {
+    fn from(err: ReadLevelError) -> Self {
+        Self(err)
+    }
 }
 
 #[derive(Debug)]
