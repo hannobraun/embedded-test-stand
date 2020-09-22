@@ -9,7 +9,7 @@ use host_lib::{
         ConnReceiveError,
         ConnSendError,
     },
-    pins::{
+    pin::{
         Pin,
         ReadLevelError,
     },
