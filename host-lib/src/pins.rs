@@ -25,16 +25,22 @@ use crate::conn::{
 };
 
 
-/// API for remotely controlling and monitoring pins on a test node
+/// API for remotely controlling and monitoring a pin on a test node
 ///
-/// This struct is intended as a building block for higher-level interface for
-/// controlling the test nodes of a specific test stand.
-pub struct Pins;
+/// This struct is intended as a building block for higher-level interfaces
+/// that control the test nodes of a specific test stand.
+pub struct Pin<Id> {
+    pin: Id,
+}
 
-impl Pins {
+impl<Id> Pin<Id>
+    where Id: Copy
+{
     /// Create a new instance of `Pins`
-    pub fn new() -> Self {
-        Self
+    pub fn new(pin: Id) -> Self {
+        Self {
+            pin,
+        }
     }
 
     /// Commands the node to change pin level
@@ -42,8 +48,7 @@ impl Pins {
     /// Constructs the command, calls the `wrap` closure to wrap that command
     /// into a message that the node will understand, then sends that message to
     /// the node through `conn`.
-    pub fn set_level<Id, M>(&mut self,
-        pin: Id,
+    pub fn set_level<M>(&mut self,
         level: pin::Level,
         conn: &mut Conn,
     )
@@ -51,7 +56,7 @@ impl Pins {
         where
             M: From<pin::SetLevel<Id>> + Serialize,
     {
-        let command = pin::SetLevel { pin, level };
+        let command = pin::SetLevel { pin: self.pin, level };
         let message: M = command.into();
         conn.send(&message)
     }
@@ -60,8 +65,7 @@ impl Pins {
     ///
     /// Receives from `conn`, expecting to receive a "level changed" message.
     /// Uses `unwrap` to get a `pin::LevelChange` from the message.
-    pub fn read_level<'de, Id, M>(&mut self,
-        expected_pin: Id,
+    pub fn read_level<'de, M>(&mut self,
         timeout: Duration,
         conn: &mut Conn,
     )
@@ -114,7 +118,7 @@ impl Pins {
                         period_ms,
                     }
                 )
-                    if pin == expected_pin
+                    if pin == self.pin
                 => {
                     pin_level = Some((level, period_ms));
                 }

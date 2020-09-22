@@ -18,7 +18,7 @@ use host_lib::{
         ConnSendError,
     },
     pins::{
-        Pins,
+        Pin,
         ReadLevelError,
     },
 };
@@ -27,22 +27,21 @@ use host_lib::{
 /// The connection to the test target
 pub struct Target {
     conn: Conn,
-    pins: Pins,
+    pin: Pin<()>,
 }
 
 impl Target {
     pub(crate) fn new(conn: Conn) -> Self {
         Self {
             conn,
-            pins: Pins::new(),
+            pin: Pin::new(()),
         }
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
-        self.pins
-            .set_level::<_, HostToTarget>(
-                (),
+        self.pin
+            .set_level::<HostToTarget>(
                 pin::Level::High,
                 &mut self.conn,
             )
@@ -51,9 +50,8 @@ impl Target {
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
-        self.pins
-            .set_level::<_, HostToTarget>(
-                (),
+        self.pin
+            .set_level::<HostToTarget>(
                 pin::Level::Low,
                 &mut self.conn,
             )
@@ -64,8 +62,7 @@ impl Target {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pins.read_level::<_, TargetToHost>(
-            (),
+        let pin_state = self.pin.read_level::<TargetToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;
@@ -76,8 +73,7 @@ impl Target {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pins.read_level::<_, TargetToHost>(
-            (),
+        let pin_state = self.pin.read_level::<TargetToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;

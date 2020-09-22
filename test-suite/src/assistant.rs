@@ -10,7 +10,7 @@ use host_lib::{
         ConnSendError,
     },
     pins::{
-        Pins,
+        Pin,
         ReadLevelError,
     },
 };
@@ -27,22 +27,29 @@ use lpc845_messages::{
 /// The connection to the test assistant
 pub struct Assistant {
     conn: Conn,
-    pins: Pins,
+    red_led: Pin<OutputPin>,
+    green_led: Pin<InputPin>,
+    blue_led: Pin<InputPin>,
+    cts: Pin<OutputPin>,
+    rts: Pin<InputPin>,
 }
 
 impl Assistant {
     pub(crate) fn new(conn: Conn) -> Self {
         Self {
             conn,
-            pins: Pins::new(),
+            red_led: Pin::new(OutputPin::Red),
+            green_led: Pin::new(InputPin::Green),
+            blue_led: Pin::new(InputPin::Blue),
+            cts: Pin::new(OutputPin::Cts),
+            rts: Pin::new(InputPin::Rts),
         }
     }
 
     /// Instruct the assistant to set the target's input pin high
     pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.pins
-            .set_level::<_, HostToAssistant>(
-                OutputPin::Red,
+        self.red_led
+            .set_level::<HostToAssistant>(
                 pin::Level::High,
                 &mut self.conn,
             )
@@ -51,9 +58,8 @@ impl Assistant {
 
     /// Instruct the assistant to set the target's input pin low
     pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.pins
-            .set_level::<_, HostToAssistant>(
-                OutputPin::Red,
+        self.red_led
+            .set_level::<HostToAssistant>(
                 pin::Level::Low,
                 &mut self.conn,
             )
@@ -62,9 +68,8 @@ impl Assistant {
 
     /// Instruct the assistant to disable CTS
     pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
-        self.pins
-            .set_level::<_, HostToAssistant>(
-                OutputPin::Cts,
+        self.cts
+            .set_level::<HostToAssistant>(
                 pin::Level::High,
                 &mut self.conn,
             )
@@ -73,9 +78,8 @@ impl Assistant {
 
     /// Instruct the assistant to enable CTS
     pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
-        self.pins
-            .set_level::<_, HostToAssistant>(
-                OutputPin::Cts,
+        self.cts
+            .set_level::<HostToAssistant>(
                 pin::Level::Low,
                 &mut self.conn,
             )
@@ -86,8 +90,7 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pins.read_level::<_, AssistantToHost>(
-            InputPin::Green,
+        let pin_state = self.green_led.read_level::<AssistantToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;
@@ -98,8 +101,7 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pins.read_level::<_, AssistantToHost>(
-            InputPin::Green,
+        let pin_state = self.green_led.read_level::<AssistantToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;
@@ -108,8 +110,7 @@ impl Assistant {
 
     /// Wait for RTS signal to be enabled
     pub fn wait_for_rts(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.pins.read_level::<_, AssistantToHost>(
-            InputPin::Rts,
+        let pin_state = self.rts.read_level::<AssistantToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;
@@ -226,16 +227,14 @@ impl Assistant {
 
         let mut measurement: Option<GpioPeriodMeasurement> = None;
 
-        let (mut state, _) = self.pins.read_level::<_, AssistantToHost>(
-            InputPin::Blue,
+        let (mut state, _) = self.blue_led.read_level::<AssistantToHost>(
             timeout,
             &mut self.conn,
         )?;
 
         for _ in 0 .. samples {
-            let (new_state, period_ms) = self.pins
-                .read_level::<_, AssistantToHost>(
-                    InputPin::Blue,
+            let (new_state, period_ms) = self.blue_led
+                .read_level::<AssistantToHost>(
                     timeout,
                     &mut self.conn,
                 )?;
