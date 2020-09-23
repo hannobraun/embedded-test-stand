@@ -31,6 +31,9 @@ use crate::conn::{
 /// that control the test nodes of a specific test stand.
 pub struct Pin<Id> {
     pin: Id,
+
+    /// The latest known pin level
+    level: Option<(pin::Level, Option<u32>)>,
 }
 
 impl<Id> Pin<Id>
@@ -40,6 +43,7 @@ impl<Id> Pin<Id>
     pub fn new(pin: Id) -> Self {
         Self {
             pin,
+            level: None,
         }
     }
 
@@ -58,7 +62,11 @@ impl<Id> Pin<Id>
     {
         let command = pin::SetLevel { pin: self.pin, level };
         let message: M = command.into();
-        conn.send(&message)
+        conn.send(&message)?;
+
+        self.level = Some((level, None));
+
+        Ok(())
     }
 
     /// Read level for the given pin
@@ -78,8 +86,7 @@ impl<Id> Pin<Id>
     {
         let mut buf: Vec<u8> = Vec::new();
 
-        let     start     = Instant::now();
-        let mut pin_level = None;
+        let start = Instant::now();
 
         loop {
             // Because of the lifetime `'de`, Rust throws an error when we try
@@ -120,7 +127,7 @@ impl<Id> Pin<Id>
                 )
                     if pin == self.pin
                 => {
-                    pin_level = Some((level, period_ms));
+                    self.level = Some((level, period_ms));
                 }
                 Err(message) => {
                     return Err(
@@ -139,7 +146,7 @@ impl<Id> Pin<Id>
             }
         }
 
-        match pin_level {
+        match self.level {
             Some(pin_level) => Ok(pin_level),
             None            => Err(ReadLevelError::Timeout),
         }
