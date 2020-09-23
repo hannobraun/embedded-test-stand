@@ -6,31 +6,55 @@ use std::time::{
 use lpc845_messages::{
     DmaMode,
     HostToTarget,
-    PinState,
     TargetToHost,
     UsartMode,
+    pin,
 };
 
-use host_lib::conn::{
-    Conn,
-    ConnReceiveError,
-    ConnSendError,
+use host_lib::{
+    conn::{
+        Conn,
+        ConnReceiveError,
+        ConnSendError,
+    },
+    pin::{
+        Pin,
+        ReadLevelError,
+    },
 };
 
 
 /// The connection to the test target
-pub struct Target(pub(crate) Conn);
+pub struct Target {
+    conn: Conn,
+    pin: Pin<()>,
+}
 
 impl Target {
+    pub(crate) fn new(conn: Conn) -> Self {
+        Self {
+            conn,
+            pin: Pin::new(()),
+        }
+    }
+
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
-        self.0.send(&HostToTarget::SetPin(PinState::High))
+        self.pin
+            .set_level::<HostToTarget>(
+                pin::Level::High,
+                &mut self.conn,
+            )
             .map_err(|err| TargetSetPinHighError(err))
     }
 
     /// Instruct the target to set a GPIO pin high
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
-        self.0.send(&HostToTarget::SetPin(PinState::Low))
+        self.pin
+            .set_level::<HostToTarget>(
+                pin::Level::Low,
+                &mut self.conn,
+            )
             .map_err(|err| TargetSetPinLowError(err))
     }
 
@@ -38,73 +62,30 @@ impl Target {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pin_state(Duration::from_millis(10))?;
-        Ok(pin_state == PinState::High)
+        let pin_state = self.pin.read_level::<TargetToHost>(
+            Duration::from_millis(10),
+            &mut self.conn,
+        )?;
+        Ok(pin_state.0 == pin::Level::High)
     }
 
     /// Indicates whether the input pin is set low
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pin_state(Duration::from_millis(10))?;
-        Ok(pin_state == PinState::Low)
-    }
-
-    /// Receives pin state messages to determine current state of pin
-    ///
-    /// Will wait for pin state messages for a short amount of time. The most
-    /// recent one will be used to determine the pin state.
-    pub fn pin_state(&mut self, timeout: Duration)
-        -> Result<PinState, TargetPinReadError>
-    {
-        let mut buf   = Vec::new();
-        let     start = Instant::now();
-
-        let mut pin_state = None;
-
-        loop {
-            if start.elapsed() > timeout {
-                break;
-            }
-
-            let message = self.0.receive::<TargetToHost>(timeout, &mut buf);
-            let message = match message {
-                Ok(message) => {
-                    message
-                }
-                Err(err) if err.is_timeout() => {
-                    break;
-                }
-                Err(err) => {
-                    return Err(TargetPinReadError::Receive(err));
-                }
-            };
-
-            match message {
-                TargetToHost::PinLevelChanged { level } => {
-                    pin_state = Some(level);
-                }
-                message => {
-                    return Err(
-                        TargetPinReadError::UnexpectedMessage(
-                            format!("{:?}", message)
-                        )
-                    );
-                }
-            }
-        }
-
-        match pin_state {
-            Some(pin_state) => Ok(pin_state),
-            None            => Err(TargetPinReadError::Timeout),
-        }
+        let pin_state = self.pin.read_level::<TargetToHost>(
+            Duration::from_millis(10),
+            &mut self.conn,
+        )?;
+        Ok(pin_state.0 == pin::Level::Low)
     }
 
     /// Instruct the target to send this message via USART
     pub fn send_usart(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Regular, data })
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Regular, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -112,7 +93,8 @@ impl Target {
     pub fn send_usart_dma(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -120,7 +102,8 @@ impl Target {
     pub fn send_usart_sync(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0.send(&HostToTarget::SendUsart { mode: UsartMode::Sync, data })
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Sync, data })
             .map_err(|err| TargetUsartSendError(err))
     }
 
@@ -128,7 +111,7 @@ impl Target {
     pub fn send_usart_with_flow_control(&mut self, data: &[u8])
         -> Result<(), TargetUsartSendError>
     {
-        self.0
+        self.conn
             .send(&HostToTarget::SendUsart {
                 mode: UsartMode::FlowControl,
                 data,
@@ -185,7 +168,8 @@ impl Target {
             }
 
             let mut tmp = Vec::new();
-            let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+            let message = self.conn
+                .receive::<TargetToHost>(timeout, &mut tmp)
                 .map_err(|err| TargetUsartWaitError::Receive(err))?;
 
             match message {
@@ -209,7 +193,8 @@ impl Target {
     pub fn wait_for_address(&mut self, address: u8)
         -> Result<(), TargetWaitForAddressError>
     {
-        self.0.send(&HostToTarget::WaitForAddress(address))
+        self.conn
+            .send(&HostToTarget::WaitForAddress(address))
             .map_err(|err| TargetWaitForAddressError(err))
     }
 
@@ -217,7 +202,8 @@ impl Target {
     pub fn start_timer_interrupt(&mut self, period_ms: u32)
         -> Result<TimerInterrupt, TargetStartTimerInterruptError>
     {
-        self.0.send(&HostToTarget::StartTimerInterrupt { period_ms })
+        self.conn
+            .send(&HostToTarget::StartTimerInterrupt { period_ms })
             .map_err(|err| TargetStartTimerInterruptError(err))?;
 
         Ok(TimerInterrupt(self))
@@ -250,11 +236,13 @@ impl Target {
     {
         let address = 0x48;
 
-        self.0.send(&HostToTarget::StartI2cTransaction { mode, address, data })
+        self.conn
+            .send(&HostToTarget::StartI2cTransaction { mode, address, data })
             .map_err(|err| TargetI2cError::Send(err))?;
 
         let mut tmp = Vec::new();
-        let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+        let message = self.conn
+            .receive::<TargetToHost>(timeout, &mut tmp)
             .map_err(|err| TargetI2cError::Receive(err))?;
 
         match message {
@@ -296,11 +284,11 @@ impl Target {
     )
         -> Result<u8, TargetSpiError>
     {
-        self.0.send(&HostToTarget::StartSpiTransaction { mode, data })
+        self.conn.send(&HostToTarget::StartSpiTransaction { mode, data })
             .map_err(|err| TargetSpiError::Send(err))?;
 
         let mut tmp = Vec::new();
-        let message = self.0.receive::<TargetToHost>(timeout, &mut tmp)
+        let message = self.conn.receive::<TargetToHost>(timeout, &mut tmp)
             .map_err(|err| TargetSpiError::Receive(err))?;
 
         match message {
@@ -326,7 +314,7 @@ pub struct TimerInterrupt<'r>(&'r mut Target);
 
 impl Drop for TimerInterrupt<'_> {
     fn drop(&mut self) {
-        (self.0).0.send(&HostToTarget::StopTimerInterrupt)
+        (self.0).conn.send(&HostToTarget::StopTimerInterrupt)
             .unwrap()
     }
 }
@@ -339,10 +327,12 @@ pub struct TargetSetPinHighError(ConnSendError);
 pub struct TargetSetPinLowError(ConnSendError);
 
 #[derive(Debug)]
-pub enum TargetPinReadError {
-    Receive(ConnReceiveError),
-    Timeout,
-    UnexpectedMessage(String),
+pub struct TargetPinReadError(ReadLevelError);
+
+impl From<ReadLevelError> for TargetPinReadError {
+    fn from(err: ReadLevelError) -> Self {
+        Self(err)
+    }
 }
 
 

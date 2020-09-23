@@ -11,6 +11,9 @@ postcard    = "0.5.1"
 serde       = "1.0.115"
 toml        = "0.5.6"
 
+[dependencies.protocol]
+path = "../protocol"
+
 [dependencies.serialport]
 version          = "3.3.0"
 default-features = false # depends on libudev by default

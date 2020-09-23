@@ -33,8 +33,8 @@ impl TestStand {
         Ok(
             Self {
                 _guard:    test_stand.guard,
-                target:    Target(test_stand.target?),
-                assistant: Assistant(test_stand.assistant?),
+                target:    Target::new(test_stand.target?),
+                assistant: Assistant::new(test_stand.assistant?),
             }
         )
     }

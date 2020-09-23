@@ -91,8 +91,8 @@ use lpc845_messages::{
     HostToAssistant,
     InputPin,
     OutputPin,
-    PinState,
     UsartMode,
+    pin,
 };
 
 
@@ -493,28 +493,37 @@ const APP: () = {
                         } => {
                             target_sync_tx.send_raw(data)
                         }
-                        HostToAssistant::SetPin(OutputPin::Red, level) => {
+                        HostToAssistant::SetPin(
+                            pin::SetLevel {
+                                pin: OutputPin::Red,
+                                level,
+                            }
+                        ) => {
                             match level {
-                                PinState::High => {
+                                pin::Level::High => {
                                     red.set_high();
                                 }
-                                PinState::Low => {
+                                pin::Level::Low => {
                                     red.set_low();
                                 }
                             }
                             Ok(())
                         }
                         HostToAssistant::SetPin(
-                            OutputPin::Cts,
-                            PinState::High,
+                            pin::SetLevel {
+                                pin: OutputPin::Cts,
+                                level: pin::Level::High,
+                            }
                         ) => {
                             rprintln!("Setting CTS HIGH");
                             cts.set_high();
                             Ok(())
                         }
                         HostToAssistant::SetPin(
-                            OutputPin::Cts,
-                            PinState::Low,
+                            pin::SetLevel {
+                                pin: OutputPin::Cts,
+                                level: pin::Level::Low,
+                            }
                         ) => {
                             rprintln!("Setting CTS LOW");
                             cts.set_low();
@@ -666,18 +675,20 @@ fn handle_timer_interrupts<U>(
         match event {
             pin_interrupt::Event { level, period } => {
                 let level = match level {
-                    gpio::Level::High => PinState::High,
-                    gpio::Level::Low  => PinState::Low,
+                    gpio::Level::High => pin::Level::High,
+                    gpio::Level::Low  => pin::Level::Low,
                 };
 
                 let period_ms = period.map(|value| value / 12_000);
                 host_tx
                     .send_message(
-                        &AssistantToHost::PinLevelChanged {
-                            pin,
-                            level,
-                            period_ms,
-                        },
+                        &AssistantToHost::PinLevelChanged(
+                            pin::LevelChanged {
+                                pin,
+                                level,
+                                period_ms,
+                            },
+                        ),
                         buf,
                     )
                     .unwrap();

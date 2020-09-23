@@ -1,6 +1,11 @@
 #![no_std]
 
 
+pub use protocol::pin;
+
+
+use core::convert::TryFrom;
+
 use serde::{
     Deserialize,
     Serialize,
@@ -20,7 +25,7 @@ pub enum HostToTarget<'r> {
     WaitForAddress(u8),
 
     /// Instruct the device to change the electrical level of the pin
-    SetPin(PinState),
+    SetPin(pin::SetLevel<()>),
 
     /// Instruct the target to start the timer interrupt
     StartTimerInterrupt { period_ms: u32 },
@@ -50,6 +55,13 @@ pub enum HostToTarget<'r> {
     },
 }
 
+impl From<pin::SetLevel<()>> for HostToTarget<'_> {
+    fn from(set_level: pin::SetLevel<()>) -> Self {
+        Self::SetPin(set_level)
+    }
+}
+
+
 /// An message from the target to the test suite on the host
 #[derive(Debug, Deserialize, Serialize)]
 pub enum TargetToHost<'r> {
@@ -60,16 +72,28 @@ pub enum TargetToHost<'r> {
     },
 
     /// Notify the host that the level of GPIO input changed
-    PinLevelChanged {
-        /// The new level of the pin
-        level: PinState,
-    },
+    PinLevelChanged(pin::LevelChanged<()>),
 
     /// Notify the host that the I2C transaction completed
     I2cReply(u8),
 
     /// Notify the host that the SPI transaction completed
     SpiReply(u8),
+}
+
+impl<'r> TryFrom<TargetToHost<'r>> for pin::LevelChanged<()> {
+    type Error = TargetToHost<'r>;
+
+    fn try_from(value: TargetToHost<'r>) -> Result<Self, Self::Error> {
+        match value {
+            TargetToHost::PinLevelChanged(pin_level_changed) => {
+                Ok(pin_level_changed)
+            }
+            _ => {
+                Err(value)
+            }
+        }
+    }
 }
 
 
@@ -83,8 +107,15 @@ pub enum HostToAssistant<'r> {
     },
 
     /// Instruct the assistant to change level of the target's input pin
-    SetPin(OutputPin, PinState),
+    SetPin(pin::SetLevel<OutputPin>),
 }
+
+impl From<pin::SetLevel<OutputPin>> for HostToAssistant<'_> {
+    fn from(set_level: pin::SetLevel<OutputPin>) -> Self {
+        Self::SetPin(set_level)
+    }
+}
+
 
 /// A message from the test assistant to the test suite on the host
 #[derive(Debug, Deserialize, Serialize)]
@@ -96,18 +127,21 @@ pub enum AssistantToHost<'r> {
     },
 
     /// Notify the host that the level of a pin has changed
-    PinLevelChanged {
-        /// The pin whose level has changed
-        pin: InputPin,
+    PinLevelChanged(pin::LevelChanged<InputPin>),
+}
 
-        /// The new level of the pin
-        level: PinState,
+impl<'r> TryFrom<AssistantToHost<'r>> for pin::LevelChanged<InputPin> {
+    type Error = AssistantToHost<'r>;
 
-        /// The period since the last change of this pin in ms, if available
-        ///
-        /// If the time since the last change has been too long, this value will
-        /// not be reliable.
-        period_ms: Option<u32>,
+    fn try_from(value: AssistantToHost<'r>) -> Result<Self, Self::Error> {
+        match value {
+            AssistantToHost::PinLevelChanged(pin_level_changed) => {
+                Ok(pin_level_changed)
+            }
+            _ => {
+                Err(value)
+            }
+        }
     }
 }
 
@@ -142,12 +176,4 @@ pub enum InputPin {
 pub enum OutputPin {
     Cts,
     Red,
-}
-
-
-/// Represents the electrical level of a pin
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum PinState {
-    High,
-    Low,
 }

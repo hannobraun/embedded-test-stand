@@ -26,6 +26,8 @@ This section explains some concepts, which should make the structure of this rep
 
 **Test assistant**: Additional hardware (likely a microcontroller development board) that assists the test suite in orchestrating the tests, and gathering information about the test target's behavior.
 
+**Test node**: The umbrella term that can refer to either the test target or the test assistant.
+
 
 ## Structure
 
@@ -38,6 +40,7 @@ At the time of writing, there are 6 Cargo packages in this repository. It's a bi
 
 These are the crates that are independent of the LPC845 test suite. If you want to use this test stand for your own project, these are the crates you want to use:
 
+- `protocol`: Building blocks that can be used to build a protocol for communication between the host and the nodes of a test stand.
 - `firmware-lib`: Library for firmware running on the target or assistant.
 - `host-lib`: Library for test suites running on the host.
 
