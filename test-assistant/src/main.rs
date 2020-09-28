@@ -337,7 +337,8 @@ const APP: () = {
             )
             .enable_slave_mode(
                 0x48,
-            );
+            )
+            .expect("Not using a valid address");
         i2c.enable_interrupts(i2c::Interrupts {
             slave_pending: true,
             .. i2c::Interrupts::default()
