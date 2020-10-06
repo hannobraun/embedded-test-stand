@@ -79,6 +79,8 @@ fn it_should_send_using_flow_control() -> Result {
     let message = b"Hello, world!";
     test_stand.target.send_usart_with_flow_control(message)?;
 
+    test_stand.assistant.wait_for_rts()?;
+
     let timeout = Duration::from_millis(50);
     test_stand.assistant.expect_nothing_from_target(timeout)?;
 
