@@ -55,7 +55,10 @@ use lpc8xx_hal::{
         PININT0,
     },
     pins::{
+        self,
+        Pin,
         PIO0_8,
+        PIO0_9,
         PIO0_19,
         PIO1_0,
         PIO1_1,
@@ -68,7 +71,11 @@ use lpc8xx_hal::{
     swm::{
         self,
         U1_CTS,
-        state::Assigned,
+        U1_RTS,
+        state::{
+            Assigned,
+            Unassigned,
+        },
     },
     syscon::{
         IOSC,
@@ -105,6 +112,8 @@ use lpc845_messages::{
 #[rtic::app(device = lpc8xx_hal::pac)]
 const APP: () = {
     struct Resources {
+        swm: Option<swm::Handle>,
+
         host_rx_int:  RxInt<'static, USART0, AsyncMode>,
         host_rx_idle: RxIdle<'static>,
         host_tx:      Tx<USART0, AsyncMode>,
@@ -112,6 +121,8 @@ const APP: () = {
         usart_rx_int:  RxInt<'static, USART1, AsyncMode>,
         usart_rx_idle: RxIdle<'static>,
         usart_tx:      Option<Tx<USART1, AsyncMode>>,
+        usart_rts:     Option<swm::Function<U1_RTS, Unassigned>>,
+        usart_rts_pin: Option<Pin<PIO0_9, pins::state::Swm<(), ()>>>,
         usart_cts:     Option<swm::Function<U1_CTS, Assigned<PIO0_8>>>,
 
         usart_sync_rx_int:  RxInt<'static, USART3, SyncMode>,
@@ -374,6 +385,8 @@ const APP: () = {
         let (dma_rx_prod, dma_rx_cons) = DMA_QUEUE.split();
 
         init::LateResources {
+            swm: Some(swm_handle),
+
             host_rx_int,
             host_rx_idle,
             host_tx,
@@ -381,6 +394,8 @@ const APP: () = {
             usart_rx_int,
             usart_rx_idle,
             usart_tx:  Some(usart_tx),
+            usart_rts: Some(swm.movable_functions.u1_rts),
+            usart_rts_pin: Some(p.pins.pio0_9.into_swm_pin()),
             usart_cts: Some(u1_cts),
 
             usart_sync_rx_int,
@@ -411,8 +426,10 @@ const APP: () = {
     }
 
     #[idle(resources = [
+        swm,
         host_rx_idle, host_tx,
-        usart_rx_int, usart_rx_idle, usart_tx, usart_cts,
+        usart_rx_int, usart_rx_idle, usart_tx,
+        usart_rts, usart_rts_pin, usart_cts,
         usart_sync_rx_idle, usart_sync_tx,
         green,
         red,
@@ -427,8 +444,11 @@ const APP: () = {
         dma_rx_cons,
     ])]
     fn idle(cx: idle::Context) -> ! {
+        let swm            = cx.resources.swm;
         let usart_rx       = cx.resources.usart_rx_idle;
         let usart_tx       = cx.resources.usart_tx;
+        let usart_rts      = cx.resources.usart_rts;
+        let usart_rts_pin  = cx.resources.usart_rts_pin;
         let usart_cts      = cx.resources.usart_cts;
         let usart_sync_rx  = cx.resources.usart_sync_rx_idle;
         let usart_sync_tx  = cx.resources.usart_sync_tx;
@@ -501,7 +521,10 @@ const APP: () = {
                     //    problem. The closure prevents that understanding, thus
                     //    necessitating this little dance with the local
                     //    variables.
+                    let mut swm_local = swm.take().unwrap();
                     let mut usart_tx_local = usart_tx.take().unwrap();
+                    let mut usart_rts_local = usart_rts.take().unwrap();
+                    let mut usart_rts_pin_local = usart_rts_pin.take().unwrap();
                     let mut usart_cts_local = usart_cts.take().unwrap();
                     let mut usart_dma_chan_local =
                         usart_dma_chan.take().unwrap();
@@ -565,8 +588,13 @@ const APP: () = {
                         } => {
                             rprintln!("USART: Sending with flow control");
 
-                            rprintln!("USART: Enable CTS throttling");
-                            let usart = usart_tx_local.usart;
+                            rprintln!("USART: Enable flow control");
+                            let mut usart = usart_tx_local.usart;
+                            let (rts, rts_pin) = usart.enable_rts(
+                                usart_rts_local,
+                                usart_rts_pin_local,
+                                &mut swm_local,
+                            );
                             let mut usart = usart.enable_cts_throttling(
                                 usart_cts_local,
                             );
@@ -575,9 +603,16 @@ const APP: () = {
                             usart.bwrite_all(data)
                                 .unwrap();
 
-                            rprintln!("USART: Disable CTS throttling");
+                            rprintln!("USART: Disable flow control");
+                            let (rts, rts_pin) = usart.disable_rts(
+                                rts,
+                                rts_pin,
+                                &mut swm_local,
+                            );
                             let (usart, cts) = usart
                                 .disable_cts_throttling();
+                            usart_rts_local = rts;
+                            usart_rts_pin_local = rts_pin;
                             usart_cts_local = cts;
                             usart_tx_local.usart = usart;
 
@@ -793,7 +828,10 @@ const APP: () = {
                         }
                     };
 
+                    *swm = Some(swm_local);
                     *usart_tx = Some(usart_tx_local);
+                    *usart_rts = Some(usart_rts_local);
+                    *usart_rts_pin = Some(usart_rts_pin_local);
                     *usart_cts = Some(usart_cts_local);
                     *usart_dma_chan = Some(usart_dma_chan_local);
                     *i2c = Some(i2c_local);
