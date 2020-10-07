@@ -166,9 +166,9 @@ pub enum UsartMode {
 /// Represents one of the pins that the assistant is monitoring
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum InputPin {
-    Blue,
-    Green,
-    Rts,
+    Blue  = 0,
+    Green = 1,
+    Rts   = 2,
 }
 
 /// Represents one of the pins that the assistant can set
