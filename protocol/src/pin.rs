@@ -21,9 +21,17 @@ pub struct SetLevel<Id> {
 }
 
 
-/// Sent by a test node to notify the host that a pin's level changed
+/// Sent by the host to request the current level of a pin
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub struct LevelChanged<Id> {
+pub struct ReadLevel<Id> {
+    /// The pin whose level to read
+    pub pin: Id,
+}
+
+
+/// Sent by a test node in response to a `ReadLevel` message
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub struct ReadLevelResult<Id> {
     /// The pin whose level has changed
     pub pin: Id,
 

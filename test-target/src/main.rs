@@ -470,8 +470,6 @@ const APP: () = {
 
         let mut buf = [0; 256];
 
-        let mut input_was_high = red.is_high();
-
         loop {
             usart_rx
                 .process_raw(|data| {
@@ -642,6 +640,27 @@ const APP: () = {
                             pin::SetLevel { level: pin::Level::Low, .. }
                         ) => {
                             Ok(green.set_low())
+                        }
+                        HostToTarget::ReadPin(pin::ReadLevel { pin: () }) => {
+                            let level = match red.is_high() {
+                                true  => pin::Level::High,
+                                false => pin::Level::Low,
+                            };
+
+                            let result = pin::ReadLevelResult {
+                                pin: (),
+                                level,
+                                period_ms: None,
+                            };
+
+                            host_tx
+                                .send_message(
+                                    &TargetToHost::ReadPinResult(Some(result)),
+                                    &mut buf,
+                                )
+                                .unwrap();
+
+                            Ok(())
                         }
                         HostToTarget::StartTimerInterrupt { period_ms } => {
                             // By default (and we haven't changed that setting)
@@ -857,29 +876,6 @@ const APP: () = {
             // us up before the test suite times out. But it could also lead to
             // spurious test failures.
             interrupt::free(|_| {
-                let input_is_high = red.is_high();
-                if input_is_high != input_was_high {
-                    let level = match input_is_high {
-                        true  => pin::Level::High,
-                        false => pin::Level::Low,
-                    };
-
-                    host_tx
-                        .send_message(
-                            &TargetToHost::PinLevelChanged(
-                                pin::LevelChanged {
-                                    pin: (),
-                                    level,
-                                    period_ms: None,
-                                },
-                            ),
-                            &mut buf,
-                        )
-                        .unwrap();
-
-                    input_was_high = input_is_high;
-                }
-
                 if !host_rx.can_process() && !usart_rx.can_process() {
                     // On LPC84x MCUs, debug mode is not supported when
                     // sleeping. This interferes with RTT communication. Only

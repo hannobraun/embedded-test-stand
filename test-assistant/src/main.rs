@@ -13,6 +13,10 @@ extern crate panic_rtt_target;
 
 use core::marker::PhantomData;
 
+use heapless::{
+    FnvIndexMap,
+    consts::U4,
+};
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
@@ -441,6 +445,8 @@ const APP: () = {
         let red            = cx.resources.red;
         let cts            = cx.resources.cts;
 
+        let mut pins = FnvIndexMap::<_, _, U4>::new();
+
         let mut buf = [0; 256];
 
         loop {
@@ -530,14 +536,35 @@ const APP: () = {
                             cts.set_low();
                             Ok(())
                         }
+                        HostToAssistant::ReadPin(
+                            pin::ReadLevel { pin }
+                        ) => {
+                            let result = pins.get(&(pin as usize))
+                                .map(|&(level, period_ms)| {
+                                    pin::ReadLevelResult {
+                                        pin,
+                                        level,
+                                        period_ms,
+                                    }
+                                });
+
+                            host_tx
+                                .send_message(
+                                    &AssistantToHost::ReadPinResult(result),
+                                    &mut buf,
+                                )
+                                .unwrap();
+
+                            Ok(())
+                        }
                     }
                 })
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
-            handle_pin_interrupt(green, InputPin::Green, host_tx, &mut buf);
-            handle_pin_interrupt(blue,  InputPin::Blue,  host_tx, &mut buf);
-            handle_pin_interrupt(rts,   InputPin::Rts,   host_tx, &mut buf);
+            handle_pin_interrupt(green, InputPin::Green, &mut pins);
+            handle_pin_interrupt(blue,  InputPin::Blue,  &mut pins);
+            handle_pin_interrupt(rts,   InputPin::Rts,   &mut pins);
 
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
@@ -663,15 +690,11 @@ const APP: () = {
 };
 
 
-fn handle_pin_interrupt<U>(
-    int:     &mut pin_interrupt::Idle,
-    pin:     InputPin,
-    host_tx: &mut Tx<U, AsyncMode>,
-    buf:     &mut [u8],
-)
-    where
-        U: usart::Instance,
-{
+fn handle_pin_interrupt(
+    int:  &mut pin_interrupt::Idle,
+    pin:  InputPin,
+    pins: &mut FnvIndexMap<usize, (pin::Level, Option<u32>), U4>,
+) {
     while let Some(event) = int.next() {
         match event {
             pin_interrupt::Event { level, period } => {
@@ -681,18 +704,7 @@ fn handle_pin_interrupt<U>(
                 };
 
                 let period_ms = period.map(|value| value / 12_000);
-                host_tx
-                    .send_message(
-                        &AssistantToHost::PinLevelChanged(
-                            pin::LevelChanged {
-                                pin,
-                                level,
-                                period_ms,
-                            },
-                        ),
-                        buf,
-                    )
-                    .unwrap();
+                pins.insert(pin as usize, (level, period_ms)).unwrap();
             }
         }
     }

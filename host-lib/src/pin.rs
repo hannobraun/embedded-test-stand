@@ -5,10 +5,8 @@ use std::{
     convert::TryInto,
     fmt::Debug,
     mem::transmute,
-    time::{
-        Duration,
-        Instant,
-    },
+    thread::sleep,
+    time::Duration,
 };
 
 use serde::{
@@ -31,9 +29,6 @@ use crate::conn::{
 /// that control the test nodes of a specific test stand.
 pub struct Pin<Id> {
     pin: Id,
-
-    /// The latest known pin level
-    level: Option<(pin::Level, Option<u32>)>,
 }
 
 impl<Id> Pin<Id>
@@ -43,7 +38,6 @@ impl<Id> Pin<Id>
     pub fn new(pin: Id) -> Self {
         Self {
             pin,
-            level: None,
         }
     }
 
@@ -64,8 +58,6 @@ impl<Id> Pin<Id>
         let message: M = command.into();
         conn.send(&message)?;
 
-        self.level = Some((level, None));
-
         Ok(())
     }
 
@@ -73,82 +65,65 @@ impl<Id> Pin<Id>
     ///
     /// Receives from `conn`, expecting to receive a "level changed" message.
     /// Uses `unwrap` to get a `pin::LevelChange` from the message.
-    pub fn read_level<'de, M>(&mut self,
+    pub fn read_level<'de, Request, Reply>(&mut self,
         timeout: Duration,
         conn: &mut Conn,
     )
         -> Result<(pin::Level, Option<u32>), ReadLevelError>
         where
             Id: Debug + Eq,
-            M: TryInto<pin::LevelChanged<Id>, Error=M>
+            Request: From<pin::ReadLevel<Id>> + Serialize,
+            Reply: TryInto<pin::ReadLevelResult<Id>, Error=Reply>
                 + Debug
                 + Deserialize<'de>,
     {
+        // Wait for a bit, to give whatever event is expected to change the
+        // level some time to happen.
+        sleep(timeout);
+
+        let request = pin::ReadLevel {  pin: self.pin };
+        let request: Request = request.into();
+        conn.send(&request)
+            .map_err(|err| ReadLevelError::Send(err))?;
+
+        // The compiler believes that `buf` doesn't live long enough, because
+        // the lifetime of the buffer needs to be `'de`, due to the
+        // `Deserialize` bound on `Reply`. This is wrong though: Nothing we
+        // return from this method still references the buffer, so the following
+        // `transmute`, which tranmutes a mutable reference to `buf` to a
+        // mutable reference with enbounded lifetime, is sound.
         let mut buf: Vec<u8> = Vec::new();
+        let buf = unsafe { transmute(&mut buf) };
 
-        let start = Instant::now();
+        let reply = conn.receive::<Reply>(timeout, buf)
+            .map_err(|err| ReadLevelError::Receive(err))?;
 
-        loop {
-            // Because of the lifetime `'de`, Rust throws an error when we try
-            // to borrow `buf` in the loop. What Rust doesn't understand is that
-            // the borrow doesn't actually last beyond the loop iteration
-            // though.
-            //
-            // Let's circumvent the borrow checker by creating a lifetime it
-            // won't complain about. This is sound, as long as nothing that
-            // borrows `buf` lasts beyond the loop iteration.
-            let buf = unsafe { transmute(&mut buf) };
-
-            if start.elapsed() > timeout {
-                break;
+        match reply.try_into() {
+            Ok(
+                pin::ReadLevelResult {
+                    pin,
+                    level,
+                    period_ms,
+                }
+            )
+                if pin == self.pin
+            => {
+                Ok((level, period_ms))
             }
-
-            let message = conn
-                .receive::<M>(timeout, buf);
-            let message = match message {
-                Ok(message) => {
-                    message
-                }
-                Err(err) if err.is_timeout() => {
-                    break;
-                }
-                Err(err) => {
-                    return Err(ReadLevelError::Receive(err));
-                }
-            };
-
-            match message.try_into() {
-                Ok(
-                    pin::LevelChanged {
-                        pin,
-                        level,
-                        period_ms,
-                    }
+            Err(message) => {
+                Err(
+                    ReadLevelError::UnexpectedMessage(
+                        format!("{:?}", message)
+                    )
                 )
-                    if pin == self.pin
-                => {
-                    self.level = Some((level, period_ms));
-                }
-                Err(message) => {
-                    return Err(
-                        ReadLevelError::UnexpectedMessage(
-                            format!("{:?}", message)
-                        )
-                    );
-                }
-                message => {
-                    return Err(
-                        ReadLevelError::UnexpectedMessage(
-                            format!("{:?}", message)
-                        )
-                    );
-                }
             }
-        }
-
-        match self.level {
-            Some(pin_level) => Ok(pin_level),
-            None            => Err(ReadLevelError::Timeout),
+            message => {
+                Err(
+                    ReadLevelError::UnexpectedMessage(
+                        format!("{:?}", message)
+                    )
+                )
+            }
         }
     }
 }
@@ -156,6 +131,7 @@ impl<Id> Pin<Id>
 
 #[derive(Debug)]
 pub enum ReadLevelError {
+    Send(ConnSendError),
     Receive(ConnReceiveError),
     UnexpectedMessage(String),
     Timeout,
