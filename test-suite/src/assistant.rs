@@ -90,10 +90,11 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.green_led.read_level::<AssistantToHost>(
-            Duration::from_millis(10),
-            &mut self.conn,
-        )?;
+        let pin_state = self.green_led
+            .read_level::<HostToAssistant, AssistantToHost>(
+                Duration::from_millis(10),
+                &mut self.conn,
+            )?;
         Ok(pin_state.0 == pin::Level::High)
     }
 
@@ -101,16 +102,17 @@ impl Assistant {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.green_led.read_level::<AssistantToHost>(
-            Duration::from_millis(10),
-            &mut self.conn,
-        )?;
+        let pin_state = self.green_led
+            .read_level::<HostToAssistant, AssistantToHost>(
+                Duration::from_millis(10),
+                &mut self.conn,
+            )?;
         Ok(pin_state.0 == pin::Level::Low)
     }
 
     /// Wait for RTS signal to be enabled
     pub fn wait_for_rts(&mut self) -> Result<bool, AssistantPinReadError> {
-        let pin_state = self.rts.read_level::<AssistantToHost>(
+        let pin_state = self.rts.read_level::<HostToAssistant, AssistantToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;
@@ -227,14 +229,15 @@ impl Assistant {
 
         let mut measurement: Option<GpioPeriodMeasurement> = None;
 
-        let (mut state, _) = self.blue_led.read_level::<AssistantToHost>(
-            timeout,
-            &mut self.conn,
-        )?;
+        let (mut state, _) = self.blue_led
+            .read_level::<HostToAssistant, AssistantToHost>(
+                timeout,
+                &mut self.conn,
+            )?;
 
         for _ in 0 .. samples {
             let (new_state, period_ms) = self.blue_led
-                .read_level::<AssistantToHost>(
+                .read_level::<HostToAssistant, AssistantToHost>(
                     timeout,
                     &mut self.conn,
                 )?;

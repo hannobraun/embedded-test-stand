@@ -62,7 +62,7 @@ impl Target {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_high(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pin.read_level::<TargetToHost>(
+        let pin_state = self.pin.read_level::<HostToTarget, TargetToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;
@@ -73,7 +73,7 @@ impl Target {
     ///
     /// Uses `pin_state` internally.
     pub fn pin_is_low(&mut self) -> Result<bool, TargetPinReadError> {
-        let pin_state = self.pin.read_level::<TargetToHost>(
+        let pin_state = self.pin.read_level::<HostToTarget, TargetToHost>(
             Duration::from_millis(10),
             &mut self.conn,
         )?;
