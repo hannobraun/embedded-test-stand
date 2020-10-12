@@ -3,22 +3,22 @@ set -e
 
 (
     cd protocol
-    cargo outdated --exit-code 1)
+    cargo upgrades)
 (
     cd messages
-    cargo outdated --exit-code 1)
+    cargo upgrades)
 (
     cd firmware-lib
-    cargo outdated --exit-code 1)
+    cargo upgrades)
 (
     cd host-lib
-    cargo outdated --exit-code 1)
+    cargo upgrades)
 (
     cd test-target
-    cargo outdated --exit-code 1)
+    cargo upgrades)
 (
     cd test-assistant
-    cargo outdated --exit-code 1)
+    cargo upgrades)
 (
     cd test-suite
-    cargo outdated --exit-code 1)
+    cargo upgrades)
