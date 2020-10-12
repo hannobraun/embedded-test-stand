@@ -2,6 +2,9 @@
 set -e
 
 (
+    cd protocol
+    cargo outdated --exit-code 1)
+(
     cd messages
     cargo outdated --exit-code 1)
 (

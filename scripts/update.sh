@@ -2,6 +2,9 @@
 set -e
 
 (
+    cd protocol
+    cargo update)
+(
     cd messages
     cargo update)
 (
