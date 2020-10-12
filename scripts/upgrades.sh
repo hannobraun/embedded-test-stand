@@ -3,22 +3,22 @@ set -e
 
 (
     cd protocol
-    cargo update)
+    cargo upgrades)
 (
     cd messages
-    cargo update)
+    cargo upgrades)
 (
     cd firmware-lib
-    cargo update)
+    cargo upgrades)
 (
     cd host-lib
-    cargo update)
+    cargo upgrades)
 (
     cd test-target
-    cargo update)
+    cargo upgrades)
 (
     cd test-assistant
-    cargo update)
+    cargo upgrades)
 (
     cd test-suite
-    cargo update)
+    cargo upgrades)

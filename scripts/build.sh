@@ -5,6 +5,9 @@ set -e
 export RUSTFLAGS="-D warnings"
 
 (
+    cd protocol
+    cargo test --verbose)
+(
     cd messages
     cargo test --verbose)
 (
