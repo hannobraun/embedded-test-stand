@@ -2,6 +2,7 @@
 firmware-lib/Cargo.lock
 host-lib/Cargo.lock
 messages/Cargo.lock
+protocol/Cargo.lock
 /target
 
 # OpenOCD
