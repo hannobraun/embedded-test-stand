@@ -48,7 +48,7 @@ impl Target {
             .map_err(|err| TargetSetPinHighError(err))
     }
 
-    /// Instruct the target to set a GPIO pin high
+    /// Instruct the target to set a GPIO pin low
     pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
         self.pin
             .set_level::<HostToTarget>(

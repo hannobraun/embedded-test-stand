@@ -96,11 +96,31 @@ Besides a Rust toolchain, you need `cargo-embed` to download the firmware:
 cargo install cargo-embed --version 0.8.0
 ```
 
-Since the setup uses two identical LPC845-BRK boards, `cargo-embed` needs some way to distinguish between them. For this reason, the configuration files (`test-target/Embed.toml` and `test-assisant/Embed.toml`) specify serial number in the `probe_selector` configuration.
+#### Serial Number
+Since the setup uses two identical LPC845-BRK boards, `cargo-embed` needs some way to distinguish between them. For this reason, the configuration files (`test-target/Embed.toml` and `test-assistant/Embed.toml`) specify a serial number in the `probe_selector` configuration.
 
-Either update the serial number there, or override `probe_selector` in an `Embed.local.toml`. On Linux, you can figure out the serial number of your device like this: `udevadm info /path/to/device`
+Either update the serial number there, or override `probe_selector` in an `Embed.local.toml`.
 
-Watch out for `ID_SERIAL_SHORT` in the output.
+On **Linux**, you can figure out the serial number of your device like this:
+```console
+$ udevadm info /path/to/device`
+```
+and watch out for `ID_SERIAL_SHORT` in the output.
+
+On **macOS**, run
+```console
+$ system_profiler SPUSBDataType
+```
+and look for an entry called `LPC11U3x CMSIS-DAP v1.0.7` or similar. Copy the contents of the `Serial Number:` field into your `Embed.toml`s.
+
+#### Serial Device Paths
+You'll also need to check whether the serial device paths specified in `test-stand.toml` are correct.
+
+To check the right serial device paths on **macOS**, run
+```console
+$ ls /dev/ | grep tty.usb
+```
+and look for tty devices called `tty.usbmodem`. The `usbmodem` devices you're looking for will likely have the lpc845's serial number in their name. Edit the serial device paths specified in `test-stand.toml` to match the `target` and `assistant`s modem path respectively.
 
 ### Running
 
