@@ -6,7 +6,7 @@ edition = "2018"
 
 
 [dependencies.protocol]
-path = "../protocol"
+path = "../../test-stand-infra//protocol"
 
 [dependencies.serde]
 version          = "1.0.115"
