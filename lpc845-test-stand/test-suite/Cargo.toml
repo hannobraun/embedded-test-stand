@@ -11,4 +11,4 @@ path     = "../messages"
 
 [dependencies.host-lib]
 version  = "0.1.0"
-path     = "../host-lib"
+path     = "../../test-stand-infra/host-lib"

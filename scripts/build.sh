@@ -5,23 +5,23 @@ set -e
 export RUSTFLAGS="-D warnings"
 
 (
-    cd protocol
+    cd test-stand-infra/protocol
     cargo test --verbose)
 (
-    cd messages
+    cd test-stand-infra/firmware-lib
     cargo test --verbose)
 (
-    cd firmware-lib
+    cd test-stand-infra/host-lib
     cargo test --verbose)
 (
-    cd host-lib
+    cd lpc845-test-stand/messages
     cargo test --verbose)
 (
-    cd test-target
+    cd lpc845-test-stand/test-target
     cargo build --verbose)
 (
-    cd test-assistant
+    cd lpc845-test-stand/test-assistant
     cargo build --verbose)
 (
-    cd test-suite
+    cd lpc845-test-stand/test-suite
     cargo build --tests --verbose)
