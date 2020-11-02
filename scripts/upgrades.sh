@@ -2,23 +2,23 @@
 set -e
 
 (
-    cd protocol
+    cd test-stand-infra/protocol
     cargo upgrades)
 (
-    cd messages
+    cd test-stand-infra/firmware-lib
     cargo upgrades)
 (
-    cd firmware-lib
+    cd test-stand-infra/host-lib
     cargo upgrades)
 (
-    cd host-lib
+    cd lpc845-test-stand/messages
     cargo upgrades)
 (
-    cd test-target
+    cd lpc845-test-stand/test-target
     cargo upgrades)
 (
-    cd test-assistant
+    cd lpc845-test-stand/test-assistant
     cargo upgrades)
 (
-    cd test-suite
+    cd lpc845-test-stand/test-suite
     cargo upgrades)
