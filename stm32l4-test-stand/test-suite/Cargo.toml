@@ -1,0 +1,14 @@
+[package]
+name    = "stm32l4-test-suite"
+version = "0.1.0"
+authors = ["Hanno Braun <hanno@braun-embedded.com>"]
+edition = "2018"
+
+
+[dependencies.lpc845-messages]
+version  = "0.1.0"
+path     = "../../lpc845-test-stand/messages"
+
+[dependencies.host-lib]
+version  = "0.1.0"
+path     = "../../test-stand-infra/host-lib"

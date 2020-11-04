@@ -1,0 +1,10 @@
+[default.probe]
+usb_vid = "0483"
+usb_pid = "374b"
+
+[default.general]
+chip = "STM32L433RCTx"
+
+[default.rtt]
+enabled     = true
+log_enabled = true
