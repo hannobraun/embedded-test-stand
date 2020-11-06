@@ -47,49 +47,49 @@ impl Assistant {
     }
 
     /// Instruct the assistant to set the target's input pin high
-    pub fn set_pin_high(&mut self) -> Result<(), AssistantSetPinHighError> {
+    pub fn set_pin_high(&mut self) -> Result<(), AssistantError> {
         self.red_led
             .set_level::<HostToAssistant>(
                 pin::Level::High,
                 &mut self.conn,
             )
-            .map_err(|err| AssistantSetPinHighError(err))
+            .map_err(|err| AssistantError::SetPinHigh(err))
     }
 
     /// Instruct the assistant to set the target's input pin low
-    pub fn set_pin_low(&mut self) -> Result<(), AssistantSetPinLowError> {
+    pub fn set_pin_low(&mut self) -> Result<(), AssistantError> {
         self.red_led
             .set_level::<HostToAssistant>(
                 pin::Level::Low,
                 &mut self.conn,
             )
-            .map_err(|err| AssistantSetPinLowError(err))
+            .map_err(|err| AssistantError::SetPinLow(err))
     }
 
     /// Instruct the assistant to disable CTS
-    pub fn disable_cts(&mut self) -> Result<(), AssistantSetPinHighError> {
+    pub fn disable_cts(&mut self) -> Result<(), AssistantError> {
         self.cts
             .set_level::<HostToAssistant>(
                 pin::Level::High,
                 &mut self.conn,
             )
-            .map_err(|err| AssistantSetPinHighError(err))
+            .map_err(|err| AssistantError::SetPinHigh(err))
     }
 
     /// Instruct the assistant to enable CTS
-    pub fn enable_cts(&mut self) -> Result<(), AssistantSetPinLowError> {
+    pub fn enable_cts(&mut self) -> Result<(), AssistantError> {
         self.cts
             .set_level::<HostToAssistant>(
                 pin::Level::Low,
                 &mut self.conn,
             )
-            .map_err(|err| AssistantSetPinLowError(err))
+            .map_err(|err| AssistantError::SetPinLow(err))
     }
 
     /// Indicates whether the GPIO pin on the test target is set high
     ///
     /// Uses `pin_state` internally.
-    pub fn pin_is_high(&mut self) -> Result<bool, AssistantPinReadError> {
+    pub fn pin_is_high(&mut self) -> Result<bool, AssistantError> {
         let pin_state = self.green_led
             .read_level::<HostToAssistant, AssistantToHost>(
                 Duration::from_millis(10),
@@ -101,7 +101,7 @@ impl Assistant {
     /// Indicates whether the GPIO pin on the test target is set low
     ///
     /// Uses `pin_state` internally.
-    pub fn pin_is_low(&mut self) -> Result<bool, AssistantPinReadError> {
+    pub fn pin_is_low(&mut self) -> Result<bool, AssistantError> {
         let pin_state = self.green_led
             .read_level::<HostToAssistant, AssistantToHost>(
                 Duration::from_millis(10),
@@ -111,7 +111,7 @@ impl Assistant {
     }
 
     /// Wait for RTS signal to be enabled
-    pub fn wait_for_rts(&mut self) -> Result<bool, AssistantPinReadError> {
+    pub fn wait_for_rts(&mut self) -> Result<bool, AssistantError> {
         let pin_state = self.rts.read_level::<HostToAssistant, AssistantToHost>(
             Duration::from_millis(10),
             &mut self.conn,
@@ -121,32 +121,32 @@ impl Assistant {
 
     /// Instruct assistant to send this message to the target via USART
     pub fn send_to_target_usart(&mut self, data: &[u8])
-        -> Result<(), AssistantUsartSendError>
+        -> Result<(), AssistantError>
     {
         self.conn
             .send(&HostToAssistant::SendUsart {
                 mode: UsartMode::Regular,
                 data,
             })
-            .map_err(|err| AssistantUsartSendError(err))
+            .map_err(|err| AssistantError::UsartSend(err))
     }
 
     /// Instruct assistant to send this message to the target's USART/DMA
     pub fn send_to_target_usart_dma(&mut self, data: &[u8])
-        -> Result<(), AssistantUsartSendError>
+        -> Result<(), AssistantError>
     {
         self.conn
             .send(&HostToAssistant::SendUsart { mode: UsartMode::Dma, data })
-            .map_err(|err| AssistantUsartSendError(err))
+            .map_err(|err| AssistantError::UsartSend(err))
     }
 
     /// Instruct assistant to send this message to the target's sync USART
     pub fn send_to_target_usart_sync(&mut self, data: &[u8])
-        -> Result<(), AssistantUsartSendError>
+        -> Result<(), AssistantError>
     {
         self.conn
             .send(&HostToAssistant::SendUsart { mode: UsartMode::Sync, data })
-            .map_err(|err| AssistantUsartSendError(err))
+            .map_err(|err| AssistantError::UsartSend(err))
     }
 
     /// Wait to receive the provided data via USART
@@ -154,9 +154,15 @@ impl Assistant {
     /// Returns the receive buffer, once the data was received. Returns an
     /// error, if it times out before that, or an I/O error occurs.
     pub fn receive_from_target_usart(&mut self, data: &[u8], timeout: Duration)
-        -> Result<Vec<u8>, AssistantUsartWaitError>
+        -> Result<Vec<u8>, AssistantError>
     {
-        self.receive_from_target_usart_inner(data, timeout, UsartMode::Regular)
+        Ok(
+            self.receive_from_target_usart_inner(
+                data,
+                timeout,
+                UsartMode::Regular,
+            )?
+        )
     }
 
     /// Wait to receive the provided data via USART in synchronous mode
@@ -167,9 +173,15 @@ impl Assistant {
         data:    &[u8],
         timeout: Duration,
     )
-        -> Result<Vec<u8>, AssistantUsartWaitError>
+        -> Result<Vec<u8>, AssistantError>
     {
-        self.receive_from_target_usart_inner(data, timeout, UsartMode::Sync)
+        Ok(
+            self.receive_from_target_usart_inner(
+                data,
+                timeout,
+                UsartMode::Sync,
+            )?
+        )
     }
 
     pub fn receive_from_target_usart_inner(&mut self,
@@ -223,7 +235,7 @@ impl Assistant {
     /// `samples` must be at least `1`. This method will panic, if this is not
     /// the case.
     pub fn measure_gpio_period(&mut self, samples: u32, timeout: Duration)
-        -> Result<GpioPeriodMeasurement, AssistantPinReadError>
+        -> Result<GpioPeriodMeasurement, AssistantError>
     {
         assert!(samples > 0);
 
@@ -278,6 +290,13 @@ impl Assistant {
 
     /// Expect to hear nothing from the target within the given timeout period
     pub fn expect_nothing_from_target(&mut self, timeout: Duration)
+        -> Result<(), AssistantError>
+    {
+        self.expect_nothing_from_target_inner(timeout)
+            .map_err(|err| AssistantError::ExpectNothing(err))
+    }
+
+    fn expect_nothing_from_target_inner(&mut self, timeout: Duration)
         -> Result<(), AssistantExpectNothingError>
     {
         loop {
@@ -314,23 +333,29 @@ pub struct GpioPeriodMeasurement {
 }
 
 
+/// All the errors that can be returned by this API
 #[derive(Debug)]
-pub struct AssistantSetPinHighError(ConnSendError);
+pub enum AssistantError {
+    ExpectNothing(AssistantExpectNothingError),
+    PinRead(ReadLevelError),
+    SetPinHigh(ConnSendError),
+    SetPinLow(ConnSendError),
+    UsartSend(ConnSendError),
+    UsartWait(AssistantUsartWaitError),
+}
 
-#[derive(Debug)]
-pub struct AssistantSetPinLowError(ConnSendError);
-
-#[derive(Debug)]
-pub struct AssistantPinReadError(ReadLevelError);
-
-impl From<ReadLevelError> for AssistantPinReadError {
+impl From<ReadLevelError> for AssistantError {
     fn from(err: ReadLevelError) -> Self {
-        Self(err)
+        Self::PinRead(err)
     }
 }
 
-#[derive(Debug)]
-pub struct AssistantUsartSendError(ConnSendError);
+impl From<AssistantUsartWaitError> for AssistantError {
+    fn from(err: AssistantUsartWaitError) -> Self {
+        Self::UsartWait(err)
+    }
+}
+
 
 #[derive(Debug)]
 pub enum AssistantUsartWaitError {
