@@ -34,7 +34,7 @@ impl TestStand {
             Self {
                 _guard:    test_stand.guard,
                 target:    Target::new(test_stand.target?),
-                assistant: Assistant::new(test_stand.assistant?),
+                assistant: test_stand.assistant?,
             }
         )
     }
