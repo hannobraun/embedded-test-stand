@@ -1,6 +1,7 @@
 //! Library to support the test suite running on the host computer
 
 
+pub mod assistant;
 pub mod config;
 pub mod conn;
 pub mod error;

@@ -3,7 +3,16 @@ use std::time::{
     Instant,
 };
 
-use host_lib::{
+use protocol::{
+    AssistantToHost,
+    HostToAssistant,
+    InputPin,
+    OutputPin,
+    UsartMode,
+    pin,
+};
+
+use crate::{
     conn::{
         Conn,
         ConnReceiveError,
@@ -13,14 +22,6 @@ use host_lib::{
         Pin,
         ReadLevelError,
     },
-};
-use lpc845_messages::{
-    AssistantToHost,
-    HostToAssistant,
-    InputPin,
-    OutputPin,
-    UsartMode,
-    pin,
 };
 
 
@@ -35,7 +36,7 @@ pub struct Assistant {
 }
 
 impl Assistant {
-    pub(crate) fn new(conn: Conn) -> Self {
+    pub fn new(conn: Conn) -> Self {
         Self {
             conn,
             red_led: Pin::new(OutputPin::Red),

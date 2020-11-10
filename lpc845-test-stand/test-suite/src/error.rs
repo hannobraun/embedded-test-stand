@@ -1,10 +1,11 @@
 /// Test-suite specific error module
 
 
-use host_lib::test_stand::NotConfiguredError;
-
-use super::{
+use host_lib::{
     assistant::AssistantError,
+    test_stand::NotConfiguredError,
+};
+use super::{
     target::{
         TargetI2cError,
         TargetPinReadError,

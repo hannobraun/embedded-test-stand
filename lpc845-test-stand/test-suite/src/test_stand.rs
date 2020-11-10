@@ -3,12 +3,12 @@ use std::sync::{
     MutexGuard,
 };
 
-use host_lib::test_stand::NotConfiguredError;
-
-use super::{
+use host_lib::{
     assistant::Assistant,
-    target::Target,
+    test_stand::NotConfiguredError,
 };
+
+use super::target::Target;
 
 
 /// An instance of the test stand
