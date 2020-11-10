@@ -20,6 +20,11 @@ use serde::{
 
 
 /// A message from the test suite on the host to the target
+///
+/// This message is very specific to the the currently existing test suites, but
+/// since the assistant is still shared by these test suites, it still makes
+/// sense to have them here. Going forward, this might become more general, as
+/// the assistant itself becomes more general.
 #[derive(Debug, Deserialize, Serialize)]
 pub enum HostToTarget<'r> {
     /// Instruct the target to send a message via USART
@@ -79,6 +84,11 @@ impl From<pin::ReadLevel<()>> for HostToTarget<'_> {
 
 
 /// An message from the target to the test suite on the host
+///
+/// This message is very specific to the the currently existing test suites, but
+/// since the assistant is still shared by these test suites, it still makes
+/// sense to have them here. Going forward, this might become more general, as
+/// the assistant itself becomes more general.
 #[derive(Debug, Deserialize, Serialize)]
 pub enum TargetToHost<'r> {
     /// Notify the host that data has been received via USART
