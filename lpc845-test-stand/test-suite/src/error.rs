@@ -1,10 +1,7 @@
 /// Test-suite specific error module
 
 
-use host_lib::{
-    assistant::AssistantError,
-    test_stand::NotConfiguredError,
-};
+use host_lib::assistant::AssistantError;
 use super::{
     target::{
         TargetI2cError,
@@ -29,7 +26,6 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     Assistant(AssistantError),
-    NotConfigured(NotConfiguredError),
     TargetI2c(TargetI2cError),
     TargetPinRead(TargetPinReadError),
     TargetSetPinHigh(TargetSetPinHighError),
@@ -45,12 +41,6 @@ pub enum Error {
 impl From<AssistantError> for Error {
     fn from(err: AssistantError) -> Self {
         Self::Assistant(err)
-    }
-}
-
-impl From<NotConfiguredError> for Error {
-    fn from(err: NotConfiguredError) -> Self {
-        Self::NotConfigured(err)
     }
 }
 
