@@ -10,6 +10,7 @@ pub mod test_stand;
 
 
 pub use self::{
+    assistant::Assistant,
     config::Config,
     conn::Conn,
     error::{
