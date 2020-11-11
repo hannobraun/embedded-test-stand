@@ -7,6 +7,7 @@ use std::sync::{
 use lazy_static::lazy_static;
 
 use crate::{
+    assistant::Assistant,
     config::{
         Config,
         ConfigReadError,
@@ -38,7 +39,7 @@ pub struct TestStand {
     ///
     /// This field will be `Err`, if the test assistant has not been specified
     /// in the configuration file.
-    pub assistant: Result<Conn, NotConfiguredError>,
+    pub assistant: Result<Assistant, NotConfiguredError>,
 }
 
 impl TestStand {
@@ -75,10 +76,9 @@ impl TestStand {
             );
         }
         if let Some(path) = config.assistant {
-            assistant = Ok(
-                Conn::new(&path)
-                    .map_err(|err| TestStandInitError::ConnInit(err))?
-            );
+            let conn = Conn::new(&path)
+                .map_err(|err| TestStandInitError::ConnInit(err))?;
+            assistant = Ok(Assistant::new(conn));
         }
 
         Ok(

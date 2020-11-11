@@ -2,7 +2,7 @@
 
 ## About
 
-Test Stand for some of the periphal APIs in [LPC8xx HAL].
+Test Stand for some of the peripheral APIs in [LPC8xx HAL].
 
 
 ## Structure

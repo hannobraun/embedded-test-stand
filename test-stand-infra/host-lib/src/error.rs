@@ -13,10 +13,10 @@ pub type Result<T = ()> = core::result::Result<T, Error>;
 /// The error type for this library
 #[derive(Debug)]
 pub enum Error {
-    /// Error occured while deserializing the configuration file
+    /// Error occurred while deserializing the configuration file
     Config(toml::de::Error),
 
-    /// An I/O error occured
+    /// An I/O error occurred
     Io(io::Error),
 
     /// An error originated from Postcard
@@ -24,7 +24,7 @@ pub enum Error {
     /// The `postcard` crate is used for (de-)serialization.
     Postcard(postcard::Error),
 
-    /// Error occured while accessing the serial port
+    /// Error occurred while accessing the serial port
     Serial(serialport::Error),
 }
 

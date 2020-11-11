@@ -1,17 +1,8 @@
 /// Test-suite specific error module
 
 
-use host_lib::test_stand::NotConfiguredError;
-
+use host_lib::assistant::AssistantError;
 use super::{
-    assistant::{
-        AssistantExpectNothingError,
-        AssistantPinReadError,
-        AssistantSetPinHighError,
-        AssistantSetPinLowError,
-        AssistantUsartSendError,
-        AssistantUsartWaitError,
-    },
     target::{
         TargetI2cError,
         TargetPinReadError,
@@ -34,13 +25,7 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 /// Error type specific to this test suite
 #[derive(Debug)]
 pub enum Error {
-    AssistantExpectNothing(AssistantExpectNothingError),
-    AssistantPinRead(AssistantPinReadError),
-    AssistantSetPinHigh(AssistantSetPinHighError),
-    AssistantSetPinLow(AssistantSetPinLowError),
-    AssistantUsartSend(AssistantUsartSendError),
-    AssistantUsartWait(AssistantUsartWaitError),
-    NotConfigured(NotConfiguredError),
+    Assistant(AssistantError),
     TargetI2c(TargetI2cError),
     TargetPinRead(TargetPinReadError),
     TargetSetPinHigh(TargetSetPinHighError),
@@ -53,45 +38,9 @@ pub enum Error {
     TestStandInit(TestStandInitError),
 }
 
-impl From<AssistantExpectNothingError> for Error {
-    fn from(err: AssistantExpectNothingError) -> Self {
-        Self::AssistantExpectNothing(err)
-    }
-}
-
-impl From<AssistantPinReadError> for Error {
-    fn from(err: AssistantPinReadError) -> Self {
-        Self::AssistantPinRead(err)
-    }
-}
-
-impl From<AssistantSetPinHighError> for Error {
-    fn from(err: AssistantSetPinHighError) -> Self {
-        Self::AssistantSetPinHigh(err)
-    }
-}
-
-impl From<AssistantSetPinLowError> for Error {
-    fn from(err: AssistantSetPinLowError) -> Self {
-        Self::AssistantSetPinLow(err)
-    }
-}
-
-impl From<AssistantUsartSendError> for Error {
-    fn from(err: AssistantUsartSendError) -> Self {
-        Self::AssistantUsartSend(err)
-    }
-}
-
-impl From<AssistantUsartWaitError> for Error {
-    fn from(err: AssistantUsartWaitError) -> Self {
-        Self::AssistantUsartWait(err)
-    }
-}
-
-impl From<NotConfiguredError> for Error {
-    fn from(err: NotConfiguredError) -> Self {
-        Self::NotConfigured(err)
+impl From<AssistantError> for Error {
+    fn from(err: AssistantError) -> Self {
+        Self::Assistant(err)
     }
 }
 
