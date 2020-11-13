@@ -9,6 +9,7 @@ edition = "2018"
 cortex-m      = "0.6.4"
 cortex-m-rtic = "0.5.5"
 heapless      = "0.5.6"
+postcard      = "0.5.1"
 
 [dependencies.lpc845-messages]
 version  = "0.1.0"

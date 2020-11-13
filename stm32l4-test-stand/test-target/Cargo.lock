@@ -178,6 +178,7 @@ dependencies = [
  "as-slice",
  "generic-array 0.13.2",
  "hash32",
+ "serde",
  "stable_deref_trait",
 ]
 
@@ -223,6 +224,23 @@ dependencies = [
  "cortex-m",
  "rtt-target",
 ]
+
+[[package]]
+name = "postcard"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3e3f5c2e9a91383c6594ec68aa2dfdfe19a3c86f34b088ba7203f2483d2682f"
+dependencies = [
+ "heapless",
+ "postcard-cobs",
+ "serde",
+]
+
+[[package]]
+name = "postcard-cobs"
+version = "0.1.5-pre"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c68cb38ed13fd7bc9dd5db8f165b7c8d9c1a315104083a2b10f11354c2af97f"
 
 [[package]]
 name = "proc-macro2"
@@ -353,6 +371,7 @@ dependencies = [
  "heapless",
  "lpc845-messages",
  "panic-rtt-target",
+ "postcard",
  "rtt-target",
  "stm32l4xx-hal",
  "void",
