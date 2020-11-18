@@ -32,6 +32,7 @@ use stm32l4xx_hal::{
 
 use lpc845_messages::{
     HostToTarget,
+    TargetToHost,
     UsartMode,
 };
 
@@ -119,12 +120,29 @@ const APP: () = {
         let rx_main = cx.resources.rx_cons_main;
         let rx_host = cx.resources.rx_cons_host;
         let tx_main = cx.resources.tx_main;
+        let tx_host = cx.resources.tx_host;
 
+        let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
 
         loop {
             while let Some(b) = rx_main.dequeue() {
-                rprintln!("Received: {}", b);
+                buf_main_rx.push(b)
+                    .expect("Main receive buffer full");
+            }
+
+            if buf_main_rx.len() > 0 {
+                let message = TargetToHost::UsartReceive {
+                    mode: UsartMode::Regular,
+                    data: buf_main_rx.as_ref(),
+                };
+
+                let buf_host_tx: Vec<_, U256> = postcard::to_vec_cobs(&message)
+                    .expect("Error encoding message to host");
+                tx_host.bwrite_all(buf_host_tx.as_ref())
+                    .expect("Error sending message to host");
+
+                buf_main_rx.clear();
             }
 
             if let Some(b) = rx_host.dequeue() {
