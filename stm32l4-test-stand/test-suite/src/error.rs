@@ -4,7 +4,10 @@
 use host_lib::assistant::AssistantError;
 
 use crate::{
-    target::TargetUsartSendError,
+    target::{
+        TargetUsartSendError,
+        TargetUsartWaitError,
+    },
     test_stand::TestStandInitError,
 };
 
@@ -18,6 +21,7 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 pub enum Error {
     Assistant(AssistantError),
     TargetUsartSend(TargetUsartSendError),
+    TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
 }
 
@@ -30,6 +34,12 @@ impl From<AssistantError> for Error {
 impl From<TargetUsartSendError> for Error {
     fn from(err: TargetUsartSendError) -> Self {
         Self::TargetUsartSend(err)
+    }
+}
+
+impl From<TargetUsartWaitError> for Error {
+    fn from(err: TargetUsartWaitError) -> Self {
+        Self::TargetUsartWait(err)
     }
 }
 
