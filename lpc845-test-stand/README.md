@@ -25,26 +25,26 @@ Connect both boards to the host computer via their USB ports. This is required b
 
 In addition, you need to connect the following pins of the target and the assistant:
 
-Target Pin | Assistant Pin | Note
------------------------------------------------------------------------
-         1 |             1 | SPI: SCK
-         2 |             2 | SPI: MOSI
-         3 |             3 | SPI: MISO
-         4 |             4 | SPI: SSEL
-        12 |            13 | USART: Target RX, Assistant TX
-        13 |            12 | USART: Target TX, Assistant RX
-        14 |            15 | USART: Target RX (DMA), Assistant TX
-        18 |            18 | USART: RTS
-        19 |            19 | USART: CTS
-        20 |            20 | GND (common ground for I2C)
-        23 |            23 | I2C: SCL (also connect pull-up resistor)
-        24 |            24 | I2C: SDA (also connect pull-up resistor)
-        26 |            27 | USART (sync): Target RX, Assistant TX
-        27 |            26 | USART (sync): Target TX, Assistant RX
-        28 |            28 | USART (sync): SCLK
-        29 |            29 | GPIO: Target In, Assistant Out (red LED)
-        30 |            30 | Timer interrupt signal (blue LED)
-        31 |            31 | GPIO: Target Out, Assistant In (green LED)
+| Target Pin | Assistant Pin | Note                                       |
+| ---------- | ------------- | ------------------------------------------ |
+|          1 |             1 | SPI: SCK                                   |
+|          2 |             2 | SPI: MOSI                                  |
+|          3 |             3 | SPI: MISO                                  |
+|          4 |             4 | SPI: SSEL                                  |
+|         12 |            13 | USART: Target RX, Assistant TX             |
+|         13 |            12 | USART: Target TX, Assistant RX             |
+|         14 |            15 | USART: Target RX (DMA), Assistant TX       |
+|         18 |            18 | USART: RTS                                 |
+|         19 |            19 | USART: CTS                                 |
+|         20 |            20 | GND (common ground for I2C)                |
+|         23 |            23 | I2C: SCL (also connect pull-up resistor)   |
+|         24 |            24 | I2C: SDA (also connect pull-up resistor)   |
+|         26 |            27 | USART (sync): Target RX, Assistant TX      |
+|         27 |            26 | USART (sync): Target TX, Assistant RX      |
+|         28 |            28 | USART (sync): SCLK                         |
+|         29 |            29 | GPIO: Target In, Assistant Out (red LED)   |
+|         30 |            30 | Timer interrupt signal (blue LED)          |
+|         31 |            31 | GPIO: Target Out, Assistant In (green LED) |
 
 10 kOhm resistors are confirmed to work for the I2C pull-ups.
 
