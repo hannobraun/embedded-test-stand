@@ -35,7 +35,7 @@ impl<I, Mode> RxInt<'_, I, Mode>
     ///
     /// This method should be called directly from the interrupt handler.
     /// Receives any available data, putting it into the internal queue, so it
-    /// can be processed by the corresponging [`RxIdle`] instance without any
+    /// can be processed by the corresponding [`RxIdle`] instance without any
     /// time pressure.
     ///
     /// [`RxIdle`]: struct.RxIdle.html

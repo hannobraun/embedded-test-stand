@@ -90,8 +90,8 @@ impl<Id> Pin<Id>
         // the lifetime of the buffer needs to be `'de`, due to the
         // `Deserialize` bound on `Reply`. This is wrong though: Nothing we
         // return from this method still references the buffer, so the following
-        // `transmute`, which tranmutes a mutable reference to `buf` to a
-        // mutable reference with enbounded lifetime, is sound.
+        // `transmute`, which transmutes a mutable reference to `buf` to a
+        // mutable reference with unbounded lifetime, is sound.
         let mut buf: Vec<u8> = Vec::new();
         let buf = unsafe { transmute(&mut buf) };
 
