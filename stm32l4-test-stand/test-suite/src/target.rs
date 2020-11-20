@@ -40,9 +40,16 @@ impl Target {
     ///
     /// Returns the receive buffer, once the data was received. Returns an
     /// error, if it times out before that, or an I/O error occurs.
-    pub fn wait_for_usart_rx(&mut self,
-        data:    &[u8],
-        timeout: Duration,
+    pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Regular)
+    }
+
+    fn wait_for_usart_rx_inner(&mut self,
+        data:          &[u8],
+        timeout:       Duration,
+        expected_mode: UsartMode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
@@ -64,7 +71,7 @@ impl Target {
 
             match message {
                 TargetToHost::UsartReceive { mode, data }
-                    if mode == UsartMode::Regular =>
+                    if mode == expected_mode =>
                 {
                     buf.extend(data)
                 }
