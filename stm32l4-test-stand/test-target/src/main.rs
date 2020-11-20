@@ -9,8 +9,13 @@ extern crate panic_rtt_target;
 
 
 use heapless::{
+    pool,
     Vec,
     consts::U256,
+    pool::singleton::{
+        Box,
+        Pool as _,
+    },
     spsc,
 };
 use rtt_target::{
@@ -19,6 +24,11 @@ use rtt_target::{
 };
 use stm32l4xx_hal::{
     prelude::*,
+    dma::{
+        DMAFrame,
+        FrameSender,
+        dma1,
+    },
     pac::{
         self,
         USART1,
@@ -37,6 +47,12 @@ use lpc845_messages::{
 };
 
 
+pool!(
+    #[allow(non_upper_case_globals)]
+    DmaPool: DMAFrame<U256>
+);
+
+
 #[rtic::app(device = stm32l4xx_hal::pac)]
 const APP: () = {
     struct Resources {
@@ -49,6 +65,8 @@ const APP: () = {
         rx_cons_main: spsc::Consumer<'static, u8, U256>,
         rx_prod_host: spsc::Producer<'static, u8, U256>,
         rx_cons_host: spsc::Consumer<'static, u8, U256>,
+
+        dma_tx_main: FrameSender<Box<DmaPool>, dma1::C4, U256>,
     }
 
     #[init]
@@ -57,6 +75,10 @@ const APP: () = {
             spsc::Queue(heapless::i::Queue::new());
         static mut RX_QUEUE_MAIN: spsc::Queue<u8, U256> =
             spsc::Queue(heapless::i::Queue::new());
+
+        // Allocate memory for DMA transfers.
+        static mut MEMORY: [u8; 512] = [0; 512];
+        DmaPool::grow(MEMORY);
 
         rtt_target::rtt_init_print!();
         rprint!("Starting target...");
@@ -100,6 +122,9 @@ const APP: () = {
         let (rx_prod_main, rx_cons_main) = RX_QUEUE_MAIN.split();
         let (rx_prod_host, rx_cons_host) = RX_QUEUE_HOST.split();
 
+        let dma1 = p.DMA1.split(&mut rcc.ahb1);
+        let dma_tx_main = tx_main.frame_sender(dma1.4);
+
         rprintln!("done.");
 
         init::LateResources {
@@ -112,15 +137,24 @@ const APP: () = {
             rx_cons_main,
             rx_prod_host,
             rx_cons_host,
+
+            dma_tx_main,
         }
     }
 
-    #[idle(resources = [rx_cons_main, rx_cons_host, tx_main, tx_host])]
+    #[idle(resources = [
+        rx_cons_main,
+        rx_cons_host,
+        tx_main,
+        tx_host,
+        dma_tx_main,
+    ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
         let rx_host = cx.resources.rx_cons_host;
         let tx_main = cx.resources.tx_main;
         let tx_host = cx.resources.tx_host;
+        let dma_tx_main = cx.resources.dma_tx_main;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -163,6 +197,31 @@ const APP: () = {
                         tx_main.bwrite_all(data)
                             .expect("Error writing to USART");
                         rprintln!("Sent data from host: {:?}", data);
+                    }
+                    HostToTarget::SendUsart {
+                        mode: UsartMode::Dma,
+                        data,
+                    } => {
+                        rprint!("Sending using USART/DMA...");
+
+                        let buf = DmaPool::alloc().unwrap();
+                        let mut buf = buf.init(DMAFrame::new());
+                        buf.write_slice(data);
+
+                        dma_tx_main.send(buf).unwrap();
+
+                        loop {
+                            let buf = dma_tx_main.transfer_complete_interrupt();
+                            if let Some(buf) = buf {
+                                // Not sure why, but the buffer needs to be
+                                // dropped explicitly for its memory to be
+                                // freed.
+                                drop(buf);
+                                break;
+                            }
+                        }
+
+                        rprintln!("done.")
                     }
                     message => {
                         panic!("Unsupported message: {:?}", message)
