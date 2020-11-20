@@ -37,3 +37,18 @@ fn it_should_receive_messages() -> Result {
     assert_eq!(received, message);
     Ok(())
 }
+
+#[test]
+fn it_should_send_messages_using_dma() -> Result {
+    let mut test_stand = TestStand::new()?;
+
+    let message = b"Hello, world!";
+    test_stand.target.send_usart_dma(message)?;
+
+    let timeout  = Duration::from_millis(50);
+    let received = test_stand.assistant
+        .receive_from_target_usart(message, timeout)?;
+
+    assert_eq!(received, message);
+    Ok(())
+}
