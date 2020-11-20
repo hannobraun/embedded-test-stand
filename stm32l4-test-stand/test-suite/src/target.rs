@@ -36,6 +36,15 @@ impl Target {
             .map_err(|err| TargetUsartSendError(err))
     }
 
+    /// Instruct the target to send this message via USART using DMA
+    pub fn send_usart_dma(&mut self, data: &[u8])
+        -> Result<(), TargetUsartSendError>
+    {
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
+            .map_err(|err| TargetUsartSendError(err))
+    }
+
     /// Wait to receive the provided data via USART
     ///
     /// Returns the receive buffer, once the data was received. Returns an
