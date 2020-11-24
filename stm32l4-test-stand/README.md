@@ -23,10 +23,11 @@ Connect both boards to the host computer via their USB ports. This is required b
 
 In addition, you need to connect the following pins of the target and the assistant:
 
-| Target | Assistant | Note                           |
-| ------ | --------- | ------------------------------ |
-| CN7  1 |        12 | USART: Target TX, Assistant RX |
-| CN7  9 |        13 | USART: Target RX, Assistant TX |
+| Target | Assistant | Note                                 |
+| ------ | --------- | ------------------------------------ |
+| CN7  1 |        12 | USART: Target TX, Assistant RX       |
+| CN7  9 |        13 | USART: Target RX, Assistant TX       |
+| CN6 16 |        15 | USART: Target RX (DMA), Assistant TX |
 
 
 [stm32l4xx-hal]: https://github.com/stm32-rs/stm32l4xx-hal
