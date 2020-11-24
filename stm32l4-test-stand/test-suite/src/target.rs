@@ -55,6 +55,16 @@ impl Target {
         self.wait_for_usart_rx_inner(data, timeout, UsartMode::Regular)
     }
 
+    /// Wait to receive the provided data via USART/DMA
+    ///
+    /// Returns the receive buffer, once the data was received. Returns an
+    /// error, if it times out before that, or an I/O error occurs.
+    pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Dma)
+    }
+
     fn wait_for_usart_rx_inner(&mut self,
         data:          &[u8],
         timeout:       Duration,
