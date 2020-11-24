@@ -160,24 +160,12 @@ const APP: () = {
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
 
         loop {
-            while let Some(b) = rx_main.dequeue() {
-                buf_main_rx.push(b)
-                    .expect("Main receive buffer full");
-            }
-
-            if buf_main_rx.len() > 0 {
-                let message = TargetToHost::UsartReceive {
-                    mode: UsartMode::Regular,
-                    data: buf_main_rx.as_ref(),
-                };
-
-                let buf_host_tx: Vec<_, U256> = postcard::to_vec_cobs(&message)
-                    .expect("Error encoding message to host");
-                tx_host.bwrite_all(buf_host_tx.as_ref())
-                    .expect("Error sending message to host");
-
-                buf_main_rx.clear();
-            }
+            handle_usart_rx(
+                rx_main,
+                tx_host,
+                UsartMode::Regular,
+                &mut buf_main_rx,
+            );
 
             if let Some(b) = rx_host.dequeue() {
                 // Requests are COBS-encoded, so we know that `0` means we
@@ -275,3 +263,29 @@ const APP: () = {
         }
     }
 };
+
+fn handle_usart_rx(
+    queue: &mut spsc::Consumer<'static, u8, U256>,
+    tx_host: &mut serial::Tx<USART2>,
+    mode: UsartMode,
+    buf: &mut Vec<u8, U256>,
+) {
+    while let Some(b) = queue.dequeue() {
+        buf.push(b)
+            .expect("Main receive buffer full");
+    }
+
+    if buf.len() > 0 {
+        let message = TargetToHost::UsartReceive {
+            mode,
+            data: buf.as_ref(),
+        };
+
+        let buf_host_tx: Vec<_, U256> = postcard::to_vec_cobs(&message)
+            .expect("Error encoding message to host");
+        tx_host.bwrite_all(buf_host_tx.as_ref())
+            .expect("Error sending message to host");
+
+        buf.clear();
+    }
+}
