@@ -36,13 +36,39 @@ impl Target {
             .map_err(|err| TargetUsartSendError(err))
     }
 
+    /// Instruct the target to send this message via USART using DMA
+    pub fn send_usart_dma(&mut self, data: &[u8])
+        -> Result<(), TargetUsartSendError>
+    {
+        self.conn
+            .send(&HostToTarget::SendUsart { mode: UsartMode::Dma, data })
+            .map_err(|err| TargetUsartSendError(err))
+    }
+
     /// Wait to receive the provided data via USART
     ///
     /// Returns the receive buffer, once the data was received. Returns an
     /// error, if it times out before that, or an I/O error occurs.
-    pub fn wait_for_usart_rx(&mut self,
-        data:    &[u8],
-        timeout: Duration,
+    pub fn wait_for_usart_rx(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Regular)
+    }
+
+    /// Wait to receive the provided data via USART/DMA
+    ///
+    /// Returns the receive buffer, once the data was received. Returns an
+    /// error, if it times out before that, or an I/O error occurs.
+    pub fn wait_for_usart_rx_dma(&mut self, data: &[u8], timeout: Duration)
+        -> Result<Vec<u8>, TargetUsartWaitError>
+    {
+        self.wait_for_usart_rx_inner(data, timeout, UsartMode::Dma)
+    }
+
+    fn wait_for_usart_rx_inner(&mut self,
+        data:          &[u8],
+        timeout:       Duration,
+        expected_mode: UsartMode,
     )
         -> Result<Vec<u8>, TargetUsartWaitError>
     {
@@ -64,7 +90,7 @@ impl Target {
 
             match message {
                 TargetToHost::UsartReceive { mode, data }
-                    if mode == UsartMode::Regular =>
+                    if mode == expected_mode =>
                 {
                     buf.extend(data)
                 }

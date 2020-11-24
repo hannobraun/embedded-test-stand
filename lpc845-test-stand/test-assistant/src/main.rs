@@ -489,6 +489,7 @@ const APP: () = {
                             mode: UsartMode::Dma,
                             data,
                         } => {
+                            rprintln!("Sending USART message using DMA.");
                             target_tx_dma.bwrite_all(data)
                         }
                         HostToAssistant::SendUsart {

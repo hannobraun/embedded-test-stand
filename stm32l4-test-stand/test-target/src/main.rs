@@ -9,8 +9,13 @@ extern crate panic_rtt_target;
 
 
 use heapless::{
+    pool,
     Vec,
     consts::U256,
+    pool::singleton::{
+        Box,
+        Pool as _,
+    },
     spsc,
 };
 use rtt_target::{
@@ -19,10 +24,17 @@ use rtt_target::{
 };
 use stm32l4xx_hal::{
     prelude::*,
+    dma::{
+        DMAFrame,
+        FrameReader,
+        FrameSender,
+        dma1,
+    },
     pac::{
         self,
         USART1,
         USART2,
+        USART3,
     },
     serial::{
         self,
@@ -37,6 +49,12 @@ use lpc845_messages::{
 };
 
 
+pool!(
+    #[allow(non_upper_case_globals)]
+    DmaPool: DMAFrame<U256>
+);
+
+
 #[rtic::app(device = stm32l4xx_hal::pac)]
 const APP: () = {
     struct Resources {
@@ -44,11 +62,18 @@ const APP: () = {
         tx_main: serial::Tx<USART1>,
         rx_host: serial::Rx<USART2>,
         tx_host: serial::Tx<USART2>,
+        rx_dma: serial::Rx<USART3>,
+        tx_dma: serial::Tx<USART3>,
 
         rx_prod_main: spsc::Producer<'static, u8, U256>,
         rx_cons_main: spsc::Consumer<'static, u8, U256>,
         rx_prod_host: spsc::Producer<'static, u8, U256>,
         rx_cons_host: spsc::Consumer<'static, u8, U256>,
+        rx_prod_dma: spsc::Producer<'static, u8, U256>,
+        rx_cons_dma: spsc::Consumer<'static, u8, U256>,
+
+        dma_tx_main: FrameSender<Box<DmaPool>, dma1::C4, U256>,
+        dma_rx_dma: FrameReader<Box<DmaPool>, dma1::C3, U256>,
     }
 
     #[init]
@@ -57,6 +82,12 @@ const APP: () = {
             spsc::Queue(heapless::i::Queue::new());
         static mut RX_QUEUE_MAIN: spsc::Queue<u8, U256> =
             spsc::Queue(heapless::i::Queue::new());
+        static mut RX_QUEUE_DMA: spsc::Queue<u8, U256> =
+            spsc::Queue(heapless::i::Queue::new());
+
+        // Allocate memory for DMA transfers.
+        static mut MEMORY: [u8; 1024] = [0; 1024];
+        DmaPool::grow(MEMORY);
 
         rtt_target::rtt_init_print!();
         rprint!("Starting target...");
@@ -76,6 +107,8 @@ const APP: () = {
         let rx_pin_main = gpiob.pb7.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
         let tx_pin_host = gpioa.pa2.into_af7(&mut gpioa.moder, &mut gpioa.afrl);
         let rx_pin_host = gpioa.pa3.into_af7(&mut gpioa.moder, &mut gpioa.afrl);
+        let tx_pin_dma = gpiob.pb10.into_af7(&mut gpiob.moder, &mut gpiob.afrh);
+        let rx_pin_dma = gpiob.pb11.into_af7(&mut gpiob.moder, &mut gpiob.afrh);
 
         let mut usart_main = Serial::usart1(
             p.USART1,
@@ -91,14 +124,35 @@ const APP: () = {
             clocks,
             &mut rcc.apb1r1,
         );
+        let mut usart_dma = Serial::usart3(
+            p.USART3,
+            (tx_pin_dma, rx_pin_dma),
+            serial::Config::default()
+                .baudrate(115_200.bps())
+                .character_match(b'!'),
+            clocks,
+            &mut rcc.apb1r1,
+        );
 
         usart_main.listen(serial::Event::Rxne);
         usart_host.listen(serial::Event::Rxne);
+        usart_dma.listen(serial::Event::CharacterMatch);
 
         let (tx_main, rx_main) = usart_main.split();
         let (tx_host, rx_host) = usart_host.split();
+        let (tx_dma, rx_dma) = usart_dma.split();
         let (rx_prod_main, rx_cons_main) = RX_QUEUE_MAIN.split();
         let (rx_prod_host, rx_cons_host) = RX_QUEUE_HOST.split();
+        let (rx_prod_dma, rx_cons_dma) = RX_QUEUE_DMA.split();
+
+        let dma1 = p.DMA1.split(&mut rcc.ahb1);
+        let dma_tx_main = tx_main.frame_sender(dma1.4);
+        let dma_rx_dma = {
+            let buf = DmaPool::alloc()
+                .unwrap()
+                .init(DMAFrame::new());
+            rx_dma.frame_read(dma1.3, buf)
+        };
 
         rprintln!("done.");
 
@@ -107,43 +161,53 @@ const APP: () = {
             tx_main,
             rx_host,
             tx_host,
+            rx_dma,
+            tx_dma,
 
             rx_prod_main,
             rx_cons_main,
             rx_prod_host,
             rx_cons_host,
+            rx_prod_dma,
+            rx_cons_dma,
+
+            dma_tx_main,
+            dma_rx_dma,
         }
     }
 
-    #[idle(resources = [rx_cons_main, rx_cons_host, tx_main, tx_host])]
+    #[idle(resources = [
+        rx_cons_main,
+        rx_cons_host,
+        rx_cons_dma,
+        tx_main,
+        tx_host,
+        dma_tx_main,
+    ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
         let rx_host = cx.resources.rx_cons_host;
+        let rx_dma  = cx.resources.rx_cons_dma;
         let tx_main = cx.resources.tx_main;
         let tx_host = cx.resources.tx_host;
+        let dma_tx_main = cx.resources.dma_tx_main;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
 
         loop {
-            while let Some(b) = rx_main.dequeue() {
-                buf_main_rx.push(b)
-                    .expect("Main receive buffer full");
-            }
-
-            if buf_main_rx.len() > 0 {
-                let message = TargetToHost::UsartReceive {
-                    mode: UsartMode::Regular,
-                    data: buf_main_rx.as_ref(),
-                };
-
-                let buf_host_tx: Vec<_, U256> = postcard::to_vec_cobs(&message)
-                    .expect("Error encoding message to host");
-                tx_host.bwrite_all(buf_host_tx.as_ref())
-                    .expect("Error sending message to host");
-
-                buf_main_rx.clear();
-            }
+            handle_usart_rx(
+                rx_main,
+                tx_host,
+                UsartMode::Regular,
+                &mut buf_main_rx,
+            );
+            handle_usart_rx(
+                rx_dma,
+                tx_host,
+                UsartMode::Dma,
+                &mut buf_main_rx,
+            );
 
             if let Some(b) = rx_host.dequeue() {
                 // Requests are COBS-encoded, so we know that `0` means we
@@ -163,6 +227,31 @@ const APP: () = {
                         tx_main.bwrite_all(data)
                             .expect("Error writing to USART");
                         rprintln!("Sent data from host: {:?}", data);
+                    }
+                    HostToTarget::SendUsart {
+                        mode: UsartMode::Dma,
+                        data,
+                    } => {
+                        rprint!("Sending using USART/DMA...");
+
+                        let buf = DmaPool::alloc().unwrap();
+                        let mut buf = buf.init(DMAFrame::new());
+                        buf.write_slice(data);
+
+                        dma_tx_main.send(buf).unwrap();
+
+                        loop {
+                            let buf = dma_tx_main.transfer_complete_interrupt();
+                            if let Some(buf) = buf {
+                                // Not sure why, but the buffer needs to be
+                                // dropped explicitly for its memory to be
+                                // freed.
+                                drop(buf);
+                                break;
+                            }
+                        }
+
+                        rprintln!("done.")
                     }
                     message => {
                         panic!("Unsupported message: {:?}", message)
@@ -215,4 +304,48 @@ const APP: () = {
             }
         }
     }
+
+    #[task(binds = USART3, resources = [rx_dma, dma_rx_dma, rx_prod_dma])]
+    fn usart3(cx: usart3::Context) {
+        let rx_dma = cx.resources.rx_dma;
+        let dma_rx_dma = cx.resources.dma_rx_dma;
+        let rx_prod_dma = cx.resources.rx_prod_dma;
+
+        if rx_dma.is_character_match(true) {
+            let buf = DmaPool::alloc()
+                .unwrap()
+                .init(DMAFrame::new());
+            let buf = dma_rx_dma.character_match_interrupt(buf);
+
+            for &b in buf.read() {
+                rx_prod_dma.enqueue(b).unwrap();
+            }
+        }
+    }
 };
+
+fn handle_usart_rx(
+    queue: &mut spsc::Consumer<'static, u8, U256>,
+    tx_host: &mut serial::Tx<USART2>,
+    mode: UsartMode,
+    buf: &mut Vec<u8, U256>,
+) {
+    while let Some(b) = queue.dequeue() {
+        buf.push(b)
+            .expect("Main receive buffer full");
+    }
+
+    if buf.len() > 0 {
+        let message = TargetToHost::UsartReceive {
+            mode,
+            data: buf.as_ref(),
+        };
+
+        let buf_host_tx: Vec<_, U256> = postcard::to_vec_cobs(&message)
+            .expect("Error encoding message to host");
+        tx_host.bwrite_all(buf_host_tx.as_ref())
+            .expect("Error sending message to host");
+
+        buf.clear();
+    }
+}
