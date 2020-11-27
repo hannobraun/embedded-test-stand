@@ -105,6 +105,8 @@ const APP: () = {
 
         let tx_pin_main = gpiob.pb6.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
         let rx_pin_main = gpiob.pb7.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
+        let rts_main = gpiob.pb3.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
+        let cts_main = gpiob.pb4.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
         let tx_pin_host = gpioa.pa2.into_af7(&mut gpioa.moder, &mut gpioa.afrl);
         let rx_pin_host = gpioa.pa3.into_af7(&mut gpioa.moder, &mut gpioa.afrl);
         let tx_pin_dma = gpiob.pb10.into_af7(&mut gpiob.moder, &mut gpiob.afrh);
@@ -112,7 +114,7 @@ const APP: () = {
 
         let mut usart_main = Serial::usart1(
             p.USART1,
-            (tx_pin_main, rx_pin_main),
+            (tx_pin_main, rx_pin_main, rts_main, cts_main),
             serial::Config::default().baudrate(115_200.bps()),
             clocks,
             &mut rcc.apb2,
@@ -252,6 +254,18 @@ const APP: () = {
                         }
 
                         rprintln!("done.")
+                    }
+                    HostToTarget::SendUsart {
+                        mode: UsartMode::FlowControl,
+                        data,
+                    } => {
+                        // Re-using USART1 for the flow control test.
+                        // Unfortunately the STM32L433 doesn't have enough
+                        // USARTs to test this on a separate instance.
+                        tx_main.bwrite_all(data)
+                            .expect("Error writing to USART");
+
+                        rprintln!("Sent data using flow control: {:?}", data);
                     }
                     message => {
                         panic!("Unsupported message: {:?}", message)
