@@ -25,9 +25,11 @@ In addition, you need to connect the following pins of the target and the assist
 
 | Target | Assistant | Note                                 |
 | ------ | --------- | ------------------------------------ |
+| CN5 35 |        19 | USART: CTS                           |
+| CN6 16 |        15 | USART: Target RX (DMA), Assistant TX |
 | CN7  1 |        12 | USART: Target TX, Assistant RX       |
 | CN7  9 |        13 | USART: Target RX, Assistant TX       |
-| CN6 16 |        15 | USART: Target RX (DMA), Assistant TX |
+| CN9  4 |        18 | USART: RTS                           |
 
 
 [stm32l4xx-hal]: https://github.com/stm32-rs/stm32l4xx-hal
