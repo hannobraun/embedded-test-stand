@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+# Generic infrastructure
 (
     cd test-stand-infra/protocol
     cargo upgrades)
@@ -10,6 +11,8 @@ set -e
 (
     cd test-stand-infra/host-lib
     cargo upgrades)
+
+# LPC845 test stand
 (
     cd lpc845-test-stand/messages
     cargo upgrades)
@@ -21,4 +24,15 @@ set -e
     cargo upgrades)
 (
     cd lpc845-test-stand/test-suite
+    cargo upgrades)
+
+# STM32L4 test stand
+(
+    cd stm32l4-test-stand/test-target
+    cargo upgrades)
+(
+    cd stm32l4-test-stand/test-assistant
+    cargo upgrades)
+(
+    cd stm32l4-test-stand/test-suite
     cargo upgrades)
