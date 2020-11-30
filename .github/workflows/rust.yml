@@ -16,6 +16,9 @@ jobs:
     - name: Install Cortex-M0+ target
       run: |
         rustup target install thumbv6m-none-eabi
+    - name: Install Cortex-M4 target
+      run: |
+        rustup target install thumbv7em-none-eabi
     - name: Build
       run: |
         ./scripts/build.sh
