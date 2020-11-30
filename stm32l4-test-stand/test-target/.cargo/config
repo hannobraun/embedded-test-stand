@@ -1,8 +1,8 @@
 [build]
-target = "thumbv7m-none-eabi"
+target = "thumbv7em-none-eabi"
 target-dir = "../../target"
 
-[target.thumbv7m-none-eabi]
+[target.thumbv7em-none-eabi]
 rustflags = [
     "-C", "link-arg=-Tlink.x",
 ]
