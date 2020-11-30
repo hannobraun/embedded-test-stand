@@ -24,7 +24,7 @@ version  = "0.1.1"
 features = ["cortex-m"]
 
 [dependencies.rtt-target]
-version  = "0.2.2"
+version  = "0.3.0"
 features = ["cortex-m"]
 
 [dependencies.void]
