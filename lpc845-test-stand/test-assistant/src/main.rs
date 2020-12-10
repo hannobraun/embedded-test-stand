@@ -53,6 +53,7 @@ use lpc8xx_hal::{
     pins::{
         PIO0_8,
         PIO0_9,
+        PIO0_20,
         PIO1_0,
         PIO1_1,
         PIO1_2,
@@ -128,6 +129,7 @@ const APP: () = {
         blue_int:  pin_interrupt::Int<'static, PININT1, PIO1_1, MRT1>,
         blue_idle: pin_interrupt::Idle<'static>,
 
+        pin_5: GpioPin<PIO0_20, Output>,
         cts: GpioPin<PIO0_8, Output>,
         red: GpioPin<PIO1_2, Output>,
 
@@ -182,6 +184,12 @@ const APP: () = {
             .select::<PIO1_1>(&mut syscon.handle);
         blue_int.enable_rising_edge();
         blue_int.enable_falling_edge();
+
+        // Configure GPIO pin 5
+        let pin_5 = p.pins.pio0_20.into_output_pin(
+            gpio.tokens.pio0_20,
+            gpio::Level::Low,
+        );
 
         // Configure pin connected to target's input pin
         let red = p.pins.pio1_2.into_output_pin(
@@ -407,6 +415,7 @@ const APP: () = {
             blue_int,
             blue_idle,
 
+            pin_5,
             red,
             cts,
 
@@ -427,6 +436,7 @@ const APP: () = {
             green_idle,
             blue_idle,
             target_rts_idle,
+            pin_5,
             red,
             cts,
         ]
@@ -442,6 +452,7 @@ const APP: () = {
         let green          = cx.resources.green_idle;
         let blue           = cx.resources.blue_idle;
         let rts            = cx.resources.target_rts_idle;
+        let pin_5          = cx.resources.pin_5;
         let red            = cx.resources.red;
         let cts            = cx.resources.cts;
 
@@ -500,6 +511,22 @@ const APP: () = {
                             data,
                         } => {
                             target_sync_tx.send_raw(data)
+                        }
+                        HostToAssistant::SetPin(
+                            pin::SetLevel {
+                                pin: OutputPin::Pin5,
+                                level,
+                            }
+                        ) => {
+                            match level {
+                                pin::Level::High => {
+                                    pin_5.set_high();
+                                }
+                                pin::Level::Low => {
+                                    pin_5.set_low();
+                                }
+                            }
+                            Ok(())
                         }
                         HostToAssistant::SetPin(
                             pin::SetLevel {

@@ -91,6 +91,7 @@ pub enum InputPin {
 /// Represents one of the pins that the assistant can set
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum OutputPin {
+    Pin5,
     Cts,
     Red,
 }
