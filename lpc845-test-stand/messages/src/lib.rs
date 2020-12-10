@@ -68,6 +68,9 @@ pub enum HostToTarget<'r> {
         /// The data to send to the slave
         data: u8,
     },
+
+    /// Instruct the target to read from the ADC
+    ReadAdc,
 }
 
 impl From<pin::SetLevel<()>> for HostToTarget<'_> {
@@ -105,6 +108,9 @@ pub enum TargetToHost<'r> {
 
     /// Notify the host that the SPI transaction completed
     SpiReply(u8),
+
+    /// Reply to `ReadAdc` request
+    AdcValue(u16),
 }
 
 impl<'r> TryFrom<TargetToHost<'r>> for pin::ReadLevelResult<()> {
