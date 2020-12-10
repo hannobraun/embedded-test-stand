@@ -34,7 +34,10 @@ use stm32l4xx_hal::{
     },
     gpio::{
         Analog,
+        Output,
         PC0,
+        PC1,
+        PushPull,
     },
     pac::{
         self,
@@ -52,6 +55,7 @@ use lpc845_messages::{
     HostToTarget,
     TargetToHost,
     UsartMode,
+    pin,
 };
 
 
@@ -83,6 +87,8 @@ const APP: () = {
 
         adc: ADC,
         analog: PC0<Analog>,
+
+        gpio_out: PC1<Output<PushPull>>,
     }
 
     #[init]
@@ -132,6 +138,9 @@ const APP: () = {
         let rx_pin_dma = gpiob.pb11.into_af7(&mut gpiob.moder, &mut gpiob.afrh);
 
         let analog = gpioc.pc0.into_analog(&mut gpioc.moder, &mut gpioc.pupdr);
+
+        let gpio_out = gpioc.pc1
+            .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper);
 
         let mut usart_main = Serial::usart1(
             p.USART1,
@@ -199,6 +208,8 @@ const APP: () = {
 
             adc,
             analog,
+
+            gpio_out,
         }
     }
 
@@ -211,6 +222,7 @@ const APP: () = {
         dma_tx_main,
         adc,
         analog,
+        gpio_out,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
@@ -221,6 +233,7 @@ const APP: () = {
         let dma_tx_main = cx.resources.dma_tx_main;
         let adc = cx.resources.adc;
         let analog = cx.resources.analog;
+        let gpio_out = cx.resources.gpio_out;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -305,6 +318,18 @@ const APP: () = {
                                 .expect("Error encoding message to host");
                         tx_host.bwrite_all(buf_host_tx.as_ref())
                             .expect("Error sending message to host");
+                    }
+                    HostToTarget::SetPin(
+                        pin::SetLevel { level, pin: () }
+                    ) => {
+                        match level {
+                            pin::Level::High => {
+                                gpio_out.set_high().unwrap();
+                            }
+                            pin::Level::Low => {
+                                gpio_out.set_low().unwrap();
+                            }
+                        }
                     }
                     message => {
                         panic!("Unsupported message: {:?}", message)
