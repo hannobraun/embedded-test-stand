@@ -6,6 +6,9 @@ use host_lib::assistant::AssistantError;
 use crate::{
     target::{
         ReadAdcError,
+        TargetPinReadError,
+        TargetSetPinHighError,
+        TargetSetPinLowError,
         TargetUsartSendError,
         TargetUsartWaitError,
     },
@@ -22,6 +25,9 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 pub enum Error {
     Assistant(AssistantError),
     ReadAdc(ReadAdcError),
+    TargetPinRead(TargetPinReadError),
+    TargetSetPinHigh(TargetSetPinHighError),
+    TargetSetPinLow(TargetSetPinLowError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
@@ -36,6 +42,24 @@ impl From<AssistantError> for Error {
 impl From<ReadAdcError> for Error {
     fn from(err: ReadAdcError) -> Self {
         Self::ReadAdc(err)
+    }
+}
+
+impl From<TargetPinReadError> for Error {
+    fn from(err: TargetPinReadError) -> Self {
+        Self::TargetPinRead(err)
+    }
+}
+
+impl From<TargetSetPinHighError> for Error {
+    fn from(err: TargetSetPinHighError) -> Self {
+        Self::TargetSetPinHigh(err)
+    }
+}
+
+impl From<TargetSetPinLowError> for Error {
+    fn from(err: TargetSetPinLowError) -> Self {
+        Self::TargetSetPinLow(err)
     }
 }
 
