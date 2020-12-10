@@ -30,6 +30,8 @@ In addition, you need to connect the following pins of the target and the assist
 | CN7   1 |        12 | USART: Target TX, Assistant RX       |
 | CN7   9 |        13 | USART: Target RX, Assistant TX       |
 | CN9   4 |        18 | USART: RTS                           |
+| CN10  4 |        29 | GPIO: Target In, Assistant Out       |
+| CN10  5 |        31 | GPIO: Target Out, Assistant In       |
 | CN10  6 |         5 | ADC                                  |
 
 
