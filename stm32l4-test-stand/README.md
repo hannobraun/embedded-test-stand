@@ -26,6 +26,8 @@ In addition, you need to connect the following pins of the target and the assist
 | Target  | Assistant | Note                                 |
 | ------- | --------- | ------------------------------------ |
 | CN5  35 |        19 | USART: CTS                           |
+| CN6  12 |        24 | I2C: SDA                             |
+| CN6  14 |        23 | I2C: SCL                             |
 | CN6  16 |        15 | USART: Target RX (DMA), Assistant TX |
 | CN7   1 |        12 | USART: Target TX, Assistant RX       |
 | CN7   9 |        13 | USART: Target RX, Assistant TX       |
