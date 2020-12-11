@@ -33,17 +33,24 @@ use stm32l4xx_hal::{
         dma1,
     },
     gpio::{
+        AF4,
+        Alternate,
         Analog,
         Floating,
         Input,
+        OpenDrain,
         Output,
+        PA9,
+        PA10,
         PC0,
         PC1,
         PC2,
         PushPull,
     },
+    i2c::I2c,
     pac::{
         self,
+        I2C1,
         USART1,
         USART2,
         USART3,
@@ -55,6 +62,7 @@ use stm32l4xx_hal::{
 };
 
 use lpc845_messages::{
+    DmaMode,
     HostToTarget,
     TargetToHost,
     UsartMode,
@@ -93,6 +101,14 @@ const APP: () = {
 
         gpio_out: PC1<Output<PushPull>>,
         gpio_in: PC2<Input<Floating>>,
+
+        i2c: I2c<
+            I2C1,
+            (
+                PA9<Alternate<AF4, Output<OpenDrain>>>,
+                PA10<Alternate<AF4, Output<OpenDrain>>>
+            )
+        >,
     }
 
     #[init]
@@ -148,6 +164,15 @@ const APP: () = {
         let gpio_in = gpioc.pc2
             .into_floating_input(&mut gpioc.moder, &mut gpioc.pupdr);
 
+        let mut scl = gpioa.pa9
+            .into_open_drain_output(&mut gpioa.moder, &mut gpioa.otyper);
+        scl.internal_pull_up(&mut gpioa.pupdr, true);
+        let scl = scl.into_af4(&mut gpioa.moder, &mut gpioa.afrh);
+        let mut sda = gpioa.pa10
+            .into_open_drain_output(&mut gpioa.moder, &mut gpioa.otyper);
+        sda.internal_pull_up(&mut gpioa.pupdr, true);
+        let sda = sda.into_af4(&mut gpioa.moder, &mut gpioa.afrh);
+
         let mut usart_main = Serial::usart1(
             p.USART1,
             (tx_pin_main, rx_pin_main, rts_main, cts_main),
@@ -175,6 +200,14 @@ const APP: () = {
         usart_main.listen(serial::Event::Rxne);
         usart_host.listen(serial::Event::Rxne);
         usart_dma.listen(serial::Event::CharacterMatch);
+
+        let i2c = I2c::i2c1(
+            p.I2C1,
+            (scl, sda),
+            100.khz(),
+            clocks,
+            &mut rcc.apb1r1,
+        );
 
         let (tx_main, rx_main) = usart_main.split();
         let (tx_host, rx_host) = usart_host.split();
@@ -217,6 +250,8 @@ const APP: () = {
 
             gpio_out,
             gpio_in,
+
+            i2c,
         }
     }
 
@@ -231,6 +266,7 @@ const APP: () = {
         analog,
         gpio_out,
         gpio_in,
+        i2c,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
@@ -243,6 +279,7 @@ const APP: () = {
         let analog = cx.resources.analog;
         let gpio_out = cx.resources.gpio_out;
         let gpio_in = cx.resources.gpio_in;
+        let i2c = cx.resources.i2c;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -355,6 +392,26 @@ const APP: () = {
                                 }
                             )
                         );
+
+                        let buf_host_tx: Vec<_, U256> =
+                            postcard::to_vec_cobs(&message)
+                                .expect("Error encoding message to host");
+                        tx_host.bwrite_all(buf_host_tx.as_ref())
+                            .expect("Error sending message to host");
+                    }
+                    HostToTarget::StartI2cTransaction {
+                        mode: DmaMode::Regular,
+                        address,
+                        data,
+                    } => {
+                        i2c.write(address, &[data])
+                            .unwrap();
+
+                        let mut rx_buf = [0u8; 1];
+                        i2c.read(address, &mut rx_buf)
+                            .unwrap();
+
+                        let message = TargetToHost::I2cReply(rx_buf[0]);
 
                         let buf_host_tx: Vec<_, U256> =
                             postcard::to_vec_cobs(&message)
