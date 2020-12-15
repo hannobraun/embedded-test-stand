@@ -29,7 +29,11 @@ In addition, you need to connect the following pins of the target and the assist
 | CN6  12 |        24 | I2C: SDA                             |
 | CN6  14 |        23 | I2C: SCL                             |
 | CN6  16 |        15 | USART: Target RX (DMA), Assistant TX |
+| CN6  22 |         4 | SPI: SSEL                            |
 | CN7   1 |        12 | USART: Target TX, Assistant RX       |
+| CN7   4 |         2 | SPI: MOSI                            |
+| CN7   5 |         3 | SPI: MISO                            |
+| CN7   6 |         1 | SPI: SCK                             |
 | CN7   9 |        13 | USART: Target RX, Assistant TX       |
 | CN9   4 |        18 | USART: RTS                           |
 | CN10  4 |        29 | GPIO: Target In, Assistant Out       |
