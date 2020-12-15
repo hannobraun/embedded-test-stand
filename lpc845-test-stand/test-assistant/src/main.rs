@@ -452,8 +452,6 @@ const APP: () = {
         loop {
             target_rx
                 .process_raw(|data| {
-                    rprintln!("Received message from target: {:?}", data);
-
                     host_tx.send_message(
                         &AssistantToHost::UsartReceive {
                             mode: UsartMode::Regular,
@@ -482,7 +480,6 @@ const APP: () = {
                             mode: UsartMode::Regular,
                             data,
                         } => {
-                            rprintln!("Sending regular USART message.");
                             target_tx.send_raw(data)
                         }
                         HostToAssistant::SendUsart {
