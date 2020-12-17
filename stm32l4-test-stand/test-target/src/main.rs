@@ -8,6 +8,10 @@
 extern crate panic_rtt_target;
 
 
+use cortex_m::peripheral::{
+    SYST,
+    syst::SystClkSource,
+};
 use embedded_hal::spi;
 use heapless::{
     pool,
@@ -51,6 +55,7 @@ use stm32l4xx_hal::{
         PC0,
         PC1,
         PC2,
+        PC7,
         PushPull,
     },
     i2c::I2c,
@@ -62,6 +67,7 @@ use stm32l4xx_hal::{
         USART2,
         USART3,
     },
+    rcc::Clocks,
     serial::{
         self,
         Serial,
@@ -127,6 +133,10 @@ const APP: () = {
                 PB15<Alternate<AF5, Input<Floating>>>,
             )
         >,
+
+        systick: SYST,
+        timer_signal: PC7<Output<PushPull>>,
+        clocks: Clocks,
     }
 
     #[init]
@@ -163,6 +173,7 @@ const APP: () = {
             &mut rcc.ccipr,
             &mut delay,
         );
+        let systick = delay.free();
 
         let mut gpioa = p.GPIOA.split(&mut rcc.ahb2);
         let mut gpiob = p.GPIOB.split(&mut rcc.ahb2);
@@ -183,6 +194,9 @@ const APP: () = {
             .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper);
         let gpio_in = gpioc.pc2
             .into_floating_input(&mut gpioc.moder, &mut gpioc.pupdr);
+
+        let timer_signal = gpioc.pc7
+            .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper);
 
         let mut scl = gpioa.pa9
             .into_open_drain_output(&mut gpioa.moder, &mut gpioa.otyper);
@@ -291,6 +305,10 @@ const APP: () = {
 
             ssel,
             spi,
+
+            systick,
+            timer_signal,
+            clocks,
         }
     }
 
@@ -308,6 +326,8 @@ const APP: () = {
         i2c,
         ssel,
         spi,
+        systick,
+        clocks,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
@@ -323,6 +343,8 @@ const APP: () = {
         let i2c = cx.resources.i2c;
         let ssel = cx.resources.ssel;
         let spi = cx.resources.spi;
+        let systick = cx.resources.systick;
+        let clocks = cx.resources.clocks;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -486,6 +508,19 @@ const APP: () = {
 
                         rprintln!(" done.");
                     }
+                    HostToTarget::StartTimerInterrupt { period_ms } => {
+                        let reload = clocks.hclk().0 / 1000 * period_ms;
+                        systick.set_clock_source(SystClkSource::Core);
+                        systick.set_reload(reload);
+
+                        systick.clear_current();
+                        systick.enable_interrupt();
+                        systick.enable_counter();
+                    }
+                    HostToTarget::StopTimerInterrupt => {
+                        systick.disable_interrupt();
+                        systick.disable_counter();
+                    }
                     message => {
                         panic!("Unsupported message: {:?}", message)
                     }
@@ -554,6 +589,23 @@ const APP: () = {
                 rx_prod_dma.enqueue(b).unwrap();
             }
         }
+    }
+
+    #[task(binds = SysTick, resources = [timer_signal])]
+    fn syst(cx: syst::Context) {
+        // cx.resources.timer_signal.toggle();
+        static mut HIGH: bool = false;
+
+        let timer_signal = cx.resources.timer_signal;
+
+        if *HIGH {
+            timer_signal.set_low().unwrap();
+        }
+        else {
+            timer_signal.set_high().unwrap();
+        }
+
+        *HIGH = !*HIGH;
     }
 };
 
