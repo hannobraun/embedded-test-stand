@@ -281,6 +281,17 @@ impl Target {
 
         Ok(TimerInterrupt(self))
     }
+
+    /// Start a PWM signal with the given period in milliseconds
+    pub fn start_pwm_signal(&mut self)
+        -> Result<PwmSignal, TargetStartPwmSignalError>
+    {
+        self.conn
+            .send(&HostToTarget::StartPwmSignal)
+            .map_err(|err| TargetStartPwmSignalError(err))?;
+
+        Ok(PwmSignal(self))
+    }
 }
 
 
@@ -292,6 +303,18 @@ pub struct TimerInterrupt<'r>(&'r mut Target);
 impl Drop for TimerInterrupt<'_> {
     fn drop(&mut self) {
         (self.0).conn.send(&HostToTarget::StopTimerInterrupt)
+            .unwrap()
+    }
+}
+
+/// Represent an ongoing PWM signal that's currently configured on the target
+///
+/// This PWM signal will be stopped when this struct is dropped.
+pub struct PwmSignal<'r>(&'r mut Target);
+
+impl Drop for PwmSignal<'_> {
+    fn drop(&mut self) {
+        (self.0).conn.send(&HostToTarget::StopPwmSignal)
             .unwrap()
     }
 }
@@ -346,3 +369,6 @@ pub enum TargetSpiError {
 
 #[derive(Debug)]
 pub struct TargetStartTimerInterruptError(ConnSendError);
+
+#[derive(Debug)]
+pub struct TargetStartPwmSignalError(ConnSendError);
