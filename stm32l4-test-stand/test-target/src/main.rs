@@ -63,9 +63,14 @@ use stm32l4xx_hal::{
         self,
         I2C1,
         SPI2,
+        TIM1,
         USART1,
         USART2,
         USART3,
+    },
+    pwm::{
+        self,
+        Pwm,
     },
     rcc::Clocks,
     serial::{
@@ -137,6 +142,8 @@ const APP: () = {
         systick: SYST,
         timer_signal: PC7<Output<PushPull>>,
         clocks: Clocks,
+
+        pwm_signal: Pwm<TIM1, pwm::C4>,
     }
 
     #[init]
@@ -197,6 +204,12 @@ const APP: () = {
 
         let timer_signal = gpioc.pc7
             .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper);
+
+        let pwm_signal = gpioa.pa11
+            .into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper)
+            .into_af1(&mut gpioa.moder, &mut gpioa.afrh);
+        let pwm_signal = p.TIM1
+            .pwm(pwm_signal, 50.hz(), clocks, &mut rcc.apb2);
 
         let mut scl = gpioa.pa9
             .into_open_drain_output(&mut gpioa.moder, &mut gpioa.otyper);
@@ -309,6 +322,8 @@ const APP: () = {
             systick,
             timer_signal,
             clocks,
+
+            pwm_signal,
         }
     }
 
@@ -328,6 +343,7 @@ const APP: () = {
         spi,
         systick,
         clocks,
+        pwm_signal,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
@@ -345,6 +361,7 @@ const APP: () = {
         let spi = cx.resources.spi;
         let systick = cx.resources.systick;
         let clocks = cx.resources.clocks;
+        let pwm_signal = cx.resources.pwm_signal;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -520,6 +537,13 @@ const APP: () = {
                     HostToTarget::StopTimerInterrupt => {
                         systick.disable_interrupt();
                         systick.disable_counter();
+                    }
+                    HostToTarget::StartPwmSignal => {
+                        pwm_signal.set_duty(pwm_signal.get_max_duty() / 2);
+                        pwm_signal.enable();
+                    }
+                    HostToTarget::StopPwmSignal => {
+                        pwm_signal.disable();
                     }
                     message => {
                         panic!("Unsupported message: {:?}", message)

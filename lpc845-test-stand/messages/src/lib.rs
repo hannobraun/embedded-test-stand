@@ -48,6 +48,12 @@ pub enum HostToTarget<'r> {
     /// Instruct the target to stop the timer interrupt
     StopTimerInterrupt,
 
+    /// Instruct the target to start the PWM signal
+    StartPwmSignal,
+
+    /// Instruct the target to stop the PWM signal
+    StopPwmSignal,
+
     /// Instruct the target to start an I2C transaction
     StartI2cTransaction {
         /// Which mode to use for the transaction
