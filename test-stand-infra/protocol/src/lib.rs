@@ -86,6 +86,7 @@ pub enum InputPin {
     Blue  = 0,
     Green = 1,
     Rts   = 2,
+    Pwm   = 3,
 }
 
 /// Represents one of the pins that the assistant can set

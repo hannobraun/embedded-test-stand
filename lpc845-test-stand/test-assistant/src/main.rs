@@ -15,7 +15,7 @@ use core::marker::PhantomData;
 
 use heapless::{
     FnvIndexMap,
-    consts::U4,
+    consts::U8,
 };
 use lpc8xx_hal::{
     prelude::*,
@@ -32,6 +32,7 @@ use lpc8xx_hal::{
         MRT0,
         MRT1,
         MRT2,
+        MRT3,
     },
     nb::{
         self,
@@ -49,11 +50,13 @@ use lpc8xx_hal::{
         PININT0,
         PININT1,
         PININT2,
+        PININT3,
     },
     pins::{
         PIO0_8,
         PIO0_9,
         PIO0_20,
+        PIO0_23,
         PIO1_0,
         PIO1_1,
         PIO1_2,
@@ -129,6 +132,9 @@ const APP: () = {
         blue_int:  pin_interrupt::Int<'static, PININT1, PIO1_1, MRT1>,
         blue_idle: pin_interrupt::Idle<'static>,
 
+        pwm_int:  pin_interrupt::Int<'static, PININT3, PIO0_23, MRT3>,
+        pwm_idle: pin_interrupt::Idle<'static>,
+
         pin_5: GpioPin<PIO0_20, Output>,
         cts: GpioPin<PIO0_8, Output>,
         red: GpioPin<PIO1_2, Output>,
@@ -151,6 +157,7 @@ const APP: () = {
         static mut GREEN: PinInterrupt = PinInterrupt::new();
         static mut BLUE:  PinInterrupt = PinInterrupt::new();
         static mut RTS:   PinInterrupt = PinInterrupt::new();
+        static mut PWM:   PinInterrupt = PinInterrupt::new();
 
         rtt_target::rtt_init_print!();
         rprintln!("Starting assistant.");
@@ -184,6 +191,15 @@ const APP: () = {
             .select::<PIO1_1>(&mut syscon.handle);
         blue_int.enable_rising_edge();
         blue_int.enable_falling_edge();
+
+        // Configure interrupt for pin connected to target's PWM pin
+        let _pwm = p.pins.pio0_23.into_input_pin(gpio.tokens.pio0_23);
+        let mut pwm_int = pinint
+            .interrupts
+            .pinint3
+            .select::<PIO0_23>(&mut syscon.handle);
+        pwm_int.enable_rising_edge();
+        pwm_int.enable_falling_edge();
 
         // Configure GPIO pin 5
         let pin_5 = p.pins.pio0_20.into_output_pin(
@@ -332,6 +348,7 @@ const APP: () = {
 
         let (green_int, green_idle) = GREEN.init(green_int, timers.mrt0);
         let (blue_int,  blue_idle)  = BLUE.init(blue_int, timers.mrt1);
+        let (pwm_int,   pwm_idle)   = PWM.init(pwm_int, timers.mrt3);
 
         // Assign I2C0 pin functions
         let (i2c0_sda, _) = swm.fixed_functions.i2c0_sda
@@ -415,6 +432,9 @@ const APP: () = {
             blue_int,
             blue_idle,
 
+            pwm_int,
+            pwm_idle,
+
             pin_5,
             red,
             cts,
@@ -435,6 +455,7 @@ const APP: () = {
             target_sync_tx,
             green_idle,
             blue_idle,
+            pwm_idle,
             target_rts_idle,
             pin_5,
             red,
@@ -451,12 +472,13 @@ const APP: () = {
         let target_sync_tx = cx.resources.target_sync_tx;
         let green          = cx.resources.green_idle;
         let blue           = cx.resources.blue_idle;
+        let pwm            = cx.resources.pwm_idle;
         let rts            = cx.resources.target_rts_idle;
         let pin_5          = cx.resources.pin_5;
         let red            = cx.resources.red;
         let cts            = cx.resources.cts;
 
-        let mut pins = FnvIndexMap::<_, _, U4>::new();
+        let mut pins = FnvIndexMap::<_, _, U8>::new();
 
         let mut buf = [0; 256];
 
@@ -593,6 +615,7 @@ const APP: () = {
             handle_pin_interrupt(green, InputPin::Green, &mut pins);
             handle_pin_interrupt(blue,  InputPin::Blue,  &mut pins);
             handle_pin_interrupt(rts,   InputPin::Rts,   &mut pins);
+            handle_pin_interrupt(pwm,   InputPin::Pwm,   &mut pins);
 
             // We need this critical section to protect against a race
             // conditions with the interrupt handlers. Otherwise, the following
@@ -654,6 +677,11 @@ const APP: () = {
     #[task(binds = PIN_INT2, resources = [target_rts_int])]
     fn pinint2(context: pinint2::Context) {
         context.resources.target_rts_int.handle_interrupt();
+    }
+
+    #[task(binds = PIN_INT3, resources = [pwm_int])]
+    fn pinint3(context: pinint3::Context) {
+        context.resources.pwm_int.handle_interrupt();
     }
 
     #[task(binds = I2C0, resources = [i2c])]
@@ -721,7 +749,7 @@ const APP: () = {
 fn handle_pin_interrupt(
     int:  &mut pin_interrupt::Idle,
     pin:  InputPin,
-    pins: &mut FnvIndexMap<usize, (pin::Level, Option<u32>), U4>,
+    pins: &mut FnvIndexMap<usize, (pin::Level, Option<u32>), U8>,
 ) {
     while let Some(event) = int.next() {
         match event {
