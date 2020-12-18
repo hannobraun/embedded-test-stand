@@ -1,6 +1,9 @@
-use std::time::{
-    Duration,
-    Instant,
+use std::{
+    thread::sleep,
+    time::{
+        Duration,
+        Instant,
+    },
 };
 
 use host_lib::conn::{
@@ -116,6 +119,35 @@ impl Target {
             }
         }
     }
+
+    pub fn read_adc(&mut self) -> Result<u16, ReadAdcError> {
+        let timeout = Duration::from_millis(10);
+
+        // Wait for a bit, to give whatever event is expected to change the
+        // level some time to happen.
+        sleep(timeout);
+
+        self.conn
+            .send(&HostToTarget::ReadAdc)
+            .map_err(|err| ReadAdcError::Send(err))?;
+
+        let mut buf = Vec::new();
+        let reply = self.conn.receive::<TargetToHost>(timeout, &mut buf)
+            .map_err(|err| ReadAdcError::Receive(err))?;
+
+        match reply {
+            TargetToHost::AdcValue(value) => {
+                Ok(value)
+            }
+            message => {
+                Err(
+                    ReadAdcError::UnexpectedMessage(
+                        format!("{:?}", message)
+                    )
+                )
+            }
+        }
+    }
 }
 
 
@@ -127,4 +159,11 @@ pub enum TargetUsartWaitError {
     Receive(ConnReceiveError),
     Timeout,
     UnexpectedMessage(String),
+}
+
+#[derive(Debug)]
+pub enum ReadAdcError {
+    Send(ConnSendError),
+    Receive(ConnReceiveError),
+    UnexpectedMessage(String)
 }

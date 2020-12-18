@@ -845,6 +845,9 @@ const APP: () = {
 
                             Ok(())
                         }
+                        message => {
+                            panic!("Unsupported message: {:?}", message)
+                        }
                     };
 
                     *swm = Some(swm_local);

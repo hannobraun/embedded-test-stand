@@ -28,6 +28,7 @@ use crate::{
 /// The connection to the test assistant
 pub struct Assistant {
     conn: Conn,
+    pin5: Pin<OutputPin>,
     red_led: Pin<OutputPin>,
     green_led: Pin<InputPin>,
     blue_led: Pin<InputPin>,
@@ -39,12 +40,33 @@ impl Assistant {
     pub fn new(conn: Conn) -> Self {
         Self {
             conn,
+            pin5: Pin::new(OutputPin::Pin5),
             red_led: Pin::new(OutputPin::Red),
             green_led: Pin::new(InputPin::Green),
             blue_led: Pin::new(InputPin::Blue),
             cts: Pin::new(OutputPin::Cts),
             rts: Pin::new(InputPin::Rts),
         }
+    }
+
+    /// Instruct the assistant to set pin 5 high
+    pub fn set_pin_5_high(&mut self) -> Result<(), AssistantError> {
+        self.pin5
+            .set_level::<HostToAssistant>(
+                pin::Level::High,
+                &mut self.conn,
+            )
+            .map_err(|err| AssistantError::SetPinHigh(err))
+    }
+
+    /// Instruct the assistant to set pin 5 low
+    pub fn set_pin_5_low(&mut self) -> Result<(), AssistantError> {
+        self.pin5
+            .set_level::<HostToAssistant>(
+                pin::Level::Low,
+                &mut self.conn,
+            )
+            .map_err(|err| AssistantError::SetPinLow(err))
     }
 
     /// Instruct the assistant to set the target's input pin high

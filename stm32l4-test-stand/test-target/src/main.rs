@@ -24,11 +24,17 @@ use rtt_target::{
 };
 use stm32l4xx_hal::{
     prelude::*,
+    adc::ADC,
+    delay::Delay,
     dma::{
         DMAFrame,
         FrameReader,
         FrameSender,
         dma1,
+    },
+    gpio::{
+        Analog,
+        PC0,
     },
     pac::{
         self,
@@ -74,10 +80,13 @@ const APP: () = {
 
         dma_tx_main: FrameSender<Box<DmaPool>, dma1::C4, U256>,
         dma_rx_dma: FrameReader<Box<DmaPool>, dma1::C3, U256>,
+
+        adc: ADC,
+        analog: PC0<Analog>,
     }
 
     #[init]
-    fn init(_cx: init::Context) -> init::LateResources {
+    fn init(cx: init::Context) -> init::LateResources {
         static mut RX_QUEUE_HOST: spsc::Queue<u8, U256> =
             spsc::Queue(heapless::i::Queue::new());
         static mut RX_QUEUE_MAIN: spsc::Queue<u8, U256> =
@@ -92,6 +101,7 @@ const APP: () = {
         rtt_target::rtt_init_print!();
         rprint!("Starting target...");
 
+        let cp = cx.core;
         let p = pac::Peripherals::take().unwrap();
 
         let mut rcc = p.RCC.constrain();
@@ -100,8 +110,17 @@ const APP: () = {
 
         let clocks = rcc.cfgr.freeze(&mut flash.acr, &mut pwr);
 
+        let mut delay = Delay::new(cp.SYST, clocks);
+        let adc = ADC::new(
+            p.ADC,
+            &mut rcc.ahb2,
+            &mut rcc.ccipr,
+            &mut delay,
+        );
+
         let mut gpioa = p.GPIOA.split(&mut rcc.ahb2);
         let mut gpiob = p.GPIOB.split(&mut rcc.ahb2);
+        let mut gpioc = p.GPIOC.split(&mut rcc.ahb2);
 
         let tx_pin_main = gpiob.pb6.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
         let rx_pin_main = gpiob.pb7.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
@@ -111,6 +130,8 @@ const APP: () = {
         let rx_pin_host = gpioa.pa3.into_af7(&mut gpioa.moder, &mut gpioa.afrl);
         let tx_pin_dma = gpiob.pb10.into_af7(&mut gpiob.moder, &mut gpiob.afrh);
         let rx_pin_dma = gpiob.pb11.into_af7(&mut gpiob.moder, &mut gpiob.afrh);
+
+        let analog = gpioc.pc0.into_analog(&mut gpioc.moder, &mut gpioc.pupdr);
 
         let mut usart_main = Serial::usart1(
             p.USART1,
@@ -175,6 +196,9 @@ const APP: () = {
 
             dma_tx_main,
             dma_rx_dma,
+
+            adc,
+            analog,
         }
     }
 
@@ -185,6 +209,8 @@ const APP: () = {
         tx_main,
         tx_host,
         dma_tx_main,
+        adc,
+        analog,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
@@ -193,6 +219,8 @@ const APP: () = {
         let tx_main = cx.resources.tx_main;
         let tx_host = cx.resources.tx_host;
         let dma_tx_main = cx.resources.dma_tx_main;
+        let adc = cx.resources.adc;
+        let analog = cx.resources.analog;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -266,6 +294,17 @@ const APP: () = {
                             .expect("Error writing to USART");
 
                         rprintln!("Sent data using flow control: {:?}", data);
+                    }
+                    HostToTarget::ReadAdc => {
+                        let value = adc.read(analog).unwrap();
+
+                        let message = TargetToHost::AdcValue(value);
+
+                        let buf_host_tx: Vec<_, U256> =
+                            postcard::to_vec_cobs(&message)
+                                .expect("Error encoding message to host");
+                        tx_host.bwrite_all(buf_host_tx.as_ref())
+                            .expect("Error sending message to host");
                     }
                     message => {
                         panic!("Unsupported message: {:?}", message)
