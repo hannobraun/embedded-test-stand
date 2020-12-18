@@ -186,7 +186,14 @@ const APP: () = {
         let mut gpiob = p.GPIOB.split(&mut rcc.ahb2);
         let mut gpioc = p.GPIOC.split(&mut rcc.ahb2);
 
-        let tx_pin_main = gpiob.pb6.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
+        let tx_pin_main = gpiob.pb6
+            // Activating AF7 without doing anything else, will cause the pin to
+            // go LOW for a moment, which confuses the assistance, causing a
+            // panic in the USART1 interrupt handler. I don't know why, but
+            // putting it into output mode first prevents this.
+            .into_push_pull_output(&mut gpiob.moder, &mut gpiob.otyper)
+            .into_floating_input(&mut gpiob.moder, &mut gpiob.pupdr)
+            .into_af7(&mut gpiob.moder, &mut gpiob.afrl);
         let rx_pin_main = gpiob.pb7.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
         let rts_main = gpiob.pb3.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
         let cts_main = gpiob.pb4.into_af7(&mut gpiob.moder, &mut gpiob.afrl);
