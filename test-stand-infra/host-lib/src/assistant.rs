@@ -247,7 +247,7 @@ impl Assistant {
         }
     }
 
-    /// Measures the period of changes in a GPIO signal
+    /// Measures the period of changes in the timer interrupt signal
     ///
     /// Waits for changes in the GPIO signal until the given number of samples
     /// has been measured. Returns the minimum and maximum period measured, in
@@ -257,24 +257,40 @@ impl Assistant {
     ///
     /// `samples` must be at least `1`. This method will panic, if this is not
     /// the case.
-    pub fn measure_gpio_period(&mut self, samples: u32, timeout: Duration)
+    pub fn measure_timer_interrupt(&mut self, samples: u32, timeout: Duration)
+        -> Result<GpioPeriodMeasurement, AssistantError>
+    {
+        Self::measure_gpio_period(
+            &mut self.conn,
+            &mut self.blue_led,
+            samples,
+            timeout,
+        )
+    }
+
+    fn measure_gpio_period(
+        conn:    &mut Conn,
+        pin:     &mut Pin<InputPin>,
+        samples: u32,
+        timeout: Duration,
+    )
         -> Result<GpioPeriodMeasurement, AssistantError>
     {
         assert!(samples > 0);
 
         let mut measurement: Option<GpioPeriodMeasurement> = None;
 
-        let (mut state, _) = self.blue_led
+        let (mut state, _) = pin
             .read_level::<HostToAssistant, AssistantToHost>(
                 timeout,
-                &mut self.conn,
+                conn,
             )?;
 
         for _ in 0 .. samples {
-            let (new_state, period_ms) = self.blue_led
+            let (new_state, period_ms) = pin
                 .read_level::<HostToAssistant, AssistantToHost>(
                     timeout,
-                    &mut self.conn,
+                    conn,
                 )?;
             print!("{:?}, {:?}\n", new_state, period_ms);
 
