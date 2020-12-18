@@ -34,7 +34,13 @@ use stm32l4xx_hal::{
     },
     gpio::{
         Analog,
+        Floating,
+        Input,
+        Output,
         PC0,
+        PC1,
+        PC2,
+        PushPull,
     },
     pac::{
         self,
@@ -52,6 +58,7 @@ use lpc845_messages::{
     HostToTarget,
     TargetToHost,
     UsartMode,
+    pin,
 };
 
 
@@ -83,6 +90,9 @@ const APP: () = {
 
         adc: ADC,
         analog: PC0<Analog>,
+
+        gpio_out: PC1<Output<PushPull>>,
+        gpio_in: PC2<Input<Floating>>,
     }
 
     #[init]
@@ -132,6 +142,11 @@ const APP: () = {
         let rx_pin_dma = gpiob.pb11.into_af7(&mut gpiob.moder, &mut gpiob.afrh);
 
         let analog = gpioc.pc0.into_analog(&mut gpioc.moder, &mut gpioc.pupdr);
+
+        let gpio_out = gpioc.pc1
+            .into_push_pull_output(&mut gpioc.moder, &mut gpioc.otyper);
+        let gpio_in = gpioc.pc2
+            .into_floating_input(&mut gpioc.moder, &mut gpioc.pupdr);
 
         let mut usart_main = Serial::usart1(
             p.USART1,
@@ -199,6 +214,9 @@ const APP: () = {
 
             adc,
             analog,
+
+            gpio_out,
+            gpio_in,
         }
     }
 
@@ -211,6 +229,8 @@ const APP: () = {
         dma_tx_main,
         adc,
         analog,
+        gpio_out,
+        gpio_in,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
@@ -221,6 +241,8 @@ const APP: () = {
         let dma_tx_main = cx.resources.dma_tx_main;
         let adc = cx.resources.adc;
         let analog = cx.resources.analog;
+        let gpio_out = cx.resources.gpio_out;
+        let gpio_in = cx.resources.gpio_in;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -299,6 +321,40 @@ const APP: () = {
                         let value = adc.read(analog).unwrap();
 
                         let message = TargetToHost::AdcValue(value);
+
+                        let buf_host_tx: Vec<_, U256> =
+                            postcard::to_vec_cobs(&message)
+                                .expect("Error encoding message to host");
+                        tx_host.bwrite_all(buf_host_tx.as_ref())
+                            .expect("Error sending message to host");
+                    }
+                    HostToTarget::SetPin(
+                        pin::SetLevel { level, pin: () }
+                    ) => {
+                        match level {
+                            pin::Level::High => {
+                                gpio_out.set_high().unwrap();
+                            }
+                            pin::Level::Low => {
+                                gpio_out.set_low().unwrap();
+                            }
+                        }
+                    }
+                    HostToTarget::ReadPin(pin::ReadLevel { pin: () }) => {
+                        let level = match gpio_in.is_high().unwrap() {
+                            true  => pin::Level::High,
+                            false => pin::Level::Low,
+                        };
+
+                        let message = TargetToHost::ReadPinResult(
+                            Some(
+                                pin::ReadLevelResult {
+                                    pin: (),
+                                    level,
+                                    period_ms: None,
+                                }
+                            )
+                        );
 
                         let buf_host_tx: Vec<_, U256> =
                             postcard::to_vec_cobs(&message)

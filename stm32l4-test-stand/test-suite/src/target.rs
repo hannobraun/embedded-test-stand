@@ -6,28 +6,79 @@ use std::{
     },
 };
 
-use host_lib::conn::{
-    Conn,
-    ConnReceiveError,
-    ConnSendError,
+use host_lib::{
+    conn::{
+        Conn,
+        ConnReceiveError,
+        ConnSendError,
+    },
+    pin::{
+        Pin,
+        ReadLevelError,
+    },
 };
 use lpc845_messages::{
     HostToTarget,
     TargetToHost,
     UsartMode,
+    pin,
 };
 
 
 /// The connection to the test target
 pub struct Target {
     conn: Conn,
+    pin: Pin<()>,
 }
 
 impl Target {
     pub(crate) fn new(conn: Conn) -> Self {
         Self {
             conn,
+            pin: Pin::new(()),
         }
+    }
+
+    /// Instruct the target to set a GPIO pin high
+    pub fn set_pin_high(&mut self) -> Result<(), TargetSetPinHighError> {
+        self.pin
+            .set_level::<HostToTarget>(
+                pin::Level::High,
+                &mut self.conn,
+            )
+            .map_err(|err| TargetSetPinHighError(err))
+    }
+
+    /// Instruct the target to set a GPIO pin low
+    pub fn set_pin_low(&mut self) -> Result<(), TargetSetPinLowError> {
+        self.pin
+            .set_level::<HostToTarget>(
+                pin::Level::Low,
+                &mut self.conn,
+            )
+            .map_err(|err| TargetSetPinLowError(err))
+    }
+
+    /// Indicates whether the input pin is set high
+    ///
+    /// Uses `pin_state` internally.
+    pub fn pin_is_high(&mut self) -> Result<bool, TargetPinReadError> {
+        let pin_state = self.pin.read_level::<HostToTarget, TargetToHost>(
+            Duration::from_millis(10),
+            &mut self.conn,
+        )?;
+        Ok(pin_state.0 == pin::Level::High)
+    }
+
+    /// Indicates whether the input pin is set low
+    ///
+    /// Uses `pin_state` internally.
+    pub fn pin_is_low(&mut self) -> Result<bool, TargetPinReadError> {
+        let pin_state = self.pin.read_level::<HostToTarget, TargetToHost>(
+            Duration::from_millis(10),
+            &mut self.conn,
+        )?;
+        Ok(pin_state.0 == pin::Level::Low)
     }
 
     /// Instruct the target to send this message via USART
@@ -147,6 +198,22 @@ impl Target {
                 )
             }
         }
+    }
+}
+
+
+#[derive(Debug)]
+pub struct TargetSetPinHighError(ConnSendError);
+
+#[derive(Debug)]
+pub struct TargetSetPinLowError(ConnSendError);
+
+#[derive(Debug)]
+pub struct TargetPinReadError(ReadLevelError);
+
+impl From<ReadLevelError> for TargetPinReadError {
+    fn from(err: ReadLevelError) -> Self {
+        Self(err)
     }
 }
 
