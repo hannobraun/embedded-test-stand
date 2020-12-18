@@ -36,6 +36,7 @@ In addition, you need to connect the following pins of the target and the assist
 | CN7   6 |         1 | SPI: SCK                             |
 | CN7   9 |        13 | USART: Target RX, Assistant TX       |
 | CN9   4 |        18 | USART: RTS                           |
+| CN9   8 |        30 | Timer interrupt signal               |
 | CN10  4 |        29 | GPIO: Target In, Assistant Out       |
 | CN10  5 |        31 | GPIO: Target Out, Assistant In       |
 | CN10  6 |         5 | ADC                                  |

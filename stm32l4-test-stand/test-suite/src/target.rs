@@ -270,6 +270,30 @@ impl Target {
             }
         }
     }
+
+    /// Start a timer interrupt with the given period in milliseconds
+    pub fn start_timer_interrupt(&mut self, period_ms: u32)
+        -> Result<TimerInterrupt, TargetStartTimerInterruptError>
+    {
+        self.conn
+            .send(&HostToTarget::StartTimerInterrupt { period_ms })
+            .map_err(|err| TargetStartTimerInterruptError(err))?;
+
+        Ok(TimerInterrupt(self))
+    }
+}
+
+
+/// Represent a timer interrupt that's currently configured on the target
+///
+/// This timer interrupt will be stopped when this struct is dropped.
+pub struct TimerInterrupt<'r>(&'r mut Target);
+
+impl Drop for TimerInterrupt<'_> {
+    fn drop(&mut self) {
+        (self.0).conn.send(&HostToTarget::StopTimerInterrupt)
+            .unwrap()
+    }
 }
 
 
@@ -319,3 +343,6 @@ pub enum TargetSpiError {
     Receive(ConnReceiveError),
     UnexpectedMessage(String),
 }
+
+#[derive(Debug)]
+pub struct TargetStartTimerInterruptError(ConnSendError);

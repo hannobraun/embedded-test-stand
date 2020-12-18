@@ -11,6 +11,7 @@ use crate::{
         TargetSetPinHighError,
         TargetSetPinLowError,
         TargetSpiError,
+        TargetStartTimerInterruptError,
         TargetUsartSendError,
         TargetUsartWaitError,
     },
@@ -32,6 +33,7 @@ pub enum Error {
     TargetSetPinHigh(TargetSetPinHighError),
     TargetSetPinLow(TargetSetPinLowError),
     TargetSpi(TargetSpiError),
+    TargetStartTimerInterrupt(TargetStartTimerInterruptError),
     TargetUsartSend(TargetUsartSendError),
     TargetUsartWait(TargetUsartWaitError),
     TestStandInit(TestStandInitError),
@@ -82,6 +84,12 @@ impl From<TargetSpiError> for Error {
 impl From<TargetUsartSendError> for Error {
     fn from(err: TargetUsartSendError) -> Self {
         Self::TargetUsartSend(err)
+    }
+}
+
+impl From<TargetStartTimerInterruptError> for Error {
+    fn from(err: TargetStartTimerInterruptError) -> Self {
+        Self::TargetStartTimerInterrupt(err)
     }
 }
 
