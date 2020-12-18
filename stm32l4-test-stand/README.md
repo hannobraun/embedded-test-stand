@@ -7,11 +7,6 @@ Test stand for some peripheral APIs of [stm32l4xx-hal].
 This test stand is modelled on the [LPC845 Test Stand] and re-uses some parts of it. Please check out the README there for more documentation and troubleshooting tips.
 
 
-## Status
-
-This test stand is under development. Not much to see yet.
-
-
 ## Hardware setup
 
 You need the following development boards:
@@ -45,3 +40,13 @@ In addition, you need to connect the following pins of the target and the assist
 
 [stm32l4xx-hal]: https://github.com/stm32-rs/stm32l4xx-hal
 [LPC845 Test Stand]: https://github.com/braun-embedded/embedded-test-stand/tree/master/lpc845-test-stand
+
+### Software setup
+
+Besides a Rust toolchain, you need `cargo-embed` to download the firmware:
+
+```
+cargo install cargo-embed --version 0.10.1
+```
+
+Since this test stand, in contrast to the LPC845 test stand, uses two different kinds of development boards, you don't need to set up any serial numbers in the documentation.

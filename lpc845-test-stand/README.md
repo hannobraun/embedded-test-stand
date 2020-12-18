@@ -52,7 +52,7 @@ In addition, you need to connect the following pins of the target and the assist
 
 Besides a Rust toolchain, you need `cargo-embed` to download the firmware:
 ```
-cargo install cargo-embed --version 0.8.0
+cargo install cargo-embed --version 0.10.1
 ```
 
 #### Serial Number
