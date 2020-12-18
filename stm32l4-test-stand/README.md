@@ -31,6 +31,7 @@ In addition, you need to connect the following pins of the target and the assist
 | CN6  16 |        15 | USART: Target RX (DMA), Assistant TX |
 | CN6  22 |         4 | SPI: SSEL                            |
 | CN7   1 |        12 | USART: Target TX, Assistant RX       |
+| CN7   3 |         8 | PWM                                  |
 | CN7   4 |         2 | SPI: MOSI                            |
 | CN7   5 |         3 | SPI: MISO                            |
 | CN7   6 |         1 | SPI: SCK                             |
