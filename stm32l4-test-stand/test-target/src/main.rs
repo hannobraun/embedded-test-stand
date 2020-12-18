@@ -8,6 +8,7 @@
 extern crate panic_rtt_target;
 
 
+use embedded_hal::spi;
 use heapless::{
     pool,
     Vec,
@@ -34,6 +35,7 @@ use stm32l4xx_hal::{
     },
     gpio::{
         AF4,
+        AF5,
         Alternate,
         Analog,
         Floating,
@@ -42,6 +44,10 @@ use stm32l4xx_hal::{
         Output,
         PA9,
         PA10,
+        PB1,
+        PB13,
+        PB14,
+        PB15,
         PC0,
         PC1,
         PC2,
@@ -51,6 +57,7 @@ use stm32l4xx_hal::{
     pac::{
         self,
         I2C1,
+        SPI2,
         USART1,
         USART2,
         USART3,
@@ -59,6 +66,7 @@ use stm32l4xx_hal::{
         self,
         Serial,
     },
+    spi::Spi,
 };
 
 use lpc845_messages::{
@@ -109,6 +117,16 @@ const APP: () = {
                 PA10<Alternate<AF4, Output<OpenDrain>>>
             )
         >,
+
+        ssel: PB1<Output<PushPull>>,
+        spi: Spi<
+            SPI2,
+            (
+                PB13<Alternate<AF5, Input<Floating>>>,
+                PB14<Alternate<AF5, Input<Floating>>>,
+                PB15<Alternate<AF5, Input<Floating>>>,
+            )
+        >,
     }
 
     #[init]
@@ -134,7 +152,9 @@ const APP: () = {
         let mut flash = p.FLASH.constrain();
         let mut pwr = p.PWR.constrain(&mut rcc.apb1r1);
 
-        let clocks = rcc.cfgr.freeze(&mut flash.acr, &mut pwr);
+        let clocks = rcc.cfgr
+            .pclk1(2.mhz()) // needed to slow down SPI2 clock rate
+            .freeze(&mut flash.acr, &mut pwr);
 
         let mut delay = Delay::new(cp.SYST, clocks);
         let adc = ADC::new(
@@ -173,6 +193,13 @@ const APP: () = {
         sda.internal_pull_up(&mut gpioa.pupdr, true);
         let sda = sda.into_af4(&mut gpioa.moder, &mut gpioa.afrh);
 
+        let mut ssel = gpiob.pb1
+            .into_push_pull_output(&mut gpiob.moder, &mut gpiob.otyper);
+        ssel.set_high().unwrap();
+        let sck = gpiob.pb13.into_af5(&mut gpiob.moder, &mut gpiob.afrh);
+        let miso = gpiob.pb14.into_af5(&mut gpiob.moder, &mut gpiob.afrh);
+        let mosi = gpiob.pb15.into_af5(&mut gpiob.moder, &mut gpiob.afrh);
+
         let mut usart_main = Serial::usart1(
             p.USART1,
             (tx_pin_main, rx_pin_main, rts_main, cts_main),
@@ -205,6 +232,15 @@ const APP: () = {
             p.I2C1,
             (scl, sda),
             100.khz(),
+            clocks,
+            &mut rcc.apb1r1,
+        );
+
+        let spi = Spi::spi2(
+            p.SPI2,
+            (sck, miso, mosi),
+            spi::MODE_0,
+            1.khz(),
             clocks,
             &mut rcc.apb1r1,
         );
@@ -252,6 +288,9 @@ const APP: () = {
             gpio_in,
 
             i2c,
+
+            ssel,
+            spi,
         }
     }
 
@@ -267,6 +306,8 @@ const APP: () = {
         gpio_out,
         gpio_in,
         i2c,
+        ssel,
+        spi,
     ])]
     fn idle(cx: idle::Context) -> ! {
         let rx_main = cx.resources.rx_cons_main;
@@ -280,6 +321,8 @@ const APP: () = {
         let gpio_out = cx.resources.gpio_out;
         let gpio_in = cx.resources.gpio_in;
         let i2c = cx.resources.i2c;
+        let ssel = cx.resources.ssel;
+        let spi = cx.resources.spi;
 
         let mut buf_main_rx: Vec<_, U256> = Vec::new();
         let mut buf_host_rx: Vec<_, U256> = Vec::new();
@@ -418,6 +461,30 @@ const APP: () = {
                                 .expect("Error encoding message to host");
                         tx_host.bwrite_all(buf_host_tx.as_ref())
                             .expect("Error sending message to host");
+                    }
+                    HostToTarget::StartSpiTransaction {
+                        mode: DmaMode::Regular,
+                        data,
+                    } => {
+                        rprintln!("SPI: Set SSEL LOW");
+                        ssel.set_low().unwrap();
+
+                        let mut data = [data, 0xFF];
+                        spi.transfer(&mut data).unwrap();
+                        let reply = data[1];
+
+                        rprintln!("SPI: Set SSEL HIGH");
+                        ssel.set_high().unwrap();
+
+                        let message = TargetToHost::SpiReply(reply);
+
+                        let buf_host_tx: Vec<_, U256> =
+                            postcard::to_vec_cobs(&message)
+                                .expect("Error encoding message to host");
+                        tx_host.bwrite_all(buf_host_tx.as_ref())
+                            .expect("Error sending message to host");
+
+                        rprintln!(" done.");
                     }
                     message => {
                         panic!("Unsupported message: {:?}", message)
