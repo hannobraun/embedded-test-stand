@@ -318,7 +318,7 @@ dependencies = [
 [[package]]
 name = "lpc8xx-hal"
 version = "0.8.2"
-source = "git+https://github.com/lpc-rs/lpc8xx-hal.git#401d73d6a3f2c643d4d496d856c727b59bada6af"
+source = "git+https://github.com/lpc-rs/lpc8xx-hal.git#85923c568c07298e3b2b17bbbe81dd13f7f7837c"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
@@ -333,9 +333,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.7.6"
+version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f33bc887064ef1fd66020c9adfc45bb9f33d75a42096c81e7c56c65b75dd1a8b"
+checksum = "e50ae3f04d169fcc9bde0b547d1c205219b7157e07ded9c5aff03e0637cb3ed7"
 dependencies = [
  "libc",
  "log",
@@ -464,9 +464,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7c6d9b8427445284a09c55be860a15855ab580a417ccad9da88f5a06787ced0"
+checksum = "9ccb628cad4f84851442432c60ad8e1f607e29752d0bf072cbd0baf28aa34272"
 dependencies = [
  "cfg-if 1.0.0",
  "instant",
@@ -511,9 +511,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.7"
+version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
+checksum = "991431c3519a3f36861882da93630ce66b52918dcf1b8e2fd66b397fc96f28df"
 dependencies = [
  "proc-macro2",
 ]
@@ -618,9 +618,9 @@ dependencies = [
 
 [[package]]
 name = "signal-hook"
-version = "0.1.16"
+version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "604508c1418b99dfe1925ca9224829bb2a8a9a04dda655cc01fcad46f4ab05ed"
+checksum = "7e31d442c16f047a671b5a71e2161d6e68814012b7f5379d269ebd915fac2729"
 dependencies = [
  "libc",
  "mio",
@@ -629,24 +629,24 @@ dependencies = [
 
 [[package]]
 name = "signal-hook-registry"
-version = "1.2.2"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce32ea0c6c56d5eacaeb814fbed9960547021d3edd010ded1425f180536b20ab"
+checksum = "16f1d0fef1604ba8f7a073c7e701f213e056707210e9020af4528e0101ce11a6"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "smallvec"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae524f056d7d770e174287294f562e95044c68e88dec909a00d2094805db9d75"
+checksum = "1a55ca5f3b68e41c979bf8c46a6f1da892ca4db8f94023ce0bd32407573b1ac0"
 
 [[package]]
 name = "socket2"
-version = "0.3.18"
+version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97e0e9fd577458a4f61fb91fcb559ea2afecc54c934119421f9f5d3d5b1a1057"
+checksum = "122e570113d28d773067fab24266b66753f6ea915758651696b6e35e49f88d6e"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -675,9 +675,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.54"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a2af957a63d6bd42255c359c93d9bfdb97076bd3b820897ce55ffbfbf107f44"
+checksum = "4211ce9909eb971f111059df92c45640aad50a619cf55cd76476be803c4c68e6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -704,9 +704,9 @@ checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
 name = "vcell"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876e32dcadfe563a4289e994f7cb391197f362b6315dc45e8ba4aa6f564a4b3c"
+checksum = "77439c1b53d2303b20d9459b1ade71a83c716e3f9c34f3228c00e6f185d6c002"
 
 [[package]]
 name = "version_check"

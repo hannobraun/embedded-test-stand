@@ -39,7 +39,7 @@ impl PinInterrupt {
     ///
     /// Two new structs are returned:
     /// - [`Int`] is intended to be used from the interrupt context.
-    /// - [`Idle`] is intended to be used from a lower-piority context, for
+    /// - [`Idle`] is intended to be used from a lower-priority context, for
     ///   example the idle loop, to process events from the interrupt context.
     ///
     /// Both structs have a lifetime that is tied to the lifetime of `self`.
@@ -97,7 +97,7 @@ impl<I, P, T> Int<'_, I, P, T>
         if self.measuring {
             let timer_wrapped = self.timer.wait().is_ok();
             if !timer_wrapped {
-                period = Some(mrt::MAX_VALUE - self.timer.value());
+                period = Some(mrt::MAX_VALUE.to_u32() - self.timer.value());
             }
         }
 
