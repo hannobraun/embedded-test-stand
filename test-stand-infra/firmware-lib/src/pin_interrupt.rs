@@ -97,7 +97,7 @@ impl<I, P, T> Int<'_, I, P, T>
         if self.measuring {
             let timer_wrapped = self.timer.wait().is_ok();
             if !timer_wrapped {
-                period = Some(mrt::MAX_VALUE - self.timer.value());
+                period = Some(mrt::MAX_VALUE.to_u32() - self.timer.value());
             }
         }
 
