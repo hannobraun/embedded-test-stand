@@ -39,7 +39,7 @@ impl PinInterrupt {
     ///
     /// Two new structs are returned:
     /// - [`Int`] is intended to be used from the interrupt context.
-    /// - [`Idle`] is intended to be used from a lower-piority context, for
+    /// - [`Idle`] is intended to be used from a lower-priority context, for
     ///   example the idle loop, to process events from the interrupt context.
     ///
     /// Both structs have a lifetime that is tied to the lifetime of `self`.
