@@ -25,6 +25,7 @@ use lpc8xx_hal::{
         self,
         GpioPin,
         direction::Output,
+        direction::Input,
     },
     i2c,
     init_state::Enabled,
@@ -138,6 +139,7 @@ const APP: () = {
         pin_5: GpioPin<PIO0_20, Output>,
         cts: GpioPin<PIO0_8, Output>,
         red: GpioPin<PIO1_2, Output>,
+        green: GpioPin<PIO1_0, Input>,
 
         i2c: i2c::Slave<I2C0, Enabled<PhantomData<IOSC>>, Enabled>,
         spi: SPI<SPI0, Enabled<spi::Slave>>,
@@ -175,7 +177,7 @@ const APP: () = {
         let mut swm_handle = swm.handle.enable(&mut syscon.handle);
 
         // Configure interrupt for pin connected target's GPIO pin
-        let _green = p.pins.pio1_0.into_input_pin(gpio.tokens.pio1_0);
+        let green = p.pins.pio1_0.into_input_pin(gpio.tokens.pio1_0);
         let mut green_int = pinint
             .interrupts
             .pinint0
@@ -437,6 +439,7 @@ const APP: () = {
 
             pin_5,
             red,
+            green,
             cts,
 
             i2c: i2c.slave,
@@ -459,6 +462,7 @@ const APP: () = {
             target_rts_idle,
             pin_5,
             red,
+            green,
             cts,
         ]
     )]
@@ -470,15 +474,23 @@ const APP: () = {
         let target_tx_dma  = cx.resources.target_tx_dma;
         let target_sync_rx = cx.resources.target_sync_rx_idle;
         let target_sync_tx = cx.resources.target_sync_tx;
-        let green          = cx.resources.green_idle;
+        let green_idle     = cx.resources.green_idle;
         let blue           = cx.resources.blue_idle;
         let pwm            = cx.resources.pwm_idle;
         let rts            = cx.resources.target_rts_idle;
         let pin_5          = cx.resources.pin_5;
         let red            = cx.resources.red;
+        let green          = cx.resources.green;
         let cts            = cx.resources.cts;
 
         let mut pins = FnvIndexMap::<_, _, U8>::new();
+
+        // ensure that the initial level for green is known before the first level change
+        let level = match green.is_high() {
+            true  => pin::Level::High,
+            false => pin::Level::Low,
+        };
+        pins.insert(InputPin::Green as usize, (level, None)).unwrap();
 
         let mut buf = [0; 256];
 
@@ -612,7 +624,7 @@ const APP: () = {
                 .expect("Error processing host request");
             host_rx.clear_buf();
 
-            handle_pin_interrupt(green, InputPin::Green, &mut pins);
+            handle_pin_interrupt(green_idle, InputPin::Green, &mut pins);
             handle_pin_interrupt(blue,  InputPin::Blue,  &mut pins);
             handle_pin_interrupt(rts,   InputPin::Rts,   &mut pins);
             handle_pin_interrupt(pwm,   InputPin::Pwm,   &mut pins);
@@ -632,7 +644,7 @@ const APP: () = {
                 let should_sleep =
                     !host_rx.can_process()
                     && !target_rx.can_process()
-                    && !green.is_ready();
+                    && !green_idle.is_ready();
 
                 if should_sleep {
                     // On LPC84x MCUs, debug mode is not supported when

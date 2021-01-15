@@ -35,3 +35,10 @@ fn it_should_read_input_level() -> Result {
 
     Ok(())
 }
+
+#[test]
+fn it_should_read_input_level_without_level_change() -> Result {
+    let mut test_stand = TestStand::new()?;
+    assert!(test_stand.assistant.pin_is_high()?);
+    Ok(())
+}
