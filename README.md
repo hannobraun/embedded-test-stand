@@ -41,7 +41,7 @@ These are the crates that are independent of any specific test suite. If you wan
 
 ### LPC845 Test Stand
 
-Supports a test suite that covers some of the peripheral APIs in the LPC8xx HAL library. See [its own README file](https://github.com/braun-embedded/lpc845-test-stand/blob/master/lpc845-test-stand/README.md) for more information.
+Supports a test suite that covers some of the peripheral APIs in the LPC8xx HAL library. See [its own README file](https://github.com/braun-embedded/embedded-test-stand/blob/master/lpc845-test-stand/README.md) for more information.
 
 
 ## License
