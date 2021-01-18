@@ -7,9 +7,12 @@ A test stand for firmware applications. Allows you to control an application und
 
 ## Status
 
-As of this writing, this repository contains a test stand that tests various peripheral APIs of LPC8xx HAL, as well as the infrastructure to support it. Work on adding a second test stand is underway.
+As of this writing, this repository contains two test stands that test various peripheral APIs of the HAL libraries of their respective targets:
 
-The existing infrastructure should be able to support test stands for other firmware applications to, but it is still a work in progress and is not as useful as it could be.
+- [LPC845 Test Stand]
+- [STM32L4 Test Stand]
+
+In addition, this repository contains common infrastructure to support these test stands. This existing infrastructure should be able to support test stands for other firmware applications too, but it is still a work in progress and is not as useful as it could be.
 
 
 ## Concepts
@@ -41,8 +44,11 @@ These are the crates that are independent of any specific test suite. If you wan
 
 ### LPC845 Test Stand
 
-Supports a test suite that covers some of the peripheral APIs in the LPC8xx HAL library. See [its own README file](https://github.com/braun-embedded/lpc845-test-stand/blob/master/lpc845-test-stand/README.md) for more information.
+Supports a test suite that covers some of the peripheral APIs in the LPC8xx HAL library. See [its README file](https://github.com/braun-embedded/embedded-test-stand/blob/master/lpc845-test-stand/README.md) for more information.
 
+### STM32L4 Test Stand
+
+Supports a test suite that covers some of the peripheral APIs in the STM32L4 HAL library. See [its README file](https://github.com/braun-embedded/embedded-test-stand/blob/master/stm32l4-test-stand/README.md) for more information.
 
 ## License
 
@@ -55,3 +61,6 @@ See [LICENSE.md] for the full license text.
 
 **Created by [Braun Embedded](https://braun-embedded.com/)** <br />
 **Initial development sponsored by [Georg Fischer Signet](http://www.gfsignet.com/)**
+
+[LPC845 Test Stand]: https://github.com/braun-embedded/embedded-test-stand/blob/master/lpc845-test-stand
+[STM32L4 Test Stand]: https://github.com/braun-embedded/embedded-test-stand/blob/master/stm32l4-test-stand
