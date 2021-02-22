@@ -175,7 +175,8 @@ const APP: () = {
 
         let mut delay = Delay::new(cp.SYST, clocks);
         let adc = ADC::new(
-            p.ADC,
+            p.ADC1,
+            p.ADC_COMMON,
             &mut rcc.ahb2,
             &mut rcc.ccipr,
             &mut delay,

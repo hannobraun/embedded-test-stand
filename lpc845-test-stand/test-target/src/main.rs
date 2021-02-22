@@ -201,7 +201,7 @@ const APP: () = {
         let mut red_int = pinint
             .interrupts
             .pinint0
-            .select::<PIO1_2>(&mut syscon.handle);
+            .select(red.inner(), &mut syscon.handle);
         red_int.enable_rising_edge();
         red_int.enable_falling_edge();
 

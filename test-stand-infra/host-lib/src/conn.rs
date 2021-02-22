@@ -11,7 +11,6 @@ use serde::{
 use serialport::{
     self,
     SerialPort,
-    SerialPortSettings,
 };
 
 use crate::Error;
@@ -28,16 +27,10 @@ impl Conn {
     /// `path` is the path to the serial device file that connects to the
     /// firmware.
     pub fn new(path: &str) -> Result<Self, ConnInitError> {
-        let port =
-            serialport::open_with_settings(
-                path,
-                // The configuration is hardcoded for now. We might want to load
-                // this from the configuration file later.
-                &SerialPortSettings {
-                    baud_rate: 115200,
-                    .. SerialPortSettings::default()
-                }
-            )
+        // The baud rate configuration is hardcoded for now. We might want to
+        // load this from the configuration file later.
+        let port = serialport::new(path, 115200)
+            .open()
             .map_err(|err| ConnInitError(err))?;
 
         // Use a clone of the serialport, so `Serial` can use the same port.
