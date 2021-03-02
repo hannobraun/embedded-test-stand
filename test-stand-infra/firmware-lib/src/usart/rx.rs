@@ -171,7 +171,7 @@ pub enum ProcessError<E> {
     /// Error decoding the message
     Postcard(postcard::Error),
 
-    /// Another error occured
+    /// Another error occurred
     ///
     /// This is an error that was returned from the user-provided closure.
     Other(E),
