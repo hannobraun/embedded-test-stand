@@ -18,7 +18,7 @@ version  = "0.1.0"
 path     = "../../test-stand-infra/firmware-lib"
 
 [dependencies.lpc8xx-hal]
-git      = "https://github.com/lpc-rs/lpc8xx-hal.git"
+version  = "0.9.0"
 features = ["845m301jbd48", "845-rt"]
 
 [dependencies.panic-rtt-target]

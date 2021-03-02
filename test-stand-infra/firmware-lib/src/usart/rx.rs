@@ -159,7 +159,7 @@ pub enum ReceiveError {
     QueueFull,
 
     /// An error was returned by the wrapped USART receiver
-    Usart(usart::Error),
+    Usart(usart::Error<u8>),
 }
 
 /// Error processing received USART data
@@ -171,7 +171,7 @@ pub enum ProcessError<E> {
     /// Error decoding the message
     Postcard(postcard::Error),
 
-    /// Another error occured
+    /// Another error occurred
     ///
     /// This is an error that was returned from the user-provided closure.
     Other(E),
