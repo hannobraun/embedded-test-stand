@@ -159,7 +159,7 @@ pub enum ReceiveError {
     QueueFull,
 
     /// An error was returned by the wrapped USART receiver
-    Usart(usart::Error),
+    Usart(usart::Error<u8>),
 }
 
 /// Error processing received USART data

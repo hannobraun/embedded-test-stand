@@ -338,8 +338,9 @@ dependencies = [
 
 [[package]]
 name = "lpc8xx-hal"
-version = "0.8.2"
-source = "git+https://github.com/lpc-rs/lpc8xx-hal.git#8ce3ce025855e7090d04297eddfcf491ecc7dbfe"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07dd9ad848c02079755c2af4a2755b3eff0dbd69c98d1cda8797e1f409304e9f"
 dependencies = [
  "cortex-m 0.6.7",
  "cortex-m-rt",
