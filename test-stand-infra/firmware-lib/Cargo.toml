@@ -6,9 +6,9 @@ edition = "2018"
 
 
 [dependencies]
-heapless = "0.5.5"
+heapless = "0.6.1"
 nb       = "1.0.0"
-postcard = "0.5.1"
+postcard = "0.6.1"
 
 [dependencies.lpc8xx-hal]
 version  = "0.9.0"
