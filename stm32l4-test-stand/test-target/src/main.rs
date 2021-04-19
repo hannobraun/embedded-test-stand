@@ -91,7 +91,7 @@ use lpc845_messages::{
 
 pool!(
     #[allow(non_upper_case_globals)]
-    DmaPool: DMAFrame<U256>
+    DmaPool: DMAFrame<256>
 );
 
 
@@ -112,8 +112,8 @@ const APP: () = {
         rx_prod_dma: spsc::Producer<'static, u8, U256>,
         rx_cons_dma: spsc::Consumer<'static, u8, U256>,
 
-        dma_tx_main: FrameSender<Box<DmaPool>, dma1::C4, U256>,
-        dma_rx_dma: FrameReader<Box<DmaPool>, dma1::C3, U256>,
+        dma_tx_main: FrameSender<Box<DmaPool>, dma1::C4, 256>,
+        dma_rx_dma: FrameReader<Box<DmaPool>, dma1::C3, 256>,
 
         adc: ADC,
         analog: PC0<Analog>,

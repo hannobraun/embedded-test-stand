@@ -6,11 +6,11 @@ edition = "2018"
 
 
 [dependencies]
-cortex-m      = "0.6.4"
+cortex-m      = "0.6.7"
 cortex-m-rtic = "0.5.5"
 embedded-hal  = "0.2.4"
-heapless      = "0.5.6"
-postcard      = "0.5.1"
+heapless      = "0.6.1"
+postcard      = "0.6.1"
 
 [dependencies.lpc845-messages]
 version  = "0.1.0"
