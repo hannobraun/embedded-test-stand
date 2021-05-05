@@ -16,7 +16,6 @@ pub use self::{
 
 use heapless::{
     Vec,
-    consts::U256,
     spsc,
 };
 use lpc8xx_hal::{
@@ -39,14 +38,14 @@ use lpc8xx_hal::{
 /// [`RxIdle`]: rx/struct.RxIdle.html
 /// [`Tx`]: tx/struct.Tx.html
 pub struct Usart {
-    queue: spsc::Queue<u8, QueueCap>,
+    queue: spsc::Queue<u8, QUEUE_CAP>,
 }
 
 impl Usart {
     /// Creates a new instance of `Usart`
     pub const fn new() -> Self {
         Self {
-            queue: spsc::Queue(heapless::i::Queue::new()),
+            queue: spsc::Queue::new(),
         }
     }
 
@@ -83,4 +82,4 @@ impl Usart {
 // It would be nice to make the queue capacity configurable, but that would
 // require a generic with trait bound on all the structs. As of this writing,
 // `const fn`s with trait bounds are unstable, so we can't do it yet.
-type QueueCap = U256;
+const QUEUE_CAP: usize = 256;
