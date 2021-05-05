@@ -1,5 +1,5 @@
 # Cargo
-/target
+/*/*/target
 
 # OpenOCD
 */openocd.log
