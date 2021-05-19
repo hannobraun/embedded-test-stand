@@ -1,13 +1,10 @@
 //! Convenient pin interrupt API
 
 
-use heapless::{
-    consts::U32,
-    spsc::{
-        Consumer,
-        Producer,
-        Queue,
-    },
+use heapless::spsc::{
+    Consumer,
+    Producer,
+    Queue,
 };
 use lpc8xx_hal::{
     prelude::*,
@@ -21,7 +18,7 @@ use lpc8xx_hal::{
 
 /// Represents a pin interrupt
 pub struct PinInterrupt {
-    queue: Queue<Event, QueueCap>,
+    queue: Queue<Event, QUEUE_CAP>,
 }
 
 impl PinInterrupt {
@@ -31,7 +28,7 @@ impl PinInterrupt {
     /// initialize a `static`.
     pub const fn new() -> Self {
         Self {
-            queue: Queue(heapless::i::Queue::new()),
+            queue: Queue::new(),
         }
     }
 
@@ -73,7 +70,7 @@ impl PinInterrupt {
 /// [`PinInterrupt::init`]: struct.PinInterrupt.html#method.init
 pub struct Int<'r, I, P, T: mrt::Trait> {
     int:       pinint::Interrupt<I, P, Enabled>,
-    queue:     Producer<'r, Event, QueueCap>,
+    queue:     Producer<'r, Event, QUEUE_CAP>,
     timer:     mrt::Channel<T>,
     measuring: bool,
 }
@@ -126,7 +123,7 @@ impl<I, P, T> Int<'_, I, P, T>
 /// [`PinInterrupt::init`]: struct.PinInterrupt.html#method.init
 /// [`Int`]: struct.Int.html
 pub struct Idle<'r> {
-    queue: Consumer<'r, Event, QueueCap>,
+    queue: Consumer<'r, Event, QUEUE_CAP>,
 }
 
 impl Idle<'_> {
@@ -156,4 +153,4 @@ pub struct Event {
 // It would be nice to make the queue capacity configurable, but that would
 // require a generic with trait bound on all the structs. As of this writing,
 // `const fn`s with trait bounds are unstable, so we can't do it yet.
-type QueueCap = U32;
+const QUEUE_CAP: usize = 32;

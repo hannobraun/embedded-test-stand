@@ -13,10 +13,7 @@ extern crate panic_rtt_target;
 
 use core::marker::PhantomData;
 
-use heapless::{
-    consts::U32,
-    spsc,
-};
+use heapless::spsc;
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
@@ -154,8 +151,8 @@ const APP: () = {
             >
         >,
 
-        dma_rx_prod: spsc::Producer<'static, u8, U32>,
-        dma_rx_cons: spsc::Consumer<'static, u8, U32>,
+        dma_rx_prod: spsc::Producer<'static, u8, 32>,
+        dma_rx_cons: spsc::Consumer<'static, u8, 32>,
     }
 
     #[init]
@@ -169,8 +166,7 @@ const APP: () = {
         static mut USART:      Usart = Usart::new();
         static mut USART_SYNC: Usart = Usart::new();
 
-        static mut DMA_QUEUE: spsc::Queue<u8, U32> =
-            spsc::Queue(heapless::i::Queue::new());
+        static mut DMA_QUEUE: spsc::Queue<u8, 32> = spsc::Queue::new();
         static mut DMA_BUFFER: [u8; 13] = [0; 13];
 
         rtt_target::rtt_init_print!();

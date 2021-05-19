@@ -14,7 +14,7 @@ use lpc8xx_hal::{
 };
 use serde::Deserialize;
 
-use super::QueueCap;
+use super::QUEUE_CAP;
 
 
 /// API for receiving data from a USART instance in an interrupt handler
@@ -24,7 +24,7 @@ use super::QueueCap;
 /// [`Usart::init`]: ../struct.Usart.html#method.init
 pub struct RxInt<'r, I, Mode> {
     pub usart: usart::Rx<I, Enabled<u8, Mode>>,
-    pub queue: spsc::Producer<'r, u8, QueueCap>,
+    pub queue: spsc::Producer<'r, u8, QUEUE_CAP>,
 }
 
 impl<I, Mode> RxInt<'_, I, Mode>
@@ -67,8 +67,8 @@ impl<I, Mode> RxInt<'_, I, Mode>
 ///
 /// [`Usart::init`]: ../struct.Usart.html#method.init
 pub struct RxIdle<'r> {
-    pub queue: spsc::Consumer<'r, u8, QueueCap>,
-    pub buf:   Vec<u8, QueueCap>,
+    pub queue: spsc::Consumer<'r, u8, QUEUE_CAP>,
+    pub buf:   Vec<u8, QUEUE_CAP>,
 }
 
 impl RxIdle<'_> {

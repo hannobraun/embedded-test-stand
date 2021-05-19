@@ -16,7 +16,6 @@ use embedded_hal::spi;
 use heapless::{
     pool,
     Vec,
-    consts::U256,
     pool::singleton::{
         Box,
         Pool as _,
@@ -105,12 +104,12 @@ const APP: () = {
         rx_dma: serial::Rx<USART3>,
         tx_dma: serial::Tx<USART3>,
 
-        rx_prod_main: spsc::Producer<'static, u8, U256>,
-        rx_cons_main: spsc::Consumer<'static, u8, U256>,
-        rx_prod_host: spsc::Producer<'static, u8, U256>,
-        rx_cons_host: spsc::Consumer<'static, u8, U256>,
-        rx_prod_dma: spsc::Producer<'static, u8, U256>,
-        rx_cons_dma: spsc::Consumer<'static, u8, U256>,
+        rx_prod_main: spsc::Producer<'static, u8, 256>,
+        rx_cons_main: spsc::Consumer<'static, u8, 256>,
+        rx_prod_host: spsc::Producer<'static, u8, 256>,
+        rx_cons_host: spsc::Consumer<'static, u8, 256>,
+        rx_prod_dma: spsc::Producer<'static, u8, 256>,
+        rx_cons_dma: spsc::Consumer<'static, u8, 256>,
 
         dma_tx_main: FrameSender<Box<DmaPool>, dma1::C4, 256>,
         dma_rx_dma: FrameReader<Box<DmaPool>, dma1::C3, 256>,
@@ -148,12 +147,9 @@ const APP: () = {
 
     #[init]
     fn init(cx: init::Context) -> init::LateResources {
-        static mut RX_QUEUE_HOST: spsc::Queue<u8, U256> =
-            spsc::Queue(heapless::i::Queue::new());
-        static mut RX_QUEUE_MAIN: spsc::Queue<u8, U256> =
-            spsc::Queue(heapless::i::Queue::new());
-        static mut RX_QUEUE_DMA: spsc::Queue<u8, U256> =
-            spsc::Queue(heapless::i::Queue::new());
+        static mut RX_QUEUE_HOST: spsc::Queue<u8, 256> = spsc::Queue::new();
+        static mut RX_QUEUE_MAIN: spsc::Queue<u8, 256> = spsc::Queue::new();
+        static mut RX_QUEUE_DMA: spsc::Queue<u8, 256> = spsc::Queue::new();
 
         // Allocate memory for DMA transfers.
         static mut MEMORY: [u8; 1024] = [0; 1024];
@@ -371,8 +367,8 @@ const APP: () = {
         let clocks = cx.resources.clocks;
         let pwm_signal = cx.resources.pwm_signal;
 
-        let mut buf_main_rx: Vec<_, U256> = Vec::new();
-        let mut buf_host_rx: Vec<_, U256> = Vec::new();
+        let mut buf_main_rx: Vec<_, 256> = Vec::new();
+        let mut buf_host_rx: Vec<_, 256> = Vec::new();
 
         loop {
             handle_usart_rx(
@@ -449,7 +445,7 @@ const APP: () = {
 
                         let message = TargetToHost::AdcValue(value);
 
-                        let buf_host_tx: Vec<_, U256> =
+                        let buf_host_tx: Vec<_, 256> =
                             postcard::to_vec_cobs(&message)
                                 .expect("Error encoding message to host");
                         tx_host.bwrite_all(buf_host_tx.as_ref())
@@ -483,7 +479,7 @@ const APP: () = {
                             )
                         );
 
-                        let buf_host_tx: Vec<_, U256> =
+                        let buf_host_tx: Vec<_, 256> =
                             postcard::to_vec_cobs(&message)
                                 .expect("Error encoding message to host");
                         tx_host.bwrite_all(buf_host_tx.as_ref())
@@ -503,7 +499,7 @@ const APP: () = {
 
                         let message = TargetToHost::I2cReply(rx_buf[0]);
 
-                        let buf_host_tx: Vec<_, U256> =
+                        let buf_host_tx: Vec<_, 256> =
                             postcard::to_vec_cobs(&message)
                                 .expect("Error encoding message to host");
                         tx_host.bwrite_all(buf_host_tx.as_ref())
@@ -525,7 +521,7 @@ const APP: () = {
 
                         let message = TargetToHost::SpiReply(reply);
 
-                        let buf_host_tx: Vec<_, U256> =
+                        let buf_host_tx: Vec<_, 256> =
                             postcard::to_vec_cobs(&message)
                                 .expect("Error encoding message to host");
                         tx_host.bwrite_all(buf_host_tx.as_ref())
@@ -642,10 +638,10 @@ const APP: () = {
 };
 
 fn handle_usart_rx(
-    queue: &mut spsc::Consumer<'static, u8, U256>,
+    queue: &mut spsc::Consumer<'static, u8, 256>,
     tx_host: &mut serial::Tx<USART2>,
     mode: UsartMode,
-    buf: &mut Vec<u8, U256>,
+    buf: &mut Vec<u8, 256>,
 ) {
     while let Some(b) = queue.dequeue() {
         buf.push(b)
@@ -658,7 +654,7 @@ fn handle_usart_rx(
             data: buf.as_ref(),
         };
 
-        let buf_host_tx: Vec<_, U256> = postcard::to_vec_cobs(&message)
+        let buf_host_tx: Vec<_, 256> = postcard::to_vec_cobs(&message)
             .expect("Error encoding message to host");
         tx_host.bwrite_all(buf_host_tx.as_ref())
             .expect("Error sending message to host");

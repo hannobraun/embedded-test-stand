@@ -13,10 +13,7 @@ extern crate panic_rtt_target;
 
 use core::marker::PhantomData;
 
-use heapless::{
-    FnvIndexMap,
-    consts::U8,
-};
+use heapless::FnvIndexMap;
 use lpc8xx_hal::{
     prelude::*,
     Peripherals,
@@ -483,7 +480,7 @@ const APP: () = {
         let green          = cx.resources.green;
         let cts            = cx.resources.cts;
 
-        let mut pins = FnvIndexMap::<_, _, U8>::new();
+        let mut pins = FnvIndexMap::<_, _, 8>::new();
 
         // ensure that the initial level for green is known before the first level change
         let level = match green.is_high() {
@@ -761,7 +758,7 @@ const APP: () = {
 fn handle_pin_interrupt(
     int:  &mut pin_interrupt::Idle,
     pin:  InputPin,
-    pins: &mut FnvIndexMap<usize, (pin::Level, Option<u32>), U8>,
+    pins: &mut FnvIndexMap<usize, (pin::Level, Option<u32>), 8>,
 ) {
     while let Some(event) = int.next() {
         match event {
